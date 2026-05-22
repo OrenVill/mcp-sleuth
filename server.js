@@ -108,7 +108,14 @@ export function start({
     }
   });
 
-  return new Promise((resolvePromise) => {
+  return new Promise((resolvePromise, rejectPromise) => {
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        rejectPromise(Object.assign(new Error(`port ${port} is already in use`), { code: 'EADDRINUSE', port }));
+      } else {
+        rejectPromise(err);
+      }
+    });
     server.listen(port, host, () => {
       console.log(readyLine(host, port));
       resolvePromise({ server, host, port, url: `http://${host}:${port}/` });

@@ -92,14 +92,28 @@ const args = process.argv.slice(2);
 const noOpen = args.includes('--no-open') || process.env.OPEN === '0';
 const portArg = Number(args.find((a) => /^\d+$/.test(a)));
 
-try {
-  const { start } = await import(resolve(pkgRoot, 'server.js'));
-  const { url } = await start({ port: Number.isFinite(portArg) ? portArg : undefined });
-  if (!noOpen) openBrowser(url);
-} catch (err) {
-  console.error(paint('31', `mcp-explorer: ${err.message}`));
-  process.exit(1);
+const { start } = await import(resolve(pkgRoot, 'server.js'));
+
+const BASE_PORT = Number.isFinite(portArg) ? portArg : Number(process.env.PORT ?? 4173);
+const MAX_PORT_TRIES = 10;
+let url;
+for (let attempt = 0; attempt < MAX_PORT_TRIES; attempt++) {
+  const tryPort = BASE_PORT + attempt;
+  try {
+    ({ url } = await start({ port: tryPort }));
+    break;
+  } catch (err) {
+    if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_TRIES - 1) {
+      process.stderr.write(
+        paint('2', `  port ${tryPort} in use, trying ${tryPort + 1}…\n`),
+      );
+      continue;
+    }
+    console.error(paint('31', `mcp-explorer: ${err.message}`));
+    process.exit(1);
+  }
 }
+if (!noOpen) openBrowser(url);
 
 function openBrowser(url) {
   const isWSL =
