@@ -12,6 +12,7 @@ import {
   type ServerFormValues,
 } from './components/ServerFormDialog';
 import { Logo } from './components/Logo';
+import { GlobalSearch } from './components/GlobalSearch';
 import { formatConnectionError } from './lib/connectionErrorMessage';
 import { connect, disconnect, callTool as mcpCallTool, onToolsChanged, refetchTools, listResources, listPrompts } from './lib/mcpClient';
 import { detectMetaTools } from './lib/discovery/detect';
@@ -483,6 +484,30 @@ export default function App() {
     }
   }
 
+  function handleGlobalSelectTool(serverId: string, toolName: string) {
+    setSelectedId(serverId);
+    setActiveTab('tools');
+    setSelectedToolName(toolName);
+    setSelectedResourceUri(null);
+    setSelectedPromptName(null);
+  }
+
+  function handleGlobalSelectResource(serverId: string, uri: string) {
+    setSelectedId(serverId);
+    setActiveTab('resources');
+    setSelectedResourceUri(uri);
+    setSelectedToolName(null);
+    setSelectedPromptName(null);
+  }
+
+  function handleGlobalSelectPrompt(serverId: string, name: string) {
+    setSelectedId(serverId);
+    setActiveTab('prompts');
+    setSelectedPromptName(name);
+    setSelectedToolName(null);
+    setSelectedResourceUri(null);
+  }
+
   if (vaultPhase === 'loading') {
     return (
       <div className="h-full flex items-center justify-center bg-zinc-950 text-zinc-300">
@@ -544,6 +569,20 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           <VaultLockButton onLock={handleVaultLock} />
+          <button
+            type="button"
+            onClick={() => {
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+            }}
+            title="Search (⌘K)"
+            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1 font-mono"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+              <circle cx="6.5" cy="6.5" r="4" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span>⌘K</span>
+          </button>
           <a
             href="https://github.com/OrenVill/mcp-explorer"
             target="_blank"
@@ -619,6 +658,12 @@ export default function App() {
         onClose={handleDialogClose}
         onSubmit={handleSubmit}
         validate={dialogValidate}
+      />
+      <GlobalSearch
+        servers={servers}
+        onSelectTool={handleGlobalSelectTool}
+        onSelectResource={handleGlobalSelectResource}
+        onSelectPrompt={handleGlobalSelectPrompt}
       />
     </div>
   );

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import type { ServerEntry, ToolDef } from '../types';
 import { DiscoveredToolsSection } from './DiscoveredToolsSection';
+import { loadBookmarks, toggleBookmark } from '../lib/bookmarks';
 
 interface Props {
   server: ServerEntry | null;
@@ -9,6 +11,23 @@ interface Props {
 }
 
 export function ToolList({ server, selectedToolName, onSelect, embedded = false }: Props) {
+  const [bookmarks, setBookmarks] = useState<Set<string>>(() => loadBookmarks());
+
+  function handleToggleBookmark(e: React.MouseEvent, serverId: string, toolName: string) {
+    e.stopPropagation();
+    const newState = toggleBookmark(serverId, toolName);
+    setBookmarks((prev) => {
+      const next = new Set(prev);
+      const key = `${serverId}::${toolName}`;
+      if (newState) {
+        next.add(key);
+      } else {
+        next.delete(key);
+      }
+      return next;
+    });
+  }
+
   if (!server) {
     if (embedded) return null;
     return (
@@ -32,6 +51,7 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
   }
 
   const tools = server.tools ?? [];
+  const serverId = server.id;
 
   const listContent = (
     <>
@@ -42,6 +62,8 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
       )}
       {tools.map((t: ToolDef) => {
         const isSelected = t.name === selectedToolName;
+        const bookmarkKey = `${serverId}::${t.name}`;
+        const starred = bookmarks.has(bookmarkKey);
         const desc = stripEmoji(t.description ?? '').split('\n').filter(Boolean)[0];
         return (
           <li
@@ -57,7 +79,22 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
             {isSelected && (
               <span className="absolute left-0 top-2 bottom-2 w-0.5 -translate-x-1.5 bg-violet-500 rounded-full" />
             )}
-            <div className="font-mono text-xs text-zinc-100 truncate">{t.name}</div>
+            <div className="flex items-start justify-between gap-1">
+              <div className="font-mono text-xs text-zinc-100 truncate flex-1">{t.name}</div>
+              <button
+                type="button"
+                title={starred ? 'Remove bookmark' : 'Bookmark this tool'}
+                onClick={(e) => handleToggleBookmark(e, serverId, t.name)}
+                className={[
+                  'shrink-0 text-sm leading-none transition-all rounded p-0.5',
+                  starred
+                    ? 'text-amber-400 opacity-100'
+                    : 'text-zinc-600 opacity-0 group-hover:opacity-100 hover:text-amber-300',
+                ].join(' ')}
+              >
+                {starred ? '★' : '☆'}
+              </button>
+            </div>
             {desc && (
               <div className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2 leading-snug">
                 {desc}
