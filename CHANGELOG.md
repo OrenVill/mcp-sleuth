@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.4.0](https://github.com/OrenVill/mcp-explorer/compare/v0.3.0...v0.4.0) (2026-05-22)
+
+
+### Features
+
+* call history with expand and side-by-side comparison ([#10](https://github.com/OrenVill/mcp-explorer/issues/10)) ([eae8df4](https://github.com/OrenVill/mcp-explorer/commit/eae8df4b90d8b912a2c119acc3908890d3743069))
+* cross-server search (⌘K) and tool bookmarks ([#11](https://github.com/OrenVill/mcp-explorer/issues/11)) ([730a73c](https://github.com/OrenVill/mcp-explorer/commit/730a73ce292ec867204dba1737f940a75d3617c4))
+* persist bookmarks and call history to ~/.mcp-explorer/data.gz ([#14](https://github.com/OrenVill/mcp-explorer/issues/14)) ([66bc326](https://github.com/OrenVill/mcp-explorer/commit/66bc32691f3b42eb2e1a3f25ad23f66953053ea6))
+* server export and documentation generation ([#12](https://github.com/OrenVill/mcp-explorer/issues/12)) ([c94abfc](https://github.com/OrenVill/mcp-explorer/commit/c94abfc4c55dd59296edb1c307e6a7477bc7da3f))
+
 ## [0.3.0](https://github.com/OrenVill/mcp-explorer/compare/v0.2.0...v0.3.0) (2026-05-22)
 
 
