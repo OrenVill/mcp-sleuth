@@ -14,6 +14,8 @@
     "server.js",
     "vault-file-handler.js",
     "vault-file-handler.d.ts",
+    "app-data-handler.js",
+    "app-data-handler.d.ts",
     "proxy.js",
     "proxy.d.ts",
     "vite.config.ts",

@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve, extname } from 'node:path';
 import { handleMcpProxy, PROXY_PATH } from './proxy.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
+import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultRoot = resolve(here, 'dist');
@@ -75,6 +76,15 @@ export function start({
     }
     if (isVaultStorageRequest(url)) {
       handleVaultStorage(req, res).catch((err) => {
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        }
+        res.end(err instanceof Error ? err.message : String(err));
+      });
+      return;
+    }
+    if (isAppDataRequest(url)) {
+      handleAppData(req, res).catch((err) => {
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
         }

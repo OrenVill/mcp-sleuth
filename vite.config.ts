@@ -5,6 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 import type { PluginOption } from 'vite';
 import { handleMcpProxy, PROXY_PATH } from './proxy.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
+import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 
 function vaultStorageMiddleware(
   req: IncomingMessage,
@@ -24,7 +25,7 @@ function vaultStorageMiddleware(
   next();
 }
 
-/** Run before Vite’s SPA HTML fallback so GET /__vault_storage hits the file store. */
+/** Run before Vite's SPA HTML fallback so GET /__vault_storage hits the file store. */
 function vaultStoragePlugin(): PluginOption {
   return {
     name: 'mcp-explorer-vault-storage',
@@ -34,6 +35,37 @@ function vaultStoragePlugin(): PluginOption {
     },
     configurePreviewServer(server) {
       server.middlewares.use(vaultStorageMiddleware);
+    },
+  };
+}
+
+function appDataMiddleware(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void,
+) {
+  if (isAppDataRequest(req.url ?? '/')) {
+    void handleAppData(req, res).catch((err: unknown) => {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      }
+      res.end(err instanceof Error ? err.message : String(err));
+    });
+    return;
+  }
+  next();
+}
+
+function appDataPlugin(): PluginOption {
+  return {
+    name: 'mcp-explorer-app-data',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(appDataMiddleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(appDataMiddleware);
     },
   };
 }
@@ -51,7 +83,7 @@ function mcpProxyPlugin(): PluginOption {
 }
 
 export default defineConfig({
-  plugins: [vaultStoragePlugin(), react(), tailwindcss(), mcpProxyPlugin()],
+  plugins: [vaultStoragePlugin(), appDataPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

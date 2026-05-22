@@ -1,16 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { appendRecord, loadHistory, clearHistory } from './history';
+import { _seedCache, _resetCache } from './appData';
 import type { CallRecord } from './history';
-
-// localStorage mock for node test environment
-const store: Record<string, string> = {};
-const localStorageMock = {
-  getItem: vi.fn((key: string) => store[key] ?? null),
-  setItem: vi.fn((key: string, value: string) => { store[key] = value; }),
-  removeItem: vi.fn((key: string) => { delete store[key]; }),
-  clear: vi.fn(() => { for (const k of Object.keys(store)) delete store[k]; }),
-};
-vi.stubGlobal('localStorage', localStorageMock);
 
 function makeRecord(id: string, overrides: Partial<CallRecord> = {}): CallRecord {
   return {
@@ -26,8 +17,8 @@ function makeRecord(id: string, overrides: Partial<CallRecord> = {}): CallRecord
 
 describe('history', () => {
   beforeEach(() => {
-    localStorageMock.clear();
-    clearHistory();
+    _resetCache();
+    _seedCache({ version: 1, bookmarks: [], history: [] });
   });
 
   it('loadHistory returns [] when empty', () => {
@@ -37,9 +28,8 @@ describe('history', () => {
   it('appendRecord stores a record and loadHistory returns it', () => {
     const r = makeRecord('r1');
     appendRecord(r);
-    const history = loadHistory();
-    expect(history).toHaveLength(1);
-    expect(history[0].id).toBe('r1');
+    expect(loadHistory()).toHaveLength(1);
+    expect(loadHistory()[0].id).toBe('r1');
   });
 
   it('most recent record appears first', () => {
@@ -50,17 +40,16 @@ describe('history', () => {
     expect(history[1].id).toBe('r1');
   });
 
-  it('caps at 50 records, dropping oldest', () => {
-    for (let i = 0; i < 55; i++) {
+  it('caps at 500 records, dropping oldest', () => {
+    for (let i = 0; i < 505; i++) {
       appendRecord(makeRecord(`r${i}`));
     }
     const history = loadHistory();
-    expect(history).toHaveLength(50);
-    // Most recent is r54
-    expect(history[0].id).toBe('r54');
+    expect(history).toHaveLength(500);
+    expect(history[0].id).toBe('r504');
   });
 
-  it('clearHistory empties storage', () => {
+  it('clearHistory empties the store', () => {
     appendRecord(makeRecord('r1'));
     clearHistory();
     expect(loadHistory()).toEqual([]);
