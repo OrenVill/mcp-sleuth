@@ -5,10 +5,12 @@ interface Props {
   server: ServerEntry | null;
   selectedToolName: string | null;
   onSelect: (toolName: string) => void;
+  embedded?: boolean;
 }
 
-export function ToolList({ server, selectedToolName, onSelect }: Props) {
+export function ToolList({ server, selectedToolName, onSelect, embedded = false }: Props) {
   if (!server) {
+    if (embedded) return null;
     return (
       <div className="w-72 shrink-0 border-r border-zinc-800/80 p-6 text-sm text-zinc-500 bg-zinc-950/20">
         <div className="text-zinc-600 text-xs uppercase tracking-wider mb-2">Tools</div>
@@ -18,6 +20,7 @@ export function ToolList({ server, selectedToolName, onSelect }: Props) {
   }
 
   if (server.status !== 'connected') {
+    if (embedded) return null;
     return (
       <div className="w-72 shrink-0 border-r border-zinc-800/80 p-6 text-sm bg-zinc-950/20">
         <div className="text-zinc-600 text-xs uppercase tracking-wider mb-2">Tools</div>
@@ -30,6 +33,52 @@ export function ToolList({ server, selectedToolName, onSelect }: Props) {
 
   const tools = server.tools ?? [];
 
+  const listContent = (
+    <>
+      {tools.length === 0 && (
+        <li className="px-4 py-6 text-sm text-zinc-500 text-center">
+          No tools advertised.
+        </li>
+      )}
+      {tools.map((t: ToolDef) => {
+        const isSelected = t.name === selectedToolName;
+        const desc = stripEmoji(t.description ?? '').split('\n').filter(Boolean)[0];
+        return (
+          <li
+            key={t.name}
+            onClick={() => onSelect(t.name)}
+            className={[
+              'group relative mx-1.5 my-0.5 px-3 py-2 rounded-lg cursor-pointer transition-all',
+              isSelected
+                ? 'bg-zinc-900/90 border border-zinc-700/70'
+                : 'border border-transparent hover:bg-zinc-900/50 hover:border-zinc-800/80',
+            ].join(' ')}
+          >
+            {isSelected && (
+              <span className="absolute left-0 top-2 bottom-2 w-0.5 -translate-x-1.5 bg-violet-500 rounded-full" />
+            )}
+            <div className="font-mono text-xs text-zinc-100 truncate">{t.name}</div>
+            {desc && (
+              <div className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2 leading-snug">
+                {desc}
+              </div>
+            )}
+          </li>
+        );
+      })}
+      <DiscoveredToolsSection
+        tools={server.discovered ?? []}
+        nativeNames={new Set(tools.map((t) => t.name))}
+        selectedToolName={selectedToolName}
+        onSelect={onSelect}
+      />
+    </>
+  );
+
+  if (embedded) {
+    return <ul className="py-1">{listContent}</ul>;
+  }
+
   return (
     <aside className="w-72 shrink-0 border-r border-zinc-800/80 flex flex-col h-full bg-zinc-950/20">
       <div className="px-4 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
@@ -38,45 +87,7 @@ export function ToolList({ server, selectedToolName, onSelect }: Props) {
         </h2>
         <span className="text-[11px] text-zinc-600">{tools.length}</span>
       </div>
-      <ul className="flex-1 overflow-y-auto py-1">
-        {tools.length === 0 && (
-          <li className="px-4 py-6 text-sm text-zinc-500 text-center">
-            No tools advertised.
-          </li>
-        )}
-        {tools.map((t: ToolDef) => {
-          const isSelected = t.name === selectedToolName;
-          const desc = stripEmoji(t.description ?? '').split('\n').filter(Boolean)[0];
-          return (
-            <li
-              key={t.name}
-              onClick={() => onSelect(t.name)}
-              className={[
-                'group relative mx-1.5 my-0.5 px-3 py-2 rounded-lg cursor-pointer transition-all',
-                isSelected
-                  ? 'bg-zinc-900/90 border border-zinc-700/70'
-                  : 'border border-transparent hover:bg-zinc-900/50 hover:border-zinc-800/80',
-              ].join(' ')}
-            >
-              {isSelected && (
-                <span className="absolute left-0 top-2 bottom-2 w-0.5 -translate-x-1.5 bg-violet-500 rounded-full" />
-              )}
-              <div className="font-mono text-xs text-zinc-100 truncate">{t.name}</div>
-              {desc && (
-                <div className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2 leading-snug">
-                  {desc}
-                </div>
-              )}
-            </li>
-          );
-        })}
-        <DiscoveredToolsSection
-          tools={server.discovered ?? []}
-          nativeNames={new Set(tools.map((t) => t.name))}
-          selectedToolName={selectedToolName}
-          onSelect={onSelect}
-        />
-      </ul>
+      <ul className="flex-1 overflow-y-auto py-1">{listContent}</ul>
     </aside>
   );
 }

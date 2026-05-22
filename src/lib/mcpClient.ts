@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
-import type { ServerAuth, ToolDef, ToolResult } from '../types';
+import type { ResourceEntry, ResourceTemplate, ResourceContent, PromptDef, PromptMessage, ServerAuth, ToolDef, ToolResult } from '../types';
 
 const clients = new Map<string, Client>();
 const transports = new Map<string, StreamableHTTPClientTransport>();
@@ -142,4 +142,43 @@ export function onToolsChanged(serverId: string, handler: () => void): () => voi
   return () => {
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {});
   };
+}
+
+export async function listResources(
+  serverId: string,
+): Promise<{ resources: ResourceEntry[]; templates: ResourceTemplate[] }> {
+  const client = clients.get(serverId);
+  if (!client) throw new Error(`Not connected to server "${serverId}"`);
+  const result = await client.listResources();
+  const resources = (result.resources ?? []) as unknown as ResourceEntry[];
+  const templates = (result.resourceTemplates ?? []) as unknown as ResourceTemplate[];
+  return { resources, templates };
+}
+
+export async function readResource(
+  serverId: string,
+  uri: string,
+): Promise<{ contents: ResourceContent[] }> {
+  const client = clients.get(serverId);
+  if (!client) throw new Error(`Not connected to server "${serverId}"`);
+  const result = await client.readResource({ uri });
+  return { contents: result.contents as unknown as ResourceContent[] };
+}
+
+export async function listPrompts(serverId: string): Promise<PromptDef[]> {
+  const client = clients.get(serverId);
+  if (!client) throw new Error(`Not connected to server "${serverId}"`);
+  const result = await client.listPrompts();
+  return result.prompts as unknown as PromptDef[];
+}
+
+export async function getPrompt(
+  serverId: string,
+  name: string,
+  args: Record<string, string>,
+): Promise<PromptMessage[]> {
+  const client = clients.get(serverId);
+  if (!client) throw new Error(`Not connected to server "${serverId}"`);
+  const result = await client.getPrompt({ name, arguments: args });
+  return result.messages as unknown as PromptMessage[];
 }

@@ -30,6 +30,9 @@ export interface ServerEntry {
   discovered?: DiscoveredTool[];
   /** Per-meta-tool discovery run state, keyed by meta-tool name. */
   discoveryRuns?: Record<string, DiscoveryRun>;
+  resources?: ResourceEntry[];
+  resourceTemplates?: ResourceTemplate[];
+  prompts?: PromptDef[];
 }
 
 export interface ToolDef {
@@ -114,4 +117,46 @@ export interface DiscoveryRun {
   callsMade: number;
   toolsFound: number;
   error?: string;
+}
+
+// --- Resources ---
+
+export interface ResourceEntry {
+  uri: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+export interface ResourceTemplate {
+  uriTemplate: string;
+  name: string;
+  description?: string;
+  mimeType?: string;
+}
+
+export interface ResourceContent {
+  uri: string;
+  mimeType?: string;
+  text?: string;
+  blob?: string; // base64 for binary
+}
+
+// --- Prompts ---
+
+export interface PromptArgDef {
+  name: string;
+  description?: string;
+  required?: boolean;
+}
+
+export interface PromptDef {
+  name: string;
+  description?: string;
+  arguments?: PromptArgDef[];
+}
+
+export interface PromptMessage {
+  role: 'user' | 'assistant';
+  content: { type: string; text?: string };
 }
