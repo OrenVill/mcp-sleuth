@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { SchemaForm } from './SchemaForm';
 import { ResultPane } from './ResultPane';
 import { DiscoveryHeader } from './DiscoveryHeader';
+import { CallHistory } from './CallHistory';
 import { invokeMaybeDiscovered } from '../lib/discovery/invoke';
 import { callTool } from '../lib/mcpClient';
-import type { DiscoveryRun, MetaToolBinding, ServerEntry, ToolDef, ToolResult } from '../types';
+import { appendRecord, loadHistory, clearHistory } from '../lib/history';
+import type { CallRecord } from '../lib/history';
+import type { DiscoveredTool, DiscoveryRun, MetaToolBinding, ServerEntry, ToolDef, ToolResult } from '../types';
 
 interface Props {
   server: ServerEntry | null;
@@ -52,6 +55,11 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
   const [resultEpoch, setResultEpoch] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [history, setHistory] = useState<CallRecord[]>(() =>
+    loadHistory().filter(
+      (r) => r.serverId === server?.id && r.toolName === tool?.name,
+    ),
+  );
 
   if (!server) {
     return <EmptyState>Select a server from the left to begin.</EmptyState>;
@@ -75,6 +83,8 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
     setLoading(true);
     setError(null);
     setResult(null);
+    const startMs = Date.now();
+    let callResult: ToolResult | undefined;
     try {
       const r = await invokeMaybeDiscovered({
         callTool: (n, a) => callTool(server.id, n, a),
@@ -82,13 +92,32 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
         args: cleanedArgs,
         metaTools: server.metaTools ?? [],
       });
+      callResult = r;
       setResult(r);
       setResultEpoch((n) => n + 1);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
+      const durationMs = Date.now() - startMs;
+      const record: CallRecord = {
+        id: crypto.randomUUID(),
+        timestamp: startMs,
+        serverId: server.id,
+        serverName: server.name,
+        toolName: tool.name,
+        args: cleanedArgs,
+        result: callResult,
+        durationMs,
+        isDiscovered: !!(tool as DiscoveredTool).source,
+      };
+      appendRecord(record);
+      setHistory(loadHistory().filter((r) => r.serverId === server?.id && r.toolName === tool?.name));
       setLoading(false);
     }
+  }
+
+  function handleReplay(args: Record<string, unknown>) {
+    setValues(args);
   }
 
   const description = (tool.description ?? '').trim();
@@ -171,6 +200,12 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
           </h2>
           <ResultPane key={resultEpoch} result={result} error={error} loading={loading} />
         </section>
+
+        <CallHistory
+          history={history}
+          onReplay={handleReplay}
+          onClear={() => { clearHistory(); setHistory([]); }}
+        />
       </div>
     </main>
   );
