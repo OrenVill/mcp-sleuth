@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/OrenVill/mcp-explorer/compare/v0.2.0...v0.3.0) (2026-05-22)
+
+
+### Features
+
+* add MCP resources and prompts support ([#7](https://github.com/OrenVill/mcp-explorer/issues/7)) ([de1e153](https://github.com/OrenVill/mcp-explorer/commit/de1e153fa0ccc16387dfa106537d9ff7c79cdff3))
+* add MCP resources and prompts support ([#7](https://github.com/OrenVill/mcp-explorer/issues/7)) ([#9](https://github.com/OrenVill/mcp-explorer/issues/9)) ([284bc98](https://github.com/OrenVill/mcp-explorer/commit/284bc98aaa05d1d566753830474d57761475ae2b))
+
 ## [0.2.0](https://github.com/OrenVill/mcp-explorer/compare/v0.1.0...v0.2.0) (2026-05-20)
 
 

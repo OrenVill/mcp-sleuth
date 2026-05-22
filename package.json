@@ -1,6 +1,6 @@
 {
   "name": "mcp-explorer",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Browser-based explorer for MCP servers over streamable HTTP — list and invoke tools with auto-generated forms.",
   "type": "module",
   "bin": {
