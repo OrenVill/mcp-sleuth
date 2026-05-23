@@ -42,7 +42,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "marked": "^18.0.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

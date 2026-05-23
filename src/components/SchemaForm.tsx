@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { JsonSchema, JsonSchemaProperty } from '../types';
+import { MarkdownPreview } from './MarkdownPreview';
 
 interface Props {
   schema: JsonSchema;
@@ -89,8 +90,8 @@ export function SchemaForm({ schema, values, onChange }: Props) {
               </span>
             </label>
             {prop.description && (
-              <div className="text-xs text-zinc-500 mb-1.5 leading-snug">
-                {prop.description}
+              <div className="mb-1.5">
+                <MarkdownPreview source={prop.description} className="md-preview-compact" />
               </div>
             )}
             {prop.enum ? (

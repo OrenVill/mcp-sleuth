@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ServerEntry } from '../types';
 import { exportAsMarkdown, exportAsJson, downloadFile, serverSlug } from '../lib/export';
+import { CodeBlock } from './CodeBlock';
+import { MarkdownPreview } from './MarkdownPreview';
 
 type ExportTab = 'markdown' | 'json';
 
@@ -11,6 +13,7 @@ interface Props {
 
 export function ExportDialog({ server, onClose }: Props) {
   const [activeTab, setActiveTab] = useState<ExportTab>('markdown');
+  const [mdView, setMdView] = useState<'code' | 'preview'>('code');
   const [copied, setCopied] = useState(false);
 
   const content =
@@ -76,8 +79,8 @@ export function ExportDialog({ server, onClose }: Props) {
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex px-5 pt-2 shrink-0 border-b border-zinc-800/80">
+        {/* Tabs + markdown view toggle */}
+        <div className="flex items-center px-5 pt-2 shrink-0 border-b border-zinc-800/80">
           {(['markdown', 'json'] as ExportTab[]).map((tab) => (
             <button
               key={tab}
@@ -93,17 +96,35 @@ export function ExportDialog({ server, onClose }: Props) {
               {tab === 'markdown' ? 'Markdown' : 'JSON'}
             </button>
           ))}
+          {activeTab === 'markdown' && (
+            <div className="ml-auto mb-1 inline-flex rounded-md border border-zinc-800 bg-zinc-900 p-0.5">
+              {(['code', 'preview'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setMdView(v)}
+                  className={
+                    mdView === v
+                      ? 'px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-700 text-zinc-100'
+                      : 'px-2 py-0.5 rounded text-[10px] font-medium text-zinc-500 hover:text-zinc-300'
+                  }
+                >
+                  {v === 'code' ? 'Code' : 'Preview'}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Content area */}
-        <div className="flex-1 min-h-0 p-4">
-          <textarea
-            readOnly
-            value={content}
-            className="w-full h-full font-mono text-xs bg-zinc-950/80 border border-zinc-800/60 rounded-lg p-3 text-zinc-300 resize-none outline-none focus:border-zinc-700 leading-relaxed"
-            style={{ minHeight: '60vh' }}
-            spellCheck={false}
-          />
+        <div className="flex-1 min-h-0 overflow-auto p-4">
+          <div className="rounded-lg border border-zinc-800/60 bg-zinc-950/80 overflow-hidden" style={{ minHeight: '55vh' }}>
+            {activeTab === 'markdown' && mdView === 'preview' ? (
+              <MarkdownPreview source={content} />
+            ) : (
+              <CodeBlock code={content} lang={activeTab === 'markdown' ? 'markdown' : 'json'} />
+            )}
+          </div>
         </div>
 
         {/* Footer */}

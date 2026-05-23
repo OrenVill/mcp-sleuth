@@ -4,6 +4,7 @@ import { getPrompt } from '../lib/mcpClient';
 import { serializePromptMessages } from '../lib/promptSerialize';
 import { CodeBlock } from './CodeBlock';
 import { detectLanguage } from '../lib/highlighter';
+import { MarkdownPreview } from './MarkdownPreview';
 
 interface Props {
   server: ServerEntry;
@@ -11,8 +12,10 @@ interface Props {
 }
 
 function MessageCard({ message }: { message: PromptMessage }) {
+  const [view, setView] = useState<'code' | 'preview'>('code');
   const text = message.content.text ?? JSON.stringify(message.content, null, 2);
   const lang = message.content.type === 'text' ? detectLanguage(text) : 'json';
+  const isMarkdown = lang === 'markdown';
   const isUser = message.role === 'user';
 
   return (
@@ -29,8 +32,30 @@ function MessageCard({ message }: { message: PromptMessage }) {
           {message.role}
         </span>
         <span className="text-[10px] text-zinc-600">{message.content.type}</span>
+        {isMarkdown && (
+          <div className="ml-auto inline-flex rounded-md border border-zinc-800 bg-zinc-900 p-0.5">
+            {(['code', 'preview'] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={
+                  view === v
+                    ? 'px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-700 text-zinc-100'
+                    : 'px-2 py-0.5 rounded text-[10px] font-medium text-zinc-500 hover:text-zinc-300'
+                }
+              >
+                {v === 'code' ? 'Code' : 'Preview'}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
-      <CodeBlock code={text} lang={lang} />
+      {isMarkdown && view === 'preview' ? (
+        <MarkdownPreview source={text} />
+      ) : (
+        <CodeBlock code={text} lang={lang} />
+      )}
     </div>
   );
 }
@@ -77,7 +102,7 @@ export function PromptDetail({ server, prompt }: Props) {
           <div>
             <h2 className="text-zinc-100 font-semibold font-mono">{prompt.name}</h2>
             {prompt.description && (
-              <p className="text-sm text-zinc-400 mt-1">{prompt.description}</p>
+              <MarkdownPreview source={prompt.description} className="md-preview-compact" />
             )}
           </div>
           {messages && (
@@ -96,20 +121,25 @@ export function PromptDetail({ server, prompt }: Props) {
         {hasArgs && (
           <div className="space-y-2">
             {(prompt.arguments ?? []).map((arg) => (
-              <div key={arg.name} className="flex items-center gap-3">
-                <label className="text-[11px] font-mono text-zinc-400 w-28 shrink-0">
+              <div key={arg.name} className="flex items-start gap-3">
+                <label className="text-[11px] font-mono text-zinc-400 w-28 shrink-0 pt-1.5">
                   {arg.name}
                   {arg.required && <span className="text-red-400 ml-0.5">*</span>}
                 </label>
-                <input
-                  type="text"
-                  value={values[arg.name] ?? ''}
-                  onChange={(e) =>
-                    setValues((prev) => ({ ...prev, [arg.name]: e.target.value }))
-                  }
-                  placeholder={arg.description ?? arg.name}
-                  className="flex-1 rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-violet-500 focus:outline-none transition-colors"
-                />
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={values[arg.name] ?? ''}
+                    onChange={(e) =>
+                      setValues((prev) => ({ ...prev, [arg.name]: e.target.value }))
+                    }
+                    placeholder={arg.description ?? arg.name}
+                    className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-600 focus:border-violet-500 focus:outline-none transition-colors"
+                  />
+                  {arg.description && (
+                    <p className="text-[11px] text-zinc-500 mt-1">{arg.description}</p>
+                  )}
+                </div>
               </div>
             ))}
             <button

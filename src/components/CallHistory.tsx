@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CallRecord } from '../lib/history';
 import { ResultPane } from './ResultPane';
+import { CodeBlock } from './CodeBlock';
 
 interface Props {
   history: CallRecord[];
@@ -53,6 +54,79 @@ function DiffBlock({ lines }: { lines: { line: string; changed: boolean }[] }) {
   );
 }
 
+// ---------- Semantic JSON diff ----------
+
+type DiffStatus = 'added' | 'removed' | 'changed';
+
+interface SemanticEntry {
+  path: string;
+  left: unknown;
+  right: unknown;
+  status: DiffStatus;
+}
+
+function collectDiffs(a: unknown, b: unknown, path: string, out: SemanticEntry[]): void {
+  if (JSON.stringify(a) === JSON.stringify(b)) return;
+
+  const aIsObj = a !== null && typeof a === 'object' && !Array.isArray(a);
+  const bIsObj = b !== null && typeof b === 'object' && !Array.isArray(b);
+
+  if (aIsObj && bIsObj) {
+    const aObj = a as Record<string, unknown>;
+    const bObj = b as Record<string, unknown>;
+    const keys = new Set([...Object.keys(aObj), ...Object.keys(bObj)]);
+    for (const key of keys) {
+      const childPath = path ? `${path}.${key}` : key;
+      if (!(key in aObj)) {
+        out.push({ path: childPath, left: undefined, right: bObj[key], status: 'added' });
+      } else if (!(key in bObj)) {
+        out.push({ path: childPath, left: aObj[key], right: undefined, status: 'removed' });
+      } else {
+        collectDiffs(aObj[key], bObj[key], childPath, out);
+      }
+    }
+    return;
+  }
+
+  out.push({ path: path || '(root)', left: a, right: b, status: 'changed' });
+}
+
+function semanticDiff(a: Record<string, unknown>, b: Record<string, unknown>): SemanticEntry[] {
+  const out: SemanticEntry[] = [];
+  collectDiffs(a, b, '', out);
+  return out;
+}
+
+function formatVal(v: unknown): string {
+  if (v === undefined) return '—';
+  if (typeof v === 'string') return `"${v}"`;
+  return JSON.stringify(v);
+}
+
+function SemanticDiffView({ entries }: { entries: SemanticEntry[] }) {
+  if (entries.length === 0) {
+    return <p className="text-xs text-emerald-400 px-3 py-2">Identical</p>;
+  }
+  return (
+    <div className="divide-y divide-zinc-800/60 text-xs font-mono">
+      {entries.map((e, i) => (
+        <div key={i} className="px-3 py-2 grid grid-cols-[1fr_auto_1fr] gap-2 items-start">
+          <div className={e.status === 'removed' ? 'text-red-300' : e.status === 'added' ? 'text-zinc-500' : 'text-red-300'}>
+            {e.status !== 'added' ? formatVal(e.left) : <span className="text-zinc-600">—</span>}
+          </div>
+          <div className="text-zinc-600 text-[10px] pt-0.5 whitespace-nowrap">
+            {e.status === 'added' ? '+ ' : e.status === 'removed' ? '− ' : '→ '}
+            <span className="text-zinc-500">{e.path}</span>
+          </div>
+          <div className={e.status === 'added' ? 'text-emerald-300' : e.status === 'removed' ? 'text-zinc-500' : 'text-emerald-300'}>
+            {e.status !== 'removed' ? formatVal(e.right) : <span className="text-zinc-600">—</span>}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -80,9 +154,7 @@ function RecordDetail({ record, onReplay }: { record: CallRecord; onReplay: () =
           <span className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold">Args</span>
           <CopyButton text={argsJson} />
         </div>
-        <pre className="text-xs font-mono leading-5 overflow-x-auto whitespace-pre p-3 text-zinc-300">
-          {argsJson}
-        </pre>
+        <CodeBlock code={argsJson} lang="json" />
       </div>
       <div>
         <div className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold mb-2">Result</div>
@@ -121,6 +193,16 @@ function CompareView({
   const bArgs = JSON.stringify(b.args, null, 2);
   const argsDiff = diffLines(aArgs, bArgs);
   const argsIdentical = aArgs === bArgs;
+
+  // Try semantic JSON diff first
+  let semanticEntries: SemanticEntry[] | null = null;
+  try {
+    const aObj = JSON.parse(aArgs) as Record<string, unknown>;
+    const bObj = JSON.parse(bArgs) as Record<string, unknown>;
+    semanticEntries = semanticDiff(aObj, bObj);
+  } catch {
+    // fall through to line diff
+  }
 
   return (
     <div className="space-y-4">
@@ -171,19 +253,25 @@ function CompareView({
             <span className="text-emerald-500 normal-case tracking-normal">identical</span>
           )}
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {([argsDiff.left, argsDiff.right] as { line: string; changed: boolean }[][]).map(
-            (lines, idx) => (
-              <div key={idx} className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
-                <div className="px-3 py-1 border-b border-zinc-800/60 bg-zinc-950/40 flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500">Call {idx + 1}</span>
-                  <CopyButton text={idx === 0 ? aArgs : bArgs} />
+        {!argsIdentical && semanticEntries !== null ? (
+          <div className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
+            <SemanticDiffView entries={semanticEntries} />
+          </div>
+        ) : !argsIdentical ? (
+          <div className="grid grid-cols-2 gap-3">
+            {([argsDiff.left, argsDiff.right] as { line: string; changed: boolean }[][]).map(
+              (lines, idx) => (
+                <div key={idx} className="rounded-lg border border-zinc-800/80 bg-zinc-950/60 overflow-hidden">
+                  <div className="px-3 py-1 border-b border-zinc-800/60 bg-zinc-950/40 flex items-center justify-between">
+                    <span className="text-[10px] text-zinc-500">Call {idx + 1}</span>
+                    <CopyButton text={idx === 0 ? aArgs : bArgs} />
+                  </div>
+                  <DiffBlock lines={lines} />
                 </div>
-                <DiffBlock lines={lines} />
-              </div>
-            ),
-          )}
-        </div>
+              ),
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* Results */}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { detectLanguage, getHighlighter, SHIKI_THEME, type SupportedLang } from '../lib/highlighter';
+import { detectLanguage, getHighlighter, prettifyCode, SHIKI_THEME, type SupportedLang } from '../lib/highlighter';
 
 interface Props {
   code: string;
@@ -9,6 +9,7 @@ interface Props {
 
 export function CodeBlock({ code, lang, className }: Props) {
   const resolvedLang: SupportedLang = lang ?? detectLanguage(code);
+  const prepared = prettifyCode(code, resolvedLang);
   const [html, setHtml] = useState<string | null>(null);
 
   useEffect(() => {
@@ -20,7 +21,7 @@ export function CodeBlock({ code, lang, className }: Props) {
       .then((hl) => {
         if (cancelled) return;
         setHtml(
-          hl.codeToHtml(code, {
+          hl.codeToHtml(prepared, {
             lang: resolvedLang,
             theme: SHIKI_THEME,
           }),
@@ -39,7 +40,7 @@ export function CodeBlock({ code, lang, className }: Props) {
   if (resolvedLang === 'text' || html === null) {
     return (
       <pre className={`${wrapper} whitespace-pre-wrap break-words p-4 font-mono text-zinc-100`}>
-        {code}
+        {prepared}
       </pre>
     );
   }

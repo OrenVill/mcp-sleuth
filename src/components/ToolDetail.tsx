@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { SchemaForm } from './SchemaForm';
+import { MarkdownPreview } from './MarkdownPreview';
 import { ResultPane } from './ResultPane';
 import { DiscoveryHeader } from './DiscoveryHeader';
 import { CallHistory } from './CallHistory';
@@ -143,9 +144,7 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
             {tool.name}
           </h1>
           {description && (
-            <p className="text-sm text-zinc-400 whitespace-pre-line leading-relaxed">
-              {description}
-            </p>
+            <MarkdownPreview source={description} />
           )}
         </header>
 
