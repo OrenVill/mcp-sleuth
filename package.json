@@ -1,6 +1,6 @@
 {
   "name": "@orenvill/mcp-explorer",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Browser-based explorer for MCP servers over streamable HTTP — list and invoke tools with auto-generated forms.",
   "license": "MIT",
   "type": "module",

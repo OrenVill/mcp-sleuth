@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/OrenVill/mcp-explorer/compare/v0.5.0...v0.5.1) (2026-05-23)
+
+
+### Bug Fixes
+
+* remove registry-url from setup-node to unblock OIDC npm publish ([#17](https://github.com/OrenVill/mcp-explorer/issues/17)) ([8a12763](https://github.com/OrenVill/mcp-explorer/commit/8a1276394f4283f672cc445eabda21f36992f1d8))
+
 ## [0.5.0](https://github.com/OrenVill/mcp-explorer/compare/v0.4.0...v0.5.0) (2026-05-23)
 
 
