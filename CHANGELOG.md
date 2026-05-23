@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/OrenVill/mcp-explorer/compare/v0.5.1...v0.5.2) (2026-05-23)
+
+
+### Bug Fixes
+
+* use NPM_TOKEN for npm publish authentication ([#19](https://github.com/OrenVill/mcp-explorer/issues/19)) ([a1c6546](https://github.com/OrenVill/mcp-explorer/commit/a1c654692359eeeb59c3a28a19c25a667ca234df))
+
 ## [0.5.1](https://github.com/OrenVill/mcp-explorer/compare/v0.5.0...v0.5.1) (2026-05-23)
 
 
