@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.3](https://github.com/OrenVill/mcp-explorer/compare/v0.5.2...v0.5.3) (2026-05-23)
+
+
+### Documentation
+
+* improve installation instructions with -g explanation and upgrade notes ([#21](https://github.com/OrenVill/mcp-explorer/issues/21)) ([719aeb2](https://github.com/OrenVill/mcp-explorer/commit/719aeb2e288d8fe9d7e4b7911fce5df16ade8065))
+
 ## [0.5.2](https://github.com/OrenVill/mcp-explorer/compare/v0.5.1...v0.5.2) (2026-05-23)
 
 
