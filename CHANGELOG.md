@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/OrenVill/mcp-explorer/compare/v0.4.0...v0.5.0) (2026-05-23)
+
+
+### Features
+
+* publish @orenvill/mcp-explorer to npm registry ([#15](https://github.com/OrenVill/mcp-explorer/issues/15)) ([a667a6c](https://github.com/OrenVill/mcp-explorer/commit/a667a6c096b4fd178927ca64c25f49fc50eed25c))
+
 ## [0.4.0](https://github.com/OrenVill/mcp-explorer/compare/v0.3.0...v0.4.0) (2026-05-22)
 
 
