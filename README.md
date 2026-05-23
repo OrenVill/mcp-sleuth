@@ -28,21 +28,40 @@ npm run dev          # http://localhost:5173
 
 Then make sure an MCP server is running somewhere (it must expose a streamable-HTTP endpoint, typically at `/mcp`) and click **+ Add** in the sidebar.
 
-## Run as a CLI
-
-Install globally to get an `mcp-explorer` command that serves the app on `http://127.0.0.1:4173/` and opens your default browser.
+## Installation
 
 ```bash
 npm install -g @orenvill/mcp-explorer
-mcp-explorer              # start + open browser
-mcp-explorer 3000         # custom port
-mcp-explorer --no-open    # skip browser (also: OPEN=0)
 ```
 
-The CLI prints a single colored ready line:
+The `-g` flag installs the package **globally**, making the `mcp-explorer` command available anywhere in your terminal. Without `-g`, npm installs it as a local project dependency and the command won't be on your `PATH`.
+
+> **Already have an older install?** If you previously installed via `npm install -g mcp-explorer` or `npm install -g github:OrenVill/mcp-explorer`, uninstall it first:
+> ```bash
+> npm uninstall -g mcp-explorer
+> npm install -g @orenvill/mcp-explorer
+> ```
+
+**Requirements:** Node.js 20 or later. Check with `node --version`.
+
+## Run
+
+```bash
+mcp-explorer              # start + open browser at http://127.0.0.1:4173/
+mcp-explorer 3000         # custom port
+mcp-explorer --no-open    # skip opening the browser (also: OPEN=0)
+```
+
+The CLI prints a single colored ready line and opens your default browser:
 
 ```
   mcp-explorer  ➜  http://127.0.0.1:4173/
+```
+
+To update to the latest version:
+
+```bash
+npm update -g @orenvill/mcp-explorer
 ```
 
 ## Build / serve
