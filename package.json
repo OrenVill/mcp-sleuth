@@ -1,27 +1,36 @@
 {
-  "name": "mcp-explorer",
+  "name": "@orenvill/mcp-explorer",
   "version": "0.4.0",
   "description": "Browser-based explorer for MCP servers over streamable HTTP — list and invoke tools with auto-generated forms.",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OrenVill/mcp-explorer.git"
+  },
+  "homepage": "https://github.com/OrenVill/mcp-explorer",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "developer-tools",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "bin": {
     "mcp-explorer": "bin/mcp-explorer.js"
   },
   "files": [
     "bin",
-    "src",
-    "public",
-    "index.html",
+    "dist",
     "server.js",
+    "proxy.js",
+    "proxy.d.ts",
     "vault-file-handler.js",
     "vault-file-handler.d.ts",
     "app-data-handler.js",
-    "app-data-handler.d.ts",
-    "proxy.js",
-    "proxy.d.ts",
-    "vite.config.ts",
-    "tsconfig.json",
-    "tsconfig.app.json",
-    "tsconfig.node.json"
+    "app-data-handler.d.ts"
   ],
   "scripts": {
     "dev": "vite",
@@ -33,27 +42,27 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "@rolldown/binding-linux-x64-gnu": "^1.0.0-rc.17",
-    "@tailwindcss/vite": "^4.2.4",
-    "@vitejs/plugin-react": "^6.0.1",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5",
-    "shiki": "^4.0.2",
-    "tailwindcss": "^4.2.4",
-    "vite": "^8.0.10"
+    "@modelcontextprotocol/sdk": "^1.29.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@rolldown/binding-linux-x64-gnu": "^1.0.2",
+    "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.5.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "shiki": "^4.0.2",
+    "tailwindcss": "^4.2.4",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
+    "vite": "^8.0.10",
     "vitest": "^4.1.5"
   }
 }

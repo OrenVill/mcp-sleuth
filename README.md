@@ -30,22 +30,20 @@ Then make sure an MCP server is running somewhere (it must expose a streamable-H
 
 ## Run as a CLI
 
-Install globally to get an `mcp-explorer` command that builds the app and serves the production bundle on `http://127.0.0.1:4173/` — and opens your default browser.
+Install globally to get an `mcp-explorer` command that serves the app on `http://127.0.0.1:4173/` and opens your default browser.
 
 ```bash
-npm install -g .          # from a checkout, or `npm link`
-mcp-explorer              # build + start + open browser
+npm install -g @orenvill/mcp-explorer
+mcp-explorer              # start + open browser
 mcp-explorer 3000         # custom port
 mcp-explorer --no-open    # skip browser (also: OPEN=0)
 ```
 
-The CLI runs `vite build` silently and prints a single colored ready line:
+The CLI prints a single colored ready line:
 
 ```
   mcp-explorer  ➜  http://127.0.0.1:4173/
 ```
-
-If the build fails, the captured vite output is printed.
 
 ## Build / serve
 
@@ -101,7 +99,7 @@ Versioning is SemVer, automated by [release-please](https://github.com/googleapi
 - Merging the Release PR creates a git tag (`vX.Y.Z`), a GitHub Release with the changelog section, and uploads a built `dist.tgz` artifact.
 - Commit types that bump the version: `feat:` (minor, pre-1.0), `fix:` / `perf:` / `refactor:` (patch). `feat!:` or a `BREAKING CHANGE:` footer triggers a major bump (post-1.0) or a minor bump (pre-1.0).
 
-The package is **not** currently published to the npm registry — the `mcp-explorer` name on npm is held by an unrelated placeholder. To install from source:
+The package is published to the npm registry as `@orenvill/mcp-explorer`. To install from source instead:
 
 ```bash
 npm install -g github:OrenVill/mcp-explorer

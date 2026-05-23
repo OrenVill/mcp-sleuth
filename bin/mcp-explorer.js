@@ -15,14 +15,6 @@ const viteBin = resolve(
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 const paint = (codes, s) => (useColor ? `\x1b[${codes}m${s}\x1b[0m` : s);
 
-if (!existsSync(viteBin)) {
-  console.error(
-    paint('31', `mcp-explorer: could not find vite at ${viteBin}.`) +
-      `\nRun "npm install" inside ${pkgRoot} first.`,
-  );
-  process.exit(1);
-}
-
 function buildSilently() {
   return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(viteBin, ['build'], {
@@ -69,24 +61,36 @@ function startSpinner(label) {
   };
 }
 
-const stop = startSpinner('building…');
-const cleanExit = () => {
-  stop();
-  process.exit(130);
-};
-process.on('SIGINT', cleanExit);
-process.on('SIGTERM', cleanExit);
+const hasPrebuiltDist = existsSync(resolve(pkgRoot, 'dist', 'index.html'));
 
-try {
-  await buildSilently();
-} catch (err) {
+if (!hasPrebuiltDist) {
+  if (!existsSync(viteBin)) {
+    console.error(
+      paint('31', `mcp-explorer: could not find vite at ${viteBin}.`) +
+        `\nRun "npm install" inside ${pkgRoot} first.`,
+    );
+    process.exit(1);
+  }
+
+  const stop = startSpinner('building…');
+  const cleanExit = () => {
+    stop();
+    process.exit(130);
+  };
+  process.on('SIGINT', cleanExit);
+  process.on('SIGTERM', cleanExit);
+
+  try {
+    await buildSilently();
+  } catch (err) {
+    stop();
+    console.error(paint('31;1', '✗ build failed') + paint('2', ` (${err.message})`));
+    if (err.output) process.stderr.write(err.output);
+    process.exit(1);
+  }
+
   stop();
-  console.error(paint('31;1', '✗ build failed') + paint('2', ` (${err.message})`));
-  if (err.output) process.stderr.write(err.output);
-  process.exit(1);
 }
-
-stop();
 
 const args = process.argv.slice(2);
 const noOpen = args.includes('--no-open') || process.env.OPEN === '0';
