@@ -28,7 +28,8 @@ function JsonTextarea({ value, placeholder, className, onChange }: JsonTextareaP
   const [raw, setRaw] = useState(() =>
     value === undefined ? '' : JSON.stringify(value, null, 2)
   );
-  const displayValue = value === undefined ? '' : raw;
+
+  const displayValue = raw;
 
   return (
     <textarea
