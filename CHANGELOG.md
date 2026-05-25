@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.0](https://github.com/OrenVill/mcp-explorer/compare/v0.6.0...v0.7.0) (2026-05-25)
+
+
+### Features
+
+* add agent readiness scoring ([#37](https://github.com/OrenVill/mcp-explorer/issues/37)) ([1e75758](https://github.com/OrenVill/mcp-explorer/commit/1e75758aaf294668d039850017652d8a85a0212b))
+* add Client Config Export, Handoff README, and Scenario Runner ([#38](https://github.com/OrenVill/mcp-explorer/issues/38)) ([64d5aa5](https://github.com/OrenVill/mcp-explorer/commit/64d5aa5588ad5ea1a27bd7dbc59764ba064a1609))
+* add dev tools protocol inspector and schema lab ([#35](https://github.com/OrenVill/mcp-explorer/issues/35)) ([44b2627](https://github.com/OrenVill/mcp-explorer/commit/44b26272e3cbed160758d330b738840508ec8dba))
+* add dev tools replay and diff features ([#36](https://github.com/OrenVill/mcp-explorer/issues/36)) ([6765d25](https://github.com/OrenVill/mcp-explorer/commit/6765d25b908032d71d414a683204c262750c9470))
+* add embedded local proxy mode ([#30](https://github.com/OrenVill/mcp-explorer/issues/30)) ([645f925](https://github.com/OrenVill/mcp-explorer/commit/645f925542306eba8b5b923fb98a7851dea38747))
+* add protocol inspector ([#32](https://github.com/OrenVill/mcp-explorer/issues/32)) ([d355af4](https://github.com/OrenVill/mcp-explorer/commit/d355af4d628295495cadaa49eeb930d9d23b19c8))
+
 ## [0.6.0](https://github.com/OrenVill/mcp-explorer/compare/v0.5.3...v0.6.0) (2026-05-25)
 
 
