@@ -4,6 +4,9 @@ import { MarkdownPreview } from './MarkdownPreview';
 import { ResultPane } from './ResultPane';
 import { DiscoveryHeader } from './DiscoveryHeader';
 import { CallHistory } from './CallHistory';
+import { AgentReadinessBadge } from './AgentReadinessBadge';
+import { useProtocolTraces } from './useProtocolTraces';
+import { analyzeToolReadiness } from '../lib/agentReadiness';
 import { invokeMaybeDiscovered } from '../lib/discovery/invoke';
 import { callTool } from '../lib/mcpClient';
 import { appendRecord, loadHistory, clearHistory } from '../lib/history';
@@ -63,6 +66,7 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
       (r) => r.serverId === server?.id && r.toolName === tool?.name,
     ),
   );
+  const traces = useProtocolTraces();
 
   if (!server) {
     return <EmptyState>Select a server from the left to begin.</EmptyState>;
@@ -124,6 +128,7 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
   }
 
   const description = (tool.description ?? '').trim();
+  const readiness = analyzeToolReadiness(tool, server, traces);
 
   return (
     <main className="flex-1 overflow-y-auto bg-zinc-950">
@@ -142,9 +147,12 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
             <span className="text-zinc-700">/</span>
             <span className="text-violet-400 font-mono">{tool.name}</span>
           </div>
-          <h1 className="text-2xl font-semibold text-zinc-50 tracking-tight font-mono">
-            {tool.name}
-          </h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold text-zinc-50 tracking-tight font-mono">
+              {tool.name}
+            </h1>
+            <AgentReadinessBadge score={readiness.score} verdict={readiness.verdict} />
+          </div>
           {description && (
             <MarkdownPreview source={description} />
           )}

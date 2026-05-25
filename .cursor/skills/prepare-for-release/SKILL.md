@@ -216,6 +216,19 @@ Tests the rich code rendering added in v0.6.0. Requires a connected server with 
 - Click **Copy call** and confirm the clipboard receives a JSON-RPC `tools/call` payload with `method`, `params.name`, and `params.arguments`.
 - From a selected tool detail page, click **Schema Lab** beside Arguments and confirm Dev Tools opens directly to Schema Lab for that tool.
 
+### 3.18 Agent Readiness
+
+- Connect to a server with at least one well-described tool and one intentionally weak or generic tool if available.
+- Confirm each advertised tool row shows a compact agent readiness score badge beside the tool name.
+- Select a tool and confirm the tool detail header shows the same readiness score beside the selected tool name.
+- Click **Dev Tools** in the top header and switch to the **Agent Readiness** tab.
+- Confirm the report shows an overall score, verdict, tool count, ready tool count, critical issue count, and high issue count.
+- Use the server and tool selectors to choose a specific tool, then confirm the selected tool's score and exact issues are shown with recommended fixes.
+- Confirm camelCase tool names such as `searchDocs` are not penalized just because they are not snake_case.
+- Confirm weak tools surface deterministic issues such as generic tool names, missing tool descriptions, missing parameter descriptions, broad string parameters, complex object/array inputs, ambiguous schema composition, unstructured text results, or unclear error messages.
+- Invoke a tool that returns plain text and a tool call that fails with a vague error if practical, then confirm the Agent Readiness report reflects recent trace-based output/error warnings without exposing auth secrets.
+- Confirm the report remains usable with no trace history and does not require an AI API key or network model call.
+
 ---
 
 ## 4. CHANGELOG and version

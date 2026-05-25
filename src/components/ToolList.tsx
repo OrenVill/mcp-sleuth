@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import type { ServerEntry, ToolDef } from '../types';
+import { analyzeToolReadiness } from '../lib/agentReadiness';
+import { AgentReadinessBadge } from './AgentReadinessBadge';
 import { DiscoveredToolsSection } from './DiscoveredToolsSection';
 import { loadBookmarks, toggleBookmark } from '../lib/bookmarks';
+import { useProtocolTraces } from './useProtocolTraces';
 
 interface Props {
   server: ServerEntry | null;
@@ -12,6 +15,7 @@ interface Props {
 
 export function ToolList({ server, selectedToolName, onSelect, embedded = false }: Props) {
   const [bookmarks, setBookmarks] = useState<Set<string>>(() => loadBookmarks());
+  const traces = useProtocolTraces();
 
   function handleToggleBookmark(e: React.MouseEvent, serverId: string, toolName: string) {
     e.stopPropagation();
@@ -65,6 +69,7 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
         const bookmarkKey = `${serverId}::${t.name}`;
         const starred = bookmarks.has(bookmarkKey);
         const desc = stripEmoji(t.description ?? '').split('\n').filter(Boolean)[0];
+        const readiness = analyzeToolReadiness(t, server, traces);
         return (
           <li
             key={t.name}
@@ -81,6 +86,7 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
             )}
             <div className="flex items-start justify-between gap-1">
               <div className="font-mono text-xs text-zinc-100 truncate flex-1">{t.name}</div>
+              <AgentReadinessBadge score={readiness.score} verdict={readiness.verdict} compact />
               <button
                 type="button"
                 title={starred ? 'Remove bookmark' : 'Bookmark this tool'}
@@ -105,6 +111,8 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
       })}
       <DiscoveredToolsSection
         tools={server.discovered ?? []}
+        server={server}
+        traces={traces}
         nativeNames={new Set(tools.map((t) => t.name))}
         selectedToolName={selectedToolName}
         onSelect={onSelect}

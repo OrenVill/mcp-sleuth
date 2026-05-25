@@ -1,14 +1,19 @@
 import { useState } from 'react';
-import type { DiscoveredTool } from '../types';
+import { analyzeToolReadiness } from '../lib/agentReadiness';
+import type { ProtocolTraceEvent } from '../lib/protocolTrace';
+import type { DiscoveredTool, ServerEntry } from '../types';
+import { AgentReadinessBadge } from './AgentReadinessBadge';
 
 interface Props {
   tools: DiscoveredTool[];
+  server: Pick<ServerEntry, 'id' | 'name'>;
+  traces: ProtocolTraceEvent[];
   nativeNames: Set<string>;
   selectedToolName: string | null;
   onSelect: (name: string) => void;
 }
 
-export function DiscoveredToolsSection({ tools, nativeNames, selectedToolName, onSelect }: Props) {
+export function DiscoveredToolsSection({ tools, server, traces, nativeNames, selectedToolName, onSelect }: Props) {
   const visible = tools.filter((t) => !nativeNames.has(t.name));
   const [open, setOpen] = useState(visible.length <= 50);
   if (visible.length === 0) return null;
@@ -33,6 +38,7 @@ export function DiscoveredToolsSection({ tools, nativeNames, selectedToolName, o
           {visible.map((t) => {
             const isSelected = t.name === selectedToolName;
             const desc = (t.description ?? '').split('\n').filter(Boolean)[0];
+            const readiness = analyzeToolReadiness(t, server, traces);
             return (
               <li
                 key={t.name}
@@ -47,7 +53,10 @@ export function DiscoveredToolsSection({ tools, nativeNames, selectedToolName, o
                 {isSelected && (
                   <span className="absolute left-0 top-2 bottom-2 w-0.5 -translate-x-1.5 bg-violet-500 rounded-full" />
                 )}
-                <div className="font-mono text-xs text-zinc-100 truncate">{t.name}</div>
+                <div className="flex items-start justify-between gap-1">
+                  <div className="font-mono text-xs text-zinc-100 truncate">{t.name}</div>
+                  <AgentReadinessBadge score={readiness.score} verdict={readiness.verdict} compact />
+                </div>
                 {desc && (
                   <div className="text-[11px] text-zinc-500 mt-0.5 line-clamp-2 leading-snug">{desc}</div>
                 )}

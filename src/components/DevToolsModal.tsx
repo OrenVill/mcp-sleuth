@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { ServerEntry, ToolResult } from '../types';
+import { AgentReadinessPanel } from './AgentReadinessPanel';
 import { ProtocolInspectorPanel } from './ProtocolInspectorPanel';
 import { ReplaySuitesPanel } from './ReplaySuitesPanel';
 import { SchemaLabPanel } from './SchemaLabPanel';
 
-export type DevToolsTab = 'protocol' | 'replay' | 'schema';
+export type DevToolsTab = 'protocol' | 'replay' | 'schema' | 'readiness';
 
 interface Props {
   open: boolean;
@@ -37,6 +38,7 @@ const TABS: Array<{ id: DevToolsTab; label: string }> = [
   { id: 'protocol', label: 'Protocol Inspector' },
   { id: 'replay', label: 'Replay Suites' },
   { id: 'schema', label: 'Schema Lab' },
+  { id: 'readiness', label: 'Agent Readiness' },
 ];
 
 function DevToolsModalContent({
@@ -61,7 +63,7 @@ function DevToolsModalContent({
           <div>
             <h2 className="text-sm font-semibold text-zinc-100">Dev Tools</h2>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Inspect runtime MCP traffic and debug tool schemas.
+              Inspect runtime MCP traffic, replay calls, debug schemas, and score agent readiness.
             </p>
           </div>
           <button
@@ -108,6 +110,9 @@ function DevToolsModalContent({
               selectedServerId={selectedServerId}
               selectedToolName={selectedToolName}
             />
+          </div>
+          <div hidden={activeTab !== 'readiness'} className="h-full min-h-0 overflow-hidden">
+            <AgentReadinessPanel servers={servers} />
           </div>
         </div>
       </div>
