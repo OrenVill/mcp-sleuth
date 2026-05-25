@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { ServerEntry } from '../types';
+import type { ServerEntry, ToolResult } from '../types';
 import { ProtocolInspectorPanel } from './ProtocolInspectorPanel';
+import { ReplaySuitesPanel } from './ReplaySuitesPanel';
 import { SchemaLabPanel } from './SchemaLabPanel';
 
-export type DevToolsTab = 'protocol' | 'schema';
+export type DevToolsTab = 'protocol' | 'replay' | 'schema';
 
 interface Props {
   open: boolean;
@@ -11,6 +12,11 @@ interface Props {
   servers: ServerEntry[];
   selectedServerId: string | null;
   selectedToolName: string | null;
+  onReplayToolCall: (
+    serverId: string,
+    toolName: string,
+    args: Record<string, unknown>,
+  ) => Promise<ToolResult>;
   onClose: () => void;
 }
 
@@ -19,11 +25,17 @@ interface ModalContentProps {
   servers: ServerEntry[];
   selectedServerId: string | null;
   selectedToolName: string | null;
+  onReplayToolCall: (
+    serverId: string,
+    toolName: string,
+    args: Record<string, unknown>,
+  ) => Promise<ToolResult>;
   onClose: () => void;
 }
 
 const TABS: Array<{ id: DevToolsTab; label: string }> = [
   { id: 'protocol', label: 'Protocol Inspector' },
+  { id: 'replay', label: 'Replay Suites' },
   { id: 'schema', label: 'Schema Lab' },
 ];
 
@@ -32,6 +44,7 @@ function DevToolsModalContent({
   servers,
   selectedServerId,
   selectedToolName,
+  onReplayToolCall,
   onClose,
 }: ModalContentProps) {
   const [activeTab, setActiveTab] = useState<DevToolsTab>(() => initialTab);
@@ -86,6 +99,9 @@ function DevToolsModalContent({
           <div hidden={activeTab !== 'protocol'} className="h-full min-h-0 overflow-hidden">
             <ProtocolInspectorPanel servers={servers} />
           </div>
+          <div hidden={activeTab !== 'replay'} className="h-full min-h-0 overflow-hidden">
+            <ReplaySuitesPanel servers={servers} onReplayToolCall={onReplayToolCall} />
+          </div>
           <div hidden={activeTab !== 'schema'} className="h-full min-h-0 overflow-hidden">
             <SchemaLabPanel
               servers={servers}
@@ -105,6 +121,7 @@ export function DevToolsModal({
   servers,
   selectedServerId,
   selectedToolName,
+  onReplayToolCall,
   onClose,
 }: Props) {
   useEffect(() => {
@@ -127,6 +144,7 @@ export function DevToolsModal({
       servers={servers}
       selectedServerId={selectedServerId}
       selectedToolName={selectedToolName}
+      onReplayToolCall={onReplayToolCall}
       onClose={onClose}
     />
   );

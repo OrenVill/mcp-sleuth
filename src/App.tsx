@@ -707,6 +707,7 @@ export default function App() {
         servers={servers}
         selectedServerId={selectedServer?.id ?? null}
         selectedToolName={selectedToolName}
+        onReplayToolCall={(serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
         onClose={() => setDevToolsOpen(false)}
       />
     </div>

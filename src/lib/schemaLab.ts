@@ -27,6 +27,28 @@ export interface SchemaLabIssue {
   message: string;
 }
 
+export type SchemaFormPreviewControl =
+  | 'text'
+  | 'number'
+  | 'boolean-select'
+  | 'select'
+  | 'json-textarea';
+
+export interface SchemaFormPreviewField {
+  name: string;
+  type: string;
+  required: boolean;
+  control: SchemaFormPreviewControl;
+  options?: unknown[];
+  placeholder?: string;
+}
+
+export interface SchemaFormPreview {
+  fields: SchemaFormPreviewField[];
+  exampleArgs: Record<string, unknown>;
+  warnings: string[];
+}
+
 export function getSchemaLabSummary(tool: ToolDef): SchemaLabSummary {
   const properties = tool.inputSchema.properties ?? {};
   const required = tool.inputSchema.required ?? [];
@@ -70,6 +92,21 @@ export function buildJsonRpcToolCall(tool: ToolDef): {
       name: tool.name,
       arguments: generateExampleArgs(tool),
     },
+  };
+}
+
+export function generateSchemaFormPreview(tool: ToolDef): SchemaFormPreview {
+  const required = new Set(tool.inputSchema.required ?? []);
+  const fields = Object.entries(tool.inputSchema.properties ?? {}).map(([name, property]) =>
+    previewField(name, property, required.has(name)),
+  );
+
+  return {
+    fields,
+    exampleArgs: generateExampleArgs(tool),
+    warnings: Object.entries(tool.inputSchema.properties ?? {}).flatMap(([name, property]) =>
+      formPreviewWarnings(name, property),
+    ),
   };
 }
 
@@ -141,6 +178,62 @@ function generatePropertyExample(property: JsonSchemaProperty): unknown {
     default:
       return 'string';
   }
+}
+
+function previewField(name: string, property: JsonSchemaProperty, required: boolean): SchemaFormPreviewField {
+  const type = getPropertySchemaType(property);
+  if (property.enum) {
+    return { name, type, required, control: 'select', options: property.enum, placeholder: undefined };
+  }
+
+  if (type === 'boolean') {
+    return { name, type, required, control: 'boolean-select', options: undefined, placeholder: undefined };
+  }
+
+  if (type === 'number' || type === 'integer') {
+    return { name, type, required, control: 'number', options: undefined, placeholder: undefined };
+  }
+
+  if (type === 'object') {
+    return { name, type, required, control: 'json-textarea', options: undefined, placeholder: '{}' };
+  }
+
+  if (type === 'array') {
+    return { name, type, required, control: 'json-textarea', options: undefined, placeholder: '[]' };
+  }
+
+  return { name, type, required, control: 'text', options: undefined, placeholder: undefined };
+}
+
+function formPreviewWarnings(name: string, property: JsonSchemaProperty): string[] {
+  const warnings: string[] = [];
+  const type = getPropertySchemaType(property);
+
+  if (type === 'object') {
+    warnings.push(
+      `Property "${name}" is an object and will render as a JSON textarea instead of nested controls.`,
+    );
+  }
+
+  if (type === 'array') {
+    warnings.push(`Property "${name}" is an array and will render as a JSON textarea.`);
+  }
+
+  for (const composition of ['oneOf', 'anyOf', 'allOf'] as const) {
+    if (property[composition] !== undefined) {
+      warnings.push(
+        `Property "${name}" uses ${composition}, which SchemaForm ignores and renders from the base type.`,
+      );
+    }
+  }
+
+  if (typeof property.format === 'string') {
+    warnings.push(
+      `Property "${name}" declares format "${property.format}", which SchemaForm does not enforce.`,
+    );
+  }
+
+  return warnings;
 }
 
 function getRootSchemaType(schema: { type?: string | string[] }): string {

@@ -59,6 +59,7 @@ export interface JsonSchemaProperty {
   maximum?: number;
   items?: JsonSchemaProperty;
   properties?: Record<string, JsonSchemaProperty>;
+  [key: string]: unknown;
 }
 
 export interface ToolContent {

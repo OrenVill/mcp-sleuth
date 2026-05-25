@@ -188,16 +188,30 @@ Tests the rich code rendering added in v0.6.0. Requires a connected server with 
 - Click a timeline entry and confirm params, result or error, status, server name, timestamp, and duration render without crashing.
 - If the connected server does not implement resources or prompts, confirm `resources/list` and/or `prompts/list` show as `unsupported`, not `error`; this means the server is healthy but that optional MCP capability is absent.
 - Click **Copy event** and confirm the clipboard receives JSON for the selected event.
+- Select two timeline entries with **Select for diff** and confirm the diff view shows side-by-side event JSON plus changes for params, result, status, duration, error, and unsupported capability state when those fields differ.
+- Click **Reset diff** and confirm the selected event detail view returns.
 - Click **Clear** and confirm the timeline returns to the empty state.
 
-### 3.16 Schema Lab
+### 3.16 Replay Suites
+
+- Click **Dev Tools** in the top header and switch to the **Replay Suites** tab.
+- Invoke at least two tools successfully, then confirm they appear under **Successful tool calls** with server and tool names.
+- Create or select a suite, click **Add to suite** for both calls, and confirm each saved case shows arguments and the expected result snapshot.
+- Click **Replay** while the target server is connected and confirm each case shows pass/fail, duration, and any result diffs.
+- Change the server response or replay against a disconnected server if practical, then confirm failures show an error or output diff instead of crashing.
+- Confirm closing and reopening Dev Tools in the same browser session keeps the suite in memory, but reloading the page clears it.
+
+### 3.17 Schema Lab
 
 - Click **Dev Tools** in the top header and switch to the **Schema Lab** tab.
 - Confirm Schema Lab shows connected server and tool selectors.
 - Select a tool with required arguments and confirm required fields are highlighted in the parameter table.
 - Confirm the schema summary shows root type, property count, required count, and optional count.
+- In **Schema / Form Preview**, confirm the input schema appears beside the generated form preview.
+- Confirm string enums render as dropdowns, numbers as number inputs, booleans as boolean dropdowns, and objects/arrays as JSON textarea previews.
+- Confirm generated example arguments appear below the preview and are deterministic.
+- Confirm renderer warnings appear for simplified or ignored schema features such as nested objects, arrays, `oneOf` / `anyOf` / `allOf`, and unsupported string formats.
 - Confirm validation notes render. A valid schema should show a positive/info note; malformed or unsupported schema shapes should show warning/error notes without crashing.
-- Confirm generated example arguments are deterministic and match defaults, enum first values, and primitive fallback values.
 - Click **Copy args** and confirm the clipboard receives JSON arguments.
 - Click **Copy call** and confirm the clipboard receives a JSON-RPC `tools/call` payload with `method`, `params.name`, and `params.arguments`.
 - From a selected tool detail page, click **Schema Lab** beside Arguments and confirm Dev Tools opens directly to Schema Lab for that tool.

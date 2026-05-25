@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import {
   buildJsonRpcToolCall,
-  generateExampleArgs,
+  generateSchemaFormPreview,
   getSchemaLabRows,
   getSchemaLabSummary,
   validateToolSchema,
   type SchemaLabIssue,
   type SchemaLabRow,
+  type SchemaFormPreviewField,
 } from '../lib/schemaLab';
 import type { ServerEntry, ToolDef } from '../types';
 import { CodeBlock } from './CodeBlock';
@@ -99,6 +100,22 @@ function rowDetails(row: SchemaLabRow): string[] {
   return details;
 }
 
+function controlLabel(field: SchemaFormPreviewField): string {
+  switch (field.control) {
+    case 'select':
+      return 'Dropdown';
+    case 'boolean-select':
+      return 'Boolean dropdown';
+    case 'number':
+      return 'Number input';
+    case 'json-textarea':
+      return 'JSON textarea';
+    case 'text':
+    default:
+      return 'Text input';
+  }
+}
+
 function EmptyState({ title, body }: { title: string; body: string }) {
   return (
     <div className="grid place-items-center text-center px-8 py-16">
@@ -155,7 +172,7 @@ export function SchemaLabPanel({ servers, selectedServerId, selectedToolName }: 
   const summary = tool ? getSchemaLabSummary(tool) : null;
   const rows = tool ? getSchemaLabRows(tool) : [];
   const issues = tool ? validateToolSchema(tool) : [];
-  const exampleArgs = tool ? generateExampleArgs(tool) : {};
+  const formPreview = tool ? generateSchemaFormPreview(tool) : null;
   const jsonRpcCall = tool ? buildJsonRpcToolCall(tool) : null;
   const description = (tool?.description ?? '').trim();
 
@@ -319,6 +336,106 @@ export function SchemaLabPanel({ servers, selectedServerId, selectedToolName }: 
               </div>
             </section>
 
+            {formPreview && (
+              <section className="space-y-4">
+                <div>
+                  <h4 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400 mb-2">
+                    Schema / Form Preview
+                  </h4>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div>
+                      <div className="mb-2 text-xs text-zinc-500">Input schema</div>
+                      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 overflow-hidden">
+                        <CodeBlock code={stringify(tool.inputSchema)} lang="json" />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="mb-2 text-xs text-zinc-500">Generated argument form</div>
+                      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 p-4 space-y-3">
+                        {formPreview.fields.length === 0 ? (
+                          <p className="text-sm text-zinc-500 italic">No form controls will be rendered.</p>
+                        ) : (
+                          formPreview.fields.map((field) => (
+                            <div key={field.name} className="rounded-lg border border-zinc-800 bg-zinc-950/50 p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="font-mono text-sm text-zinc-100">{field.name}</div>
+                                {field.required && (
+                                  <span className="text-[10px] uppercase tracking-wide text-rose-400 font-semibold">
+                                    required
+                                  </span>
+                                )}
+                              </div>
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                                <span className="rounded border border-violet-900/60 bg-violet-950/30 px-2 py-0.5 text-violet-200">
+                                  {controlLabel(field)}
+                                </span>
+                                <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-zinc-400 font-mono">
+                                  {field.type}
+                                </span>
+                                {field.placeholder && (
+                                  <span className="rounded border border-zinc-800 bg-zinc-950 px-2 py-0.5 text-zinc-500 font-mono">
+                                    placeholder {field.placeholder}
+                                  </span>
+                                )}
+                              </div>
+                              {field.options && field.options.length > 0 && (
+                                <div className="mt-2 text-[11px] text-zinc-500">
+                                  Options: {field.options.map((option) => String(option)).join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+                  <div>
+                    <div className="flex items-center justify-between gap-3 mb-2">
+                      <h5 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400">
+                        Generated Example Args
+                      </h5>
+                      <button
+                        type="button"
+                        onClick={() => copyText(stringify(formPreview.exampleArgs))}
+                        className="text-xs px-2.5 py-1 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors"
+                      >
+                        Copy args
+                      </button>
+                    </div>
+                    <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 overflow-hidden">
+                      <CodeBlock code={stringify(formPreview.exampleArgs)} lang="json" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h5 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400 mb-2">
+                      Renderer Warnings
+                    </h5>
+                    <div className="space-y-2">
+                      {formPreview.warnings.length === 0 ? (
+                        <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
+                          No SchemaForm simplifications detected.
+                        </div>
+                      ) : (
+                        formPreview.warnings.map((warning) => (
+                          <div
+                            key={warning}
+                            className="rounded-lg border border-amber-900/60 bg-amber-950/30 px-3 py-2 text-sm text-amber-200"
+                          >
+                            {warning}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            )}
+
             <section>
               <h4 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400 mb-2">
                 Validation Notes
@@ -338,25 +455,7 @@ export function SchemaLabPanel({ servers, selectedServerId, selectedToolName }: 
               </div>
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-2">
-              <div>
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <h4 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400">
-                    Example Arguments
-                  </h4>
-                  <button
-                    type="button"
-                    onClick={() => copyText(stringify(exampleArgs))}
-                    className="text-xs px-2.5 py-1 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors"
-                  >
-                    Copy args
-                  </button>
-                </div>
-                <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/30 overflow-hidden">
-                  <CodeBlock code={stringify(exampleArgs)} lang="json" />
-                </div>
-              </div>
-
+            <section>
               <div>
                 <div className="flex items-center justify-between gap-3 mb-2">
                   <h4 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400">

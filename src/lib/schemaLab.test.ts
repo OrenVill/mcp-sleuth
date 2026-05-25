@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   buildJsonRpcToolCall,
   generateExampleArgs,
+  generateSchemaFormPreview,
   getSchemaLabRows,
   getSchemaLabSummary,
   validateToolSchema,
@@ -151,6 +152,91 @@ describe('schemaLab', () => {
           includeArchived: false,
         },
       },
+    });
+  });
+
+  test('describes how SchemaForm will render each argument and warns about simplifications', () => {
+    const previewTool: ToolDef = {
+      name: 'preview_tool',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          mode: { type: 'string', enum: ['semantic', 'keyword'] },
+          filters: {
+            type: 'object',
+            properties: {
+              owner: { type: 'string' },
+            },
+          },
+          tags: { type: 'array', items: { type: 'string' } },
+          target: {
+            oneOf: [
+              { type: 'string' },
+              { type: 'number' },
+            ],
+          },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+        required: ['mode', 'target'],
+      },
+    };
+
+    expect(generateSchemaFormPreview(previewTool)).toEqual({
+      fields: [
+        {
+          name: 'mode',
+          type: 'string',
+          required: true,
+          control: 'select',
+          options: ['semantic', 'keyword'],
+          placeholder: undefined,
+        },
+        {
+          name: 'filters',
+          type: 'object',
+          required: false,
+          control: 'json-textarea',
+          options: undefined,
+          placeholder: '{}',
+        },
+        {
+          name: 'tags',
+          type: 'array',
+          required: false,
+          control: 'json-textarea',
+          options: undefined,
+          placeholder: '[]',
+        },
+        {
+          name: 'target',
+          type: 'string',
+          required: true,
+          control: 'text',
+          options: undefined,
+          placeholder: undefined,
+        },
+        {
+          name: 'createdAt',
+          type: 'string',
+          required: false,
+          control: 'text',
+          options: undefined,
+          placeholder: undefined,
+        },
+      ],
+      exampleArgs: {
+        mode: 'semantic',
+        filters: { owner: 'string' },
+        tags: ['string'],
+        target: 'string',
+        createdAt: 'string',
+      },
+      warnings: [
+        'Property "filters" is an object and will render as a JSON textarea instead of nested controls.',
+        'Property "tags" is an array and will render as a JSON textarea.',
+        'Property "target" uses oneOf, which SchemaForm ignores and renders from the base type.',
+        'Property "createdAt" declares format "date-time", which SchemaForm does not enforce.',
+      ],
     });
   });
 
