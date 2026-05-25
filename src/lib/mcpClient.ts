@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { ResourceEntry, ResourceTemplate, ResourceContent, PromptDef, PromptMessage, ServerAuth, ToolDef, ToolResult } from '../types';
+import { traceOptionalProtocolCall, traceProtocolCall } from './protocolTrace';
 
 const clients = new Map<string, Client>();
 const transports = new Map<string, StreamableHTTPClientTransport>();
@@ -77,11 +78,17 @@ export async function connect(
     { capabilities: {} },
   );
 
-  await client.connect(transport);
+  await traceProtocolCall(
+    { serverId, method: 'initialize', params: { url, proxyThroughLocal } },
+    () => client.connect(transport),
+  );
   clients.set(serverId, client);
   transports.set(serverId, transport);
 
-  const list = await client.listTools();
+  const list = await traceProtocolCall(
+    { serverId, method: 'tools/list' },
+    () => client.listTools(),
+  );
   return list.tools as unknown as ToolDef[];
 }
 
@@ -115,7 +122,10 @@ export async function callTool(
   if (!client) {
     throw new Error(`Not connected to server "${serverId}"`);
   }
-  const result = await client.callTool({ name, arguments: args });
+  const result = await traceProtocolCall(
+    { serverId, method: 'tools/call', params: { name, arguments: args } },
+    () => client.callTool({ name, arguments: args }),
+  );
   return result as unknown as ToolResult;
 }
 
@@ -130,7 +140,10 @@ export function isConnected(serverId: string): boolean {
 export async function refetchTools(serverId: string): Promise<ToolDef[]> {
   const client = clients.get(serverId);
   if (!client) return [];
-  const list = await client.listTools();
+  const list = await traceProtocolCall(
+    { serverId, method: 'tools/list', params: { refresh: true } },
+    () => client.listTools(),
+  );
   return list.tools as unknown as ToolDef[];
 }
 
@@ -154,7 +167,11 @@ export async function listResources(
 ): Promise<{ resources: ResourceEntry[]; templates: ResourceTemplate[] }> {
   const client = clients.get(serverId);
   if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await client.listResources();
+  const result = await traceOptionalProtocolCall(
+    { serverId, method: 'resources/list' },
+    () => client.listResources(),
+    { resources: [], resourceTemplates: [] },
+  );
   const resources = (result.resources ?? []) as unknown as ResourceEntry[];
   const templates = (result.resourceTemplates ?? []) as unknown as ResourceTemplate[];
   return { resources, templates };
@@ -166,14 +183,21 @@ export async function readResource(
 ): Promise<{ contents: ResourceContent[] }> {
   const client = clients.get(serverId);
   if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await client.readResource({ uri });
+  const result = await traceProtocolCall(
+    { serverId, method: 'resources/read', params: { uri } },
+    () => client.readResource({ uri }),
+  );
   return { contents: result.contents as unknown as ResourceContent[] };
 }
 
 export async function listPrompts(serverId: string): Promise<PromptDef[]> {
   const client = clients.get(serverId);
   if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await client.listPrompts();
+  const result = await traceOptionalProtocolCall(
+    { serverId, method: 'prompts/list' },
+    () => client.listPrompts(),
+    { prompts: [] },
+  );
   return result.prompts as unknown as PromptDef[];
 }
 
@@ -184,6 +208,9 @@ export async function getPrompt(
 ): Promise<PromptMessage[]> {
   const client = clients.get(serverId);
   if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await client.getPrompt({ name, arguments: args });
+  const result = await traceProtocolCall(
+    { serverId, method: 'prompts/get', params: { name, arguments: args } },
+    () => client.getPrompt({ name, arguments: args }),
+  );
   return result.messages as unknown as PromptMessage[];
 }

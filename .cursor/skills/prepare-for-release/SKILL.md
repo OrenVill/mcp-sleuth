@@ -179,6 +179,17 @@ Tests the rich code rendering added in v0.6.0. Requires a connected server with 
 - Click a prompt → PromptDetail shows the argument form, with argument descriptions rendered below each input field.
 - Submit the prompt → rendered messages appear. For any message content detected as markdown, confirm the Code/Preview toggle is present and functional.
 
+### 3.15 Protocol Inspector
+
+- Click the **Inspector** button in the top header.
+- Confirm the Protocol Inspector opens as a modal and shows an empty state before any MCP calls are made.
+- Connect to the live fixture server, invoke a tool, read a resource, and fetch a prompt.
+- Reopen Inspector and confirm the timeline includes entries for `initialize`, `tools/list`, `tools/call`, `resources/list` / `resources/read`, and `prompts/list` / `prompts/get` as applicable.
+- Click a timeline entry and confirm params, result or error, status, server name, timestamp, and duration render without crashing.
+- If the connected server does not implement resources or prompts, confirm `resources/list` and/or `prompts/list` show as `unsupported`, not `error`; this means the server is healthy but that optional MCP capability is absent.
+- Click **Copy event** and confirm the clipboard receives JSON for the selected event.
+- Click **Clear** and confirm the timeline returns to the empty state.
+
 ---
 
 ## 4. CHANGELOG and version

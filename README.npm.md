@@ -40,6 +40,7 @@ Point it at any MCP server that exposes a streamable HTTP endpoint (typically `h
 - Local proxy mode for MCP servers that do not expose browser CORS headers
 - Auto-discovered tool list via `tools/list`
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
+- Protocol Inspector timeline for debugging MCP calls, results, errors, and durations
 - Meta-tool discovery with one-click **Discover all tools**
 
 ## Full documentation

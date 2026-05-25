@@ -7,6 +7,7 @@ import { PromptDetail } from './components/PromptDetail';
 import { VaultLockButton } from './components/VaultLockButton';
 import { VaultSetup } from './components/VaultSetup';
 import { VaultUnlock } from './components/VaultUnlock';
+import { ProtocolInspector } from './components/ProtocolInspector';
 import {
   ServerFormDialog,
   type ServerFormValues,
@@ -77,6 +78,7 @@ export default function App() {
   const [selectedPromptName, setSelectedPromptName] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
   const aesKeyRef = useRef<CryptoKey | null>(null);
   const serversRef = useRef<ServerEntry[]>(servers);
   const vaultPhaseRef = useRef<VaultPhase>(vaultPhase);
@@ -587,6 +589,17 @@ export default function App() {
           <VaultLockButton onLock={handleVaultLock} />
           <button
             type="button"
+            onClick={() => setInspectorOpen(true)}
+            title="Protocol Inspector"
+            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1 font-mono"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+              <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <span>Inspector</span>
+          </button>
+          <button
+            type="button"
             onClick={() => {
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
             }}
@@ -680,6 +693,11 @@ export default function App() {
         onSelectTool={handleGlobalSelectTool}
         onSelectResource={handleGlobalSelectResource}
         onSelectPrompt={handleGlobalSelectPrompt}
+      />
+      <ProtocolInspector
+        open={inspectorOpen}
+        servers={servers}
+        onClose={() => setInspectorOpen(false)}
       />
     </div>
   );
