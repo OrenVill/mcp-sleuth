@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0](https://github.com/OrenVill/mcp-explorer/compare/v0.5.3...v0.6.0) (2026-05-25)
+
+
+### Features
+
+* daemonize CLI with lock file and stop subcommand ([#23](https://github.com/OrenVill/mcp-explorer/issues/23)) ([426a078](https://github.com/OrenVill/mcp-explorer/commit/426a0785fd9ba335699d18d5e849c0965db3a226))
+* rich code rendering, markdown/HTML preview, image resources, semantic diff ([#26](https://github.com/OrenVill/mcp-explorer/issues/26)) ([65e0064](https://github.com/OrenVill/mcp-explorer/commit/65e0064d8f065cbd6afd3ace9f8de8b94fa6cb80))
+
+
+### Bug Fixes
+
+* textarea fields accept user input for object/array params ([#25](https://github.com/OrenVill/mcp-explorer/issues/25)) ([9d09d2c](https://github.com/OrenVill/mcp-explorer/commit/9d09d2cae06c123cf851ac15d2790cffa1e0fc4b))
+
+
+### Documentation
+
+* split README into GitHub and npm variants ([#27](https://github.com/OrenVill/mcp-explorer/issues/27)) ([197eba3](https://github.com/OrenVill/mcp-explorer/commit/197eba35694714d7d5ea90442536e9df2b392f16))
+
 ## [0.5.3](https://github.com/OrenVill/mcp-explorer/compare/v0.5.2...v0.5.3) (2026-05-23)
 
 
