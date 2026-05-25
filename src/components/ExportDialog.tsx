@@ -1,23 +1,64 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ServerEntry } from '../types';
 import { exportAsMarkdown, exportAsJson, downloadFile, serverSlug } from '../lib/export';
+import { generateAllConfigs } from '../lib/clientConfigExport';
+import { generateHandoffReadme } from '../lib/handoffReadme';
+import type { HandoffReadmeOptions } from '../lib/handoffReadme';
+import type { CallRecord } from '../lib/history';
+import type { ReplaySuite } from '../lib/replaySuites';
 import { CodeBlock } from './CodeBlock';
 import { MarkdownPreview } from './MarkdownPreview';
 
-type ExportTab = 'markdown' | 'json';
+type ExportTab = 'markdown' | 'json' | 'client-config' | 'handoff';
+type ClientTarget = 'cursor' | 'claude' | 'vscode';
 
 interface Props {
   server: ServerEntry;
   onClose: () => void;
+  history?: CallRecord[];
+  replaySuites?: ReplaySuite[];
 }
 
-export function ExportDialog({ server, onClose }: Props) {
+export function ExportDialog({ server, onClose, history, replaySuites }: Props) {
   const [activeTab, setActiveTab] = useState<ExportTab>('markdown');
   const [mdView, setMdView] = useState<'code' | 'preview'>('code');
   const [copied, setCopied] = useState(false);
 
-  const content =
-    activeTab === 'markdown' ? exportAsMarkdown(server) : exportAsJson(server);
+  // Client config sub-target
+  const [clientTarget, setClientTarget] = useState<ClientTarget>('cursor');
+
+  // Handoff README options
+  const [handoffOpts, setHandoffOpts] = useState<HandoffReadmeOptions>({
+    includeReadiness: true,
+    includeSchemas: false,
+    includeExamples: true,
+    includeReplaySuites: true,
+  });
+  const [handoffView, setHandoffView] = useState<'code' | 'preview'>('preview');
+
+  const configs = generateAllConfigs({
+    name: server.name,
+    url: server.url,
+    auth: server.auth,
+    proxyThroughLocal: server.proxyThroughLocal,
+  });
+
+  function getContent(): string {
+    switch (activeTab) {
+      case 'markdown': return exportAsMarkdown(server);
+      case 'json': return exportAsJson(server);
+      case 'client-config': return configs[clientTarget];
+      case 'handoff':
+        return generateHandoffReadme({
+          server,
+          history: history ?? [],
+          replaySuites: replaySuites ?? [],
+          options: handoffOpts,
+        });
+    }
+  }
+
+  const content = getContent();
 
   const handleCopy = useCallback(async () => {
     try {
@@ -34,10 +75,14 @@ export function ExportDialog({ server, onClose }: Props) {
     const slug = serverSlug(server.name);
     if (activeTab === 'markdown') {
       downloadFile(`${slug}.md`, content, 'text/markdown');
-    } else {
+    } else if (activeTab === 'json') {
       downloadFile(`${slug}.json`, content, 'application/json');
+    } else if (activeTab === 'client-config') {
+      downloadFile(`${slug}-${clientTarget}-mcp.json`, content, 'application/json');
+    } else {
+      downloadFile(`${slug}-handoff.md`, content, 'text/markdown');
     }
-  }, [activeTab, content, server.name]);
+  }, [activeTab, content, server.name, clientTarget]);
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
@@ -46,7 +91,6 @@ export function ExportDialog({ server, onClose }: Props) {
     [onClose],
   );
 
-  // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -54,6 +98,19 @@ export function ExportDialog({ server, onClose }: Props) {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
+
+  const tabLabel: Record<ExportTab, string> = {
+    markdown: 'Markdown',
+    json: 'JSON',
+    'client-config': 'Client Config',
+    handoff: 'Handoff README',
+  };
+
+  const showMarkdownToggle = activeTab === 'markdown' || activeTab === 'handoff';
+  const currentMdView = activeTab === 'handoff' ? handoffView : mdView;
+  const setCurrentMdView = activeTab === 'handoff'
+    ? setHandoffView
+    : setMdView;
 
   return (
     <div
@@ -79,32 +136,32 @@ export function ExportDialog({ server, onClose }: Props) {
           </button>
         </div>
 
-        {/* Tabs + markdown view toggle */}
+        {/* Tabs */}
         <div className="flex items-center px-5 pt-2 shrink-0 border-b border-zinc-800/80">
-          {(['markdown', 'json'] as ExportTab[]).map((tab) => (
+          {(['markdown', 'json', 'client-config', 'handoff'] as ExportTab[]).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => { setActiveTab(tab); setCopied(false); }}
               className={[
-                'px-3 py-2 text-[11px] font-medium transition-colors border-b-2 -mb-px uppercase tracking-wide',
+                'px-3 py-2 text-[11px] font-medium transition-colors border-b-2 -mb-px uppercase tracking-wide whitespace-nowrap',
                 activeTab === tab
                   ? 'border-violet-500 text-zinc-100'
                   : 'border-transparent text-zinc-500 hover:text-zinc-300',
               ].join(' ')}
             >
-              {tab === 'markdown' ? 'Markdown' : 'JSON'}
+              {tabLabel[tab]}
             </button>
           ))}
-          {activeTab === 'markdown' && (
+          {showMarkdownToggle && (
             <div className="ml-auto mb-1 inline-flex rounded-md border border-zinc-800 bg-zinc-900 p-0.5">
               {(['code', 'preview'] as const).map((v) => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => setMdView(v)}
+                  onClick={() => setCurrentMdView(v)}
                   className={
-                    mdView === v
+                    currentMdView === v
                       ? 'px-2 py-0.5 rounded text-[10px] font-medium bg-zinc-700 text-zinc-100'
                       : 'px-2 py-0.5 rounded text-[10px] font-medium text-zinc-500 hover:text-zinc-300'
                   }
@@ -116,13 +173,66 @@ export function ExportDialog({ server, onClose }: Props) {
           )}
         </div>
 
+        {/* Client Config sub-nav */}
+        {activeTab === 'client-config' && (
+          <div className="flex items-center gap-2 px-5 py-2 shrink-0 border-b border-zinc-800/40 bg-zinc-900/50">
+            <span className="text-[10px] text-zinc-500 uppercase tracking-wide mr-1">Target:</span>
+            {(['cursor', 'claude', 'vscode'] as ClientTarget[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setClientTarget(t)}
+                className={[
+                  'px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors',
+                  clientTarget === t
+                    ? 'bg-violet-600/30 text-violet-300 border border-violet-500/40'
+                    : 'text-zinc-400 hover:text-zinc-200 border border-transparent hover:bg-zinc-800',
+                ].join(' ')}
+              >
+                {t === 'cursor' ? 'Cursor' : t === 'claude' ? 'Claude' : 'VS Code'}
+              </button>
+            ))}
+            <span className="ml-auto text-[10px] text-zinc-600">Auth secrets are replaced with env-var placeholders</span>
+          </div>
+        )}
+
+        {/* Handoff README options */}
+        {activeTab === 'handoff' && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-2 shrink-0 border-b border-zinc-800/40 bg-zinc-900/50">
+            {(
+              [
+                ['includeReadiness', 'Readiness'],
+                ['includeSchemas', 'Full Schemas'],
+                ['includeExamples', 'Examples'],
+                ['includeReplaySuites', 'Replay Suites'],
+              ] as [keyof HandoffReadmeOptions, string][]
+            ).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={!!handoffOpts[key]}
+                  onChange={(e) =>
+                    setHandoffOpts((o) => ({ ...o, [key]: e.target.checked }))
+                  }
+                  className="accent-violet-500 w-3 h-3"
+                />
+                <span className="text-[11px] text-zinc-400">{label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+
         {/* Content area */}
         <div className="flex-1 min-h-0 overflow-auto p-4">
-          <div className="rounded-lg border border-zinc-800/60 bg-zinc-950/80 overflow-hidden" style={{ minHeight: '55vh' }}>
-            {activeTab === 'markdown' && mdView === 'preview' ? (
+          <div className="rounded-lg border border-zinc-800/60 bg-zinc-950/80 overflow-hidden" style={{ minHeight: '50vh' }}>
+            {(activeTab === 'markdown' && mdView === 'preview') ||
+             (activeTab === 'handoff' && handoffView === 'preview') ? (
               <MarkdownPreview source={content} />
             ) : (
-              <CodeBlock code={content} lang={activeTab === 'markdown' ? 'markdown' : 'json'} />
+              <CodeBlock
+                code={content}
+                lang={activeTab === 'json' || activeTab === 'client-config' ? 'json' : 'markdown'}
+              />
             )}
           </div>
         </div>
@@ -160,7 +270,7 @@ export function ExportDialog({ server, onClose }: Props) {
               <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z" />
               <path d="M7.25 7.689V2a.75.75 0 0 1 1.5 0v5.689l1.97-1.97a.749.749 0 1 1 1.06 1.06l-3.25 3.25a.749.749 0 0 1-1.06 0L4.22 6.78a.749.749 0 1 1 1.06-1.06l1.97 1.97Z" />
             </svg>
-            Download .{activeTab === 'markdown' ? 'md' : 'json'}
+            Download
           </button>
         </div>
       </div>

@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { ServerEntry } from '../types';
+import type { CallRecord } from '../lib/history';
+import type { ReplaySuite } from '../lib/replaySuites';
 import { ToolList } from './ToolList';
 import { ResourceList } from './ResourceList';
 import { PromptList } from './PromptList';
@@ -17,6 +19,8 @@ interface Props {
   onSelectResource: (uri: string) => void;
   selectedPromptName: string | null;
   onSelectPrompt: (name: string) => void;
+  history?: CallRecord[];
+  replaySuites?: ReplaySuite[];
 }
 
 export function ServerBrowser({
@@ -29,6 +33,8 @@ export function ServerBrowser({
   onSelectResource,
   selectedPromptName,
   onSelectPrompt,
+  history,
+  replaySuites,
 }: Props) {
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -123,7 +129,12 @@ export function ServerBrowser({
       </div>
     </aside>
     {exportOpen && (
-      <ExportDialog server={server} onClose={() => setExportOpen(false)} />
+      <ExportDialog
+        server={server}
+        onClose={() => setExportOpen(false)}
+        history={history}
+        replaySuites={replaySuites}
+      />
     )}
     </>
   );

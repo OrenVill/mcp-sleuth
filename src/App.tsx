@@ -8,6 +8,7 @@ import { VaultLockButton } from './components/VaultLockButton';
 import { VaultSetup } from './components/VaultSetup';
 import { VaultUnlock } from './components/VaultUnlock';
 import { DevToolsModal, type DevToolsTab } from './components/DevToolsModal';
+import { ScenarioRunnerPanel } from './components/ScenarioRunnerPanel';
 import {
   ServerFormDialog,
   type ServerFormValues,
@@ -20,6 +21,7 @@ import { detectMetaTools } from './lib/discovery/detect';
 import { runDiscovery } from './lib/discovery/orchestrator';
 import { loadLegacyServers, type StoredServer } from './lib/storage';
 import { initAppData } from './lib/appData';
+import { loadHistory } from './lib/history';
 import {
   createVault,
   getBootstrapPhase,
@@ -80,6 +82,7 @@ export default function App() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const [devToolsInitialTab, setDevToolsInitialTab] = useState<DevToolsTab>('protocol');
+  const [scenarioRunnerOpen, setScenarioRunnerOpen] = useState(false);
   const aesKeyRef = useRef<CryptoKey | null>(null);
   const serversRef = useRef<ServerEntry[]>(servers);
   const vaultPhaseRef = useRef<VaultPhase>(vaultPhase);
@@ -606,6 +609,17 @@ export default function App() {
           </button>
           <button
             type="button"
+            onClick={() => setScenarioRunnerOpen(true)}
+            title="Scenario Runner"
+            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3" aria-hidden>
+              <path d="M2.5 2.5a1 1 0 0 1 1.5-.87l9 5.2a1 1 0 0 1 0 1.74l-9 5.2A1 1 0 0 1 2.5 13V3a1 1 0 0 1 0-.5Z" />
+            </svg>
+            <span>Scenarios</span>
+          </button>
+          <button
+            type="button"
             onClick={() => {
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
             }}
@@ -657,6 +671,7 @@ export default function App() {
           onSelectResource={setSelectedResourceUri}
           selectedPromptName={selectedPromptName}
           onSelectPrompt={setSelectedPromptName}
+          history={loadHistory()}
         />
         {activeTab === 'resources' && selectedServer && selectedResource ? (
           <ResourceDetail
@@ -710,6 +725,13 @@ export default function App() {
         onReplayToolCall={(serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
         onClose={() => setDevToolsOpen(false)}
       />
+      {scenarioRunnerOpen && (
+        <ScenarioRunnerPanel
+          servers={servers}
+          onClose={() => setScenarioRunnerOpen(false)}
+          onCallTool={async (serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
+        />
+      )}
     </div>
   );
 }

@@ -229,6 +229,54 @@ Tests the rich code rendering added in v0.6.0. Requires a connected server with 
 - Invoke a tool that returns plain text and a tool call that fails with a vague error if practical, then confirm the Agent Readiness report reflects recent trace-based output/error warnings without exposing auth secrets.
 - Confirm the report remains usable with no trace history and does not require an AI API key or network model call.
 
+### 3.19 MCP Client Config Export
+
+- Connect to a server and open its export dialog (click **Export** in the server browser).
+- Switch to the **Client Config** tab.
+- Confirm the **Target** sub-nav shows three options: Cursor, Claude, and VS Code.
+- Select each target and confirm a valid JSON snippet is shown (Cursor uses `mcpServers`, Claude uses `type: "http"`, VS Code uses `servers`).
+- For a server configured with bearer auth, confirm the generated header value shows `${env:SERVER_TOKEN}` (or similar placeholder) and **never** the real token.
+- For a server configured with API key auth, confirm the header placeholder is present for Cursor/Claude and uses `${input:...}` syntax for VS Code.
+- For a server configured with basic auth, confirm an `Authorization` placeholder appears and no username/password is included.
+- For a server where `proxyThroughLocal` is enabled, confirm the exported URL is the **real** server URL, not a localhost proxy URL.
+- Copy the snippet and confirm clipboard content is valid JSON.
+- Download the snippet and confirm the file name includes the server slug and client target (e.g. `my-server-cursor-mcp.json`).
+
+### 3.20 Handoff README Export
+
+- Connect to a server and open its export dialog.
+- Switch to the **Handoff README** tab.
+- Confirm the options bar shows checkboxes: **Readiness**, **Full Schemas**, **Examples**, **Replay Suites**.
+- With all options checked, confirm the preview includes: server name and URL, tool list with parameter tables, Agent Readiness score, and (if call history exists) an Examples section.
+- Toggle **Full Schemas** and confirm JSON schema code blocks appear/disappear accordingly.
+- Toggle **Readiness** and confirm the Agent Readiness section appears/disappears.
+- In the Examples section, confirm that argument keys matching sensitive patterns (e.g. `apiKey`, `token`, `password`) are shown as `[REDACTED]`, not their actual values.
+- Switch between Code and Preview views to confirm markdown renders correctly in preview.
+- Download the file and confirm it saves as `<server-slug>-handoff.md`.
+
+### 3.21 Scenario Runner
+
+- Click **Scenarios** in the top header to open the Scenario Runner panel.
+- Confirm the panel opens with an empty sidebar and a prompt to create a scenario.
+- Type a name in the input field and press **+** (or Enter) to create a new scenario.
+- Confirm the scenario appears in the sidebar and the editor pane loads.
+- Click **+ Add Step** to add a step:
+  - Confirm the tool selector dropdown lists connected server tools.
+  - Edit the Arguments JSON field and confirm invalid JSON shows an inline error.
+  - Click **+ Add** under Assertions to add an assertion.
+  - Confirm the assertion type selector shows: Status, Field exists, Field missing, JSON path equals, Contains text.
+  - Set a **Status → success** assertion.
+- Click **▶ Run** with the step configured. Confirm:
+  - The run executes without crashing.
+  - A pass/fail badge appears next to the step result.
+  - The assertion result badges show ✓ or ✗ with a short message.
+  - The header shows the pass/fail count (e.g. **1/1 passed**).
+- Add a second step with a **JSON path equals** assertion on a known field from the tool's output and confirm a passing result.
+- Add a step with a **contains text** assertion where the text is absent and confirm a failing result without crashing.
+- Create a second scenario and confirm the first scenario's results persist while switching between them.
+- Remove a step and confirm the scenario updates immediately.
+- Close the panel (× button or backdrop click) and confirm it closes cleanly.
+
 ---
 
 ## 4. CHANGELOG and version
