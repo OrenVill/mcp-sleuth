@@ -33,7 +33,7 @@ export function CodeBlock({ code, lang, className }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [code, resolvedLang]);
+  }, [prepared, resolvedLang]);
 
   const wrapper = `shiki-block text-xs leading-relaxed ${className ?? ''}`;
 

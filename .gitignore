@@ -25,3 +25,15 @@ dist-ssr
 
 # publish swap artifact
 _README.github.md
+
+# Claude Code — local-only files (settings overrides, worktrees, transcripts)
+.claude/settings.local.json
+.claude/worktrees/
+.claude/todos/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

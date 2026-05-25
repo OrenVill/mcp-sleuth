@@ -1,2 +1,6 @@
 # publish swap artifact
 _README.github.md
+
+# IDE project files — not needed in the npm package
+.claude/
+.cursor/
