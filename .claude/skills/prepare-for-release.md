@@ -1,6 +1,6 @@
 ---
 name: prepare-for-release
-description: Pre-release checklist for mcp-explorer. Run before merging the release-please PR or triggering npm publish. Covers build, tests, lint, and a detailed Playwright UI walkthrough.
+description: Pre-release checklist for mcp-explorer. Run before merging the release-please PR or triggering npm publish. Covers build, tests, lint, and a detailed browser UI walkthrough.
 ---
 
 # Pre-Release Checklist — mcp-explorer
