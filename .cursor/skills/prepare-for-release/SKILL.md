@@ -181,14 +181,26 @@ Tests the rich code rendering added in v0.6.0. Requires a connected server with 
 
 ### 3.15 Protocol Inspector
 
-- Click the **Inspector** button in the top header.
-- Confirm the Protocol Inspector opens as a modal and shows an empty state before any MCP calls are made.
-- Connect to the live fixture server, invoke a tool, read a resource, and fetch a prompt.
-- Reopen Inspector and confirm the timeline includes entries for `initialize`, `tools/list`, `tools/call`, `resources/list` / `resources/read`, and `prompts/list` / `prompts/get` as applicable.
+- Click **Dev Tools** in the top header and stay on the **Protocol Inspector** tab.
+- Click **Clear** and confirm the Protocol Inspector tab returns to the empty state.
+- Disconnect and reconnect the live fixture server so connection-time entries are captured again, then invoke a tool, read a resource, and fetch a prompt.
+- Reopen Dev Tools → Protocol Inspector and confirm the timeline includes entries for `initialize`, `tools/list`, `tools/call`, `resources/list` / `resources/read`, and `prompts/list` / `prompts/get` as applicable.
 - Click a timeline entry and confirm params, result or error, status, server name, timestamp, and duration render without crashing.
 - If the connected server does not implement resources or prompts, confirm `resources/list` and/or `prompts/list` show as `unsupported`, not `error`; this means the server is healthy but that optional MCP capability is absent.
 - Click **Copy event** and confirm the clipboard receives JSON for the selected event.
 - Click **Clear** and confirm the timeline returns to the empty state.
+
+### 3.16 Schema Lab
+
+- Click **Dev Tools** in the top header and switch to the **Schema Lab** tab.
+- Confirm Schema Lab shows connected server and tool selectors.
+- Select a tool with required arguments and confirm required fields are highlighted in the parameter table.
+- Confirm the schema summary shows root type, property count, required count, and optional count.
+- Confirm validation notes render. A valid schema should show a positive/info note; malformed or unsupported schema shapes should show warning/error notes without crashing.
+- Confirm generated example arguments are deterministic and match defaults, enum first values, and primitive fallback values.
+- Click **Copy args** and confirm the clipboard receives JSON arguments.
+- Click **Copy call** and confirm the clipboard receives a JSON-RPC `tools/call` payload with `method`, `params.name`, and `params.arguments`.
+- From a selected tool detail page, click **Schema Lab** beside Arguments and confirm Dev Tools opens directly to Schema Lab for that tool.
 
 ---
 

@@ -11,16 +11,17 @@
 
 - Use TDD for new behavior: write a focused failing test, run it, implement the smallest passing change, then refactor.
 - Keep persisted secrets inside the encrypted vault flow. Do not add new plaintext credential storage.
-- Treat browser-session debugging data, such as Protocol Inspector traces, as in-memory unless the user explicitly asks for persistence.
+- Treat browser-session debugging data as in-memory unless the user explicitly asks for persistence.
 - Do not introduce new dependencies when existing Web APIs, React, TypeScript, or project helpers are enough.
 - After substantive edits, run the targeted tests plus `npm run build`, `npm run lint`, and `npm test` when practical.
 
-## Protocol Inspector
+## Dev Tools Modal
 
-- Protocol Inspector is a developer debugging feature. It should capture MCP calls from `src/lib/mcpClient.ts` through `src/lib/protocolTrace.ts`.
-- Trace entries should include method, params, result or error, status, server id/name in the UI, start time, and duration.
-- Keep trace payloads cloneable and session-local. Avoid recording authentication material.
-- UI for traces belongs in `src/components/ProtocolInspector.tsx` and should remain reachable from the app header.
+- Developer debugging features should live in the shared Dev Tools modal when they inspect MCP runtime behavior or tool schemas.
+- Protocol Inspector is the runtime tab. It should capture MCP calls from `src/lib/mcpClient.ts` through `src/lib/protocolTrace.ts`.
+- Schema Lab is the read-only schema tab. Keep analysis logic in `src/lib/schemaLab.ts` and UI in `src/components/SchemaLabPanel.tsx`.
+- Keep browser-session debugging data in memory unless the user explicitly asks for persistence.
+- Avoid recording authentication material in any debugging view.
 
 ## Release Checklist Must Stay Current
 

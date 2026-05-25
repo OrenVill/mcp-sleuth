@@ -41,6 +41,7 @@ Point it at any MCP server that exposes a streamable HTTP endpoint (typically `h
 - Auto-discovered tool list via `tools/list`
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
 - Protocol Inspector timeline for debugging MCP calls, results, errors, and durations
+- Schema Lab for inspecting tool schemas, generating example args, and copying JSON-RPC calls
 - Meta-tool discovery with one-click **Discover all tools**
 
 ## Full documentation

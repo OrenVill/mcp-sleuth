@@ -17,6 +17,7 @@ interface Props {
   discoveryRun: DiscoveryRun | null;
   onDiscover: (metaToolName: string, opts?: { alphabetSweep?: boolean }) => void;
   onStop: (metaToolName: string) => void;
+  onOpenSchemaLab: () => void;
 }
 
 function EmptyState({ children }: { children: React.ReactNode }) {
@@ -34,7 +35,7 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ToolDetail({ server, tool, metaBinding, discoveryRun, onDiscover, onStop }: Props) {
+export function ToolDetail({ server, tool, metaBinding, discoveryRun, onDiscover, onStop, onOpenSchemaLab }: Props) {
   const sessionKey = `${server?.id ?? 'none'}:${tool?.name ?? 'none'}`;
   return (
     <ToolDetailSession
@@ -45,11 +46,12 @@ export function ToolDetail({ server, tool, metaBinding, discoveryRun, onDiscover
       discoveryRun={discoveryRun}
       onDiscover={onDiscover}
       onStop={onStop}
+      onOpenSchemaLab={onOpenSchemaLab}
     />
   );
 }
 
-function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover, onStop }: Props) {
+function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover, onStop, onOpenSchemaLab }: Props) {
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [result, setResult] = useState<ToolResult | null>(null);
   /** Bumps when a new tool result arrives so ResultPane remounts (formatted vs raw defaults to formatted). */
@@ -153,6 +155,13 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
             <h2 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400">
               Arguments
             </h2>
+            <button
+              type="button"
+              onClick={onOpenSchemaLab}
+              className="text-xs px-2 py-1 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors"
+            >
+              Schema Lab
+            </button>
           </div>
           <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-5">
             <SchemaForm

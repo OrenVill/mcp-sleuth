@@ -7,7 +7,7 @@ import { PromptDetail } from './components/PromptDetail';
 import { VaultLockButton } from './components/VaultLockButton';
 import { VaultSetup } from './components/VaultSetup';
 import { VaultUnlock } from './components/VaultUnlock';
-import { ProtocolInspector } from './components/ProtocolInspector';
+import { DevToolsModal, type DevToolsTab } from './components/DevToolsModal';
 import {
   ServerFormDialog,
   type ServerFormValues,
@@ -78,7 +78,8 @@ export default function App() {
   const [selectedPromptName, setSelectedPromptName] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [devToolsOpen, setDevToolsOpen] = useState(false);
+  const [devToolsInitialTab, setDevToolsInitialTab] = useState<DevToolsTab>('protocol');
   const aesKeyRef = useRef<CryptoKey | null>(null);
   const serversRef = useRef<ServerEntry[]>(servers);
   const vaultPhaseRef = useRef<VaultPhase>(vaultPhase);
@@ -435,6 +436,11 @@ export default function App() {
 
   const connectedCount = servers.filter((s) => s.status === 'connected').length;
 
+  function openDevTools(tab: DevToolsTab) {
+    setDevToolsInitialTab(tab);
+    setDevToolsOpen(true);
+  }
+
   async function handleVaultCreate(passphrase: string) {
     setVaultBusy(true);
     setVaultError(null);
@@ -589,14 +595,14 @@ export default function App() {
           <VaultLockButton onLock={handleVaultLock} />
           <button
             type="button"
-            onClick={() => setInspectorOpen(true)}
-            title="Protocol Inspector"
+            onClick={() => openDevTools('protocol')}
+            title="Dev Tools"
             className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1 font-mono"
           >
             <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
               <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
-            <span>Inspector</span>
+            <span>Dev Tools</span>
           </button>
           <button
             type="button"
@@ -676,6 +682,7 @@ export default function App() {
             onStop={(metaToolName) => {
               if (selectedServer) handleDiscoveryStop(selectedServer.id, metaToolName);
             }}
+            onOpenSchemaLab={() => openDevTools('schema')}
           />
         )}
       </div>
@@ -694,10 +701,13 @@ export default function App() {
         onSelectResource={handleGlobalSelectResource}
         onSelectPrompt={handleGlobalSelectPrompt}
       />
-      <ProtocolInspector
-        open={inspectorOpen}
+      <DevToolsModal
+        open={devToolsOpen}
+        initialTab={devToolsInitialTab}
         servers={servers}
-        onClose={() => setInspectorOpen(false)}
+        selectedServerId={selectedServer?.id ?? null}
+        selectedToolName={selectedToolName}
+        onClose={() => setDevToolsOpen(false)}
       />
     </div>
   );
