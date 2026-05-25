@@ -39,7 +39,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "cp README.md _README.github.md && cp README.npm.md README.md",
+    "postpublish": "mv _README.github.md README.md"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
