@@ -21,6 +21,8 @@ export interface ServerEntry {
   description?: string;
   /** Optional HTTP auth for the MCP endpoint */
   auth?: ServerAuth;
+  /** Route browser MCP traffic through the local static server proxy. Defaults to true. */
+  proxyThroughLocal?: boolean;
   status: ServerStatus;
   error?: string;
   tools?: ToolDef[];

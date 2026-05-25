@@ -37,6 +37,7 @@ function fromStoredServers(stored: StoredServer[]): ServerEntry[] {
     url: s.url,
     description: s.description,
     auth: s.auth,
+    proxyThroughLocal: s.proxyThroughLocal ?? true,
     custom: s.custom ?? true,
     status: 'disconnected',
   }));
@@ -50,6 +51,7 @@ function toStoredServers(servers: ServerEntry[]): StoredServer[] {
     description: server.description,
     custom: server.custom,
     auth: server.auth,
+    proxyThroughLocal: server.proxyThroughLocal ?? true,
   }));
 }
 
@@ -182,17 +184,18 @@ export default function App() {
    */
   async function handleConnect(
     id: string,
-    connection?: { url: string; auth?: ServerAuth },
+    connection?: { url: string; auth?: ServerAuth; proxyThroughLocal?: boolean },
   ) {
     const s = servers.find((x) => x.id === id);
     const url = connection?.url ?? s?.url;
     const auth = connection !== undefined ? connection.auth : s?.auth;
+    const proxyThroughLocal = connection?.proxyThroughLocal ?? s?.proxyThroughLocal ?? true;
     if (!url) return;
     setSelectedId(id);
     setSelectedToolName(null);
     updateServer(id, { status: 'connecting', error: undefined });
     try {
-      const tools = await connect(id, url, auth);
+      const tools = await connect(id, url, auth, proxyThroughLocal);
       const metaTools = detectMetaTools(tools);
 
       // Fetch resources and prompts in parallel; ignore if server doesn't support them
@@ -357,12 +360,17 @@ export default function App() {
         url: values.url,
         description: values.description,
         auth: values.auth,
+        proxyThroughLocal: values.proxyThroughLocal,
         custom: true,
         status: 'disconnected',
       };
       setServers((prev) => [...prev, entry]);
       handleDialogClose();
-      void handleConnect(id, { url: values.url, auth: values.auth });
+      void handleConnect(id, {
+        url: values.url,
+        auth: values.auth,
+        proxyThroughLocal: values.proxyThroughLocal,
+      });
       return;
     }
 
@@ -377,9 +385,14 @@ export default function App() {
         url: values.url,
         description: values.description,
         auth: values.auth,
+        proxyThroughLocal: values.proxyThroughLocal,
       });
       handleDialogClose();
-      void handleConnect(editingId, { url: values.url, auth: values.auth });
+      void handleConnect(editingId, {
+        url: values.url,
+        auth: values.auth,
+        proxyThroughLocal: values.proxyThroughLocal,
+      });
     }
   }
 
@@ -414,6 +427,7 @@ export default function App() {
           url: editingServer.url,
           description: editingServer.description,
           auth: editingServer.auth,
+          proxyThroughLocal: editingServer.proxyThroughLocal ?? true,
         }
       : undefined;
 

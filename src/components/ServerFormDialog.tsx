@@ -7,6 +7,7 @@ export interface ServerFormValues {
   description?: string;
   /** Omitted when authentication is “None”. */
   auth?: ServerAuth;
+  proxyThroughLocal: boolean;
 }
 
 interface Props {
@@ -70,6 +71,9 @@ export function ServerFormDialog({
 }: Props) {
   const [name, setName] = useState(() => initialValues?.name ?? '');
   const [url, setUrl] = useState(() => initialValues?.url ?? 'http://localhost:8000/mcp');
+  const [proxyThroughLocal, setProxyThroughLocal] = useState(
+    () => initialValues?.proxyThroughLocal ?? true,
+  );
   const [description, setDescription] = useState(() => initialValues?.description ?? '');
   const [authChoice, setAuthChoice] = useState<AuthChoice>(() =>
     choiceFromAuth(initialValues?.auth),
@@ -156,6 +160,7 @@ export function ServerFormDialog({
       url: url.trim(),
       description: description.trim() || undefined,
       auth: buildAuthPayload(),
+      proxyThroughLocal,
     };
     if (!values.name) {
       setError('Name is required');
@@ -234,6 +239,20 @@ export function ServerFormDialog({
             placeholder="http://localhost:8000/mcp"
             className={`${inputClass} font-mono`}
           />
+        </label>
+        <label className="flex items-start gap-2.5 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={proxyThroughLocal}
+            onChange={(e) => setProxyThroughLocal(e.target.checked)}
+            className="mt-0.5 accent-violet-500 shrink-0"
+          />
+          <span>
+            <span className="block text-sm text-zinc-200 leading-tight">Proxy through local explorer</span>
+            <span className="block text-[11px] text-zinc-500 leading-snug mt-1">
+              Rewrites MCP requests through this localhost app so servers do not need browser CORS headers.
+            </span>
+          </span>
         </label>
         <label className="block text-xs text-zinc-400 font-medium">
           Description

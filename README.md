@@ -8,6 +8,7 @@ Add any MCP HTTP endpoint, the explorer auto-connects on add and persists the li
 
 - **Add / edit / remove** any MCP HTTP server — persisted to `localStorage`, no presets.
 - **Auto-connect on add** — registers the server and immediately establishes the streamable HTTP transport.
+- **Embedded local proxy mode** — optionally routes MCP requests through the explorer's localhost server so HTTP MCP servers do not need browser CORS support.
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).
 - **Live tool invocation** with text + structured result display.
@@ -108,7 +109,9 @@ src/
 
 ## CORS notes
 
-The browser sends preflight requests with `Mcp-Session-Id` and `Mcp-Protocol-Version` headers. Any server you connect to must allow those in its `Access-Control-Allow-Headers` and expose `Mcp-Session-Id` via `Access-Control-Expose-Headers`.
+The browser sends MCP requests with headers such as `Mcp-Session-Id` and `Mcp-Protocol-Version`. By default, **Proxy through local explorer** is enabled for each server, which rewrites requests through the local `mcp-explorer` static server and adds the browser-facing CORS headers there.
+
+You can disable the checkbox for a server when its HTTP endpoint already supports browser clients directly. In direct mode, the MCP server must allow those MCP headers in `Access-Control-Allow-Headers` and expose `Mcp-Session-Id` via `Access-Control-Expose-Headers`.
 
 ## Releases
 

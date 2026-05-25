@@ -37,6 +37,7 @@ npm update -g @orenvill/mcp-explorer
 Point it at any MCP server that exposes a streamable HTTP endpoint (typically `http://host:port/mcp`). The explorer auto-connects, lists all available tools, and generates input forms from each tool's JSON Schema so you can invoke them immediately from the browser.
 
 - Add / edit / remove MCP servers — persisted to `localStorage`
+- Local proxy mode for MCP servers that do not expose browser CORS headers
 - Auto-discovered tool list via `tools/list`
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
 - Meta-tool discovery with one-click **Discover all tools**

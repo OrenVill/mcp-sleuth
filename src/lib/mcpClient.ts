@@ -6,10 +6,14 @@ import type { ResourceEntry, ResourceTemplate, ResourceContent, PromptDef, Promp
 const clients = new Map<string, Client>();
 const transports = new Map<string, StreamableHTTPClientTransport>();
 
-function proxiedUrl(target: string): URL {
-  // Always route through the local same-origin proxy so localhost MCP servers
-  // without CORS headers (and any cross-origin server) work in the browser.
-  const base = window.location.origin;
+export function transportUrlForServer(
+  target: string,
+  proxyThroughLocal = true,
+  baseOrigin?: string,
+): URL {
+  if (!proxyThroughLocal) return new URL(target);
+
+  const base = baseOrigin ?? window.location.origin;
   return new URL(`/__mcp_proxy?target=${encodeURIComponent(target)}`, base);
 }
 
@@ -59,12 +63,13 @@ export async function connect(
   serverId: string,
   url: string,
   auth?: ServerAuth,
+  proxyThroughLocal = true,
 ): Promise<ToolDef[]> {
   await disconnect(serverId);
 
   const requestInit = requestInitFromAuth(auth);
   const transport = new StreamableHTTPClientTransport(
-    proxiedUrl(url),
+    transportUrlForServer(url, proxyThroughLocal),
     requestInit ? { requestInit } : undefined,
   );
   const client = new Client(

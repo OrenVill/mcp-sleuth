@@ -3,7 +3,7 @@ import { LEGACY_SERVERS_STORAGE_KEY } from './vault/constants';
 
 export type StoredServer = Pick<
   ServerEntry,
-  'id' | 'name' | 'url' | 'description' | 'custom' | 'auth'
+  'id' | 'name' | 'url' | 'description' | 'custom' | 'auth' | 'proxyThroughLocal'
 >;
 
 export { LEGACY_SERVERS_STORAGE_KEY };
