@@ -3,6 +3,7 @@ import { type Page } from '@playwright/test';
 export const VAULT_PASS = 'test-release-pass-123';
 export const FIXTURE_URL = 'http://localhost:3001/mcp';
 export const UNREACHABLE_URL = 'http://localhost:9999/mcp';
+export const AWESOME_URL = 'http://10.100.100.44:8000/mcp';
 
 /** Delete the server-side vault file so the next page load shows the Create vault screen. */
 export async function resetVaultStorage(): Promise<void> {
@@ -70,4 +71,10 @@ export async function addFixtureServer(page: Page): Promise<void> {
   await addServer(page, 'Fixture', FIXTURE_URL);
   await waitForConnected(page, 'Fixture');
   await selectServer(page, 'Fixture');
+}
+
+export async function addAwesomeServer(page: Page): Promise<void> {
+  await addServer(page, 'awesome-mcp-servers', AWESOME_URL);
+  await waitForConnected(page, 'awesome-mcp-servers');
+  await selectServer(page, 'awesome-mcp-servers');
 }

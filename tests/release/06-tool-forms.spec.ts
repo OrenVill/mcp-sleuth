@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { setupVault, addFixtureServer } from './helpers';
+import { setupVault, addFixtureServer, addAwesomeServer, selectServer, waitForConnected } from './helpers';
 
 test.describe.serial('§3.6 — Tool forms — all input types', () => {
   let ctx: BrowserContext;
@@ -10,6 +10,10 @@ test.describe.serial('§3.6 — Tool forms — all input types', () => {
     page = await ctx.newPage();
     await setupVault(page);
     await addFixtureServer(page);
+    // Also connect awesome-mcp-servers (always-on; provides boolean-param tools).
+    // addAwesomeServer selects it, so re-select Fixture afterwards for the default tests.
+    await addAwesomeServer(page);
+    await selectServer(page, 'Fixture');
     await page.getByRole('button', { name: /^Tools/ }).click();
   });
 
@@ -48,21 +52,25 @@ test.describe.serial('§3.6 — Tool forms — all input types', () => {
   });
 
   test('boolean parameter renders a checkbox or toggle', async () => {
-    const toolItems = page.locator('aside + aside ul li').filter({ hasText: /./ });
-    const count = await toolItems.count();
-    let found = false;
-    for (let i = 0; i < count; i++) {
-      await toolItems.nth(i).click();
-      await page.waitForTimeout(300);
-      // Booleans may render as checkbox OR as a boolean dropdown (select with true/false)
-      const checkbox = page.locator('input[type="checkbox"]').first();
-      const boolSelect = page.locator('select').filter({ hasText: /true|false/i }).first();
-      if (await checkbox.isVisible().catch(() => false)) { found = true; break; }
-      if (await boolSelect.isVisible().catch(() => false)) { found = true; break; }
-    }
-    // Skip rather than fail if this fixture server has no boolean-param tool
-    if (!found) { test.skip(true, 'No boolean-param tool on this fixture server'); return; }
+    // awesome-mcp-servers is always-on; get_current_weather has a boolean param.
+    await selectServer(page, 'awesome-mcp-servers');
+    await waitForConnected(page, 'awesome-mcp-servers');
+    // Tools tab stays active across server switches — no need to re-click it.
+    // Use getByText scoped to the middle column — more robust than `ul li` structure assumption.
+    await page.locator('aside + aside').getByText('get_current_weather').first().click();
+    await page.waitForTimeout(300);
+
+    // Booleans may render as checkbox OR as a boolean dropdown (select with true/false)
+    const checkbox = page.locator('input[type="checkbox"]').first();
+    const boolSelect = page.locator('select').filter({ hasText: /true|false/i }).first();
+    const found = await checkbox.isVisible().catch(() => false)
+      || await boolSelect.isVisible().catch(() => false);
+    expect(found, 'get_current_weather on awesome-mcp-servers must render a boolean input').toBe(true);
     await page.screenshot({ path: 'test-results/06-boolean-param.png' });
+
+    // Restore Fixture selection so subsequent tests keep their expected server context.
+    await selectServer(page, 'Fixture');
+    await waitForConnected(page, 'Fixture');
   });
 
   test('enum parameter renders a select dropdown with options', async () => {
