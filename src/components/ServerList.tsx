@@ -1,4 +1,14 @@
-import type { ServerEntry, ServerStatus } from '../types';
+import type { ServerEntry, ServerStatus, ServerStdioConfig } from '../types';
+
+function truncateStdioCommand(text: string, maxLen = 48): string {
+  if (text.length <= maxLen) return text;
+  return `${text.slice(0, maxLen - 1)}…`;
+}
+
+function stdioCommandSummary(stdio: ServerStdioConfig | undefined): string {
+  if (!stdio?.command) return 'stdio';
+  return truncateStdioCommand([stdio.command, ...(stdio.args ?? [])].join(' '));
+}
 
 interface Props {
   servers: ServerEntry[];
@@ -85,6 +95,7 @@ export function ServerList({
         {servers.map((s) => {
           const isSelected = s.id === selectedId;
           const statusCfg = STATUS_CONFIG[s.status];
+          const isStdio = s.transport === 'stdio';
           return (
             <li
               key={s.id}
@@ -108,6 +119,11 @@ export function ServerList({
                   <span className="font-medium text-sm text-zinc-100 truncate">
                     {s.name}
                   </span>
+                  {isStdio && (
+                    <span className="shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide bg-sky-950/60 text-sky-300 border border-sky-800/50">
+                      stdio
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
@@ -138,8 +154,8 @@ export function ServerList({
                   </button>
                 </div>
               </div>
-              <div className="text-[11px] text-zinc-500 truncate mt-0.5 font-mono">
-                {s.url}
+              <div className="text-[11px] text-zinc-500 truncate mt-0.5 font-mono" title={isStdio ? stdioCommandSummary(s.stdio) : s.url}>
+                {isStdio ? stdioCommandSummary(s.stdio) : s.url}
               </div>
               {s.description && (
                 <div className="text-xs text-zinc-400 mt-1 line-clamp-2 leading-snug">

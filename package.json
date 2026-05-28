@@ -27,6 +27,8 @@
     "server.js",
     "proxy.js",
     "proxy.d.ts",
+    "stdio-bridge.js",
+    "stdio-bridge.d.ts",
     "vault-file-handler.js",
     "vault-file-handler.d.ts",
     "app-data-handler.js",

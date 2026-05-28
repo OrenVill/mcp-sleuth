@@ -38,9 +38,12 @@ export function ExportDialog({ server, onClose, history, replaySuites }: Props) 
 
   const configs = generateAllConfigs({
     name: server.name,
+    transport: server.transport,
     url: server.url,
     auth: server.auth,
     proxyThroughLocal: server.proxyThroughLocal,
+    stdio: server.stdio,
+    stdioEnv: server.stdioEnv,
   });
 
   function getContent(): string {

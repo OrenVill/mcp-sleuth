@@ -59,9 +59,11 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 95 tests must pass (4 conditional skips are acceptable — they fire only when the fixture server lacks a specific tool type). Any failure blocks the release.
+All 96 tests must pass (4 conditional skips are acceptable — they fire only when the fixture server lacks a specific tool type). Any failure blocks the release.
 
-The suite covers §3.1–3.21 of the release spec: initial load, server add/error, tab bar, fixture connection, tool forms, result pane rendering, call history diff, bookmarks persistence, cross-server search, export dialog, meta-tool discovery, resources tab, prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client Config Export, Handoff README, and Scenario Runner.
+The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar, fixture connection, tool forms, result pane rendering, call history diff, bookmarks persistence, cross-server search, export dialog, meta-tool discovery, resources tab, prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client Config Export, Handoff README, Scenario Runner, and stdio transport (local bridge + echo tool).
+
+**§3.22 — Stdio transport (manual pass):** Add a stdio server with command `node` (or `process.execPath`) and args pointing at `tests/fixtures/stdio-mcp-server.mjs`; confirm the sidebar shows connected (green dot), the `echo` tool appears, invoking with a message returns that text in the result pane, and disconnect/reconnect still works. Automated: `tests/release/22-stdio-transport.spec.ts` (no HTTP fixture server required).
 
 ---
 

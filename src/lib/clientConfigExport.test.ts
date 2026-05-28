@@ -94,6 +94,23 @@ describe('clientConfigExport', () => {
       expect(String(entry.url)).not.toContain('localhost');
       expect(entry.url).toBe('https://real.example.com/mcp');
     });
+
+    test('emits stdio command/args/env placeholders', () => {
+      const result = generateCursorConfig({
+        name: 'My FS',
+        transport: 'stdio',
+        stdio: { command: 'npx', args: ['-y', '@mcp/fs'], envKeys: ['API_KEY'] },
+        stdioEnv: { API_KEY: 'secret' },
+      });
+      const parsed = JSON.parse(result) as Record<string, unknown>;
+      const servers = parsed.mcpServers as Record<string, unknown>;
+      expect(servers['my-fs']).toMatchObject({
+        command: 'npx',
+        args: ['-y', '@mcp/fs'],
+        env: { API_KEY: '${env:MY_FS_API_KEY}' },
+      });
+      expect(JSON.stringify(servers['my-fs'])).not.toContain('secret');
+    });
   });
 
   describe('generateClaudeDesktopConfig', () => {

@@ -1,11 +1,14 @@
-import type { ServerAuth } from '../types';
+import type { ServerAuth, ServerStdioConfig, ServerTransport } from '../types';
 import { serverSlug } from './export';
 
 export interface ClientConfigInput {
   name: string;
-  url: string;
+  transport?: ServerTransport;
+  url?: string;
   auth?: ServerAuth;
   proxyThroughLocal?: boolean;
+  stdio?: ServerStdioConfig;
+  stdioEnv?: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -15,6 +18,43 @@ export interface ClientConfigInput {
 function envVar(slug: string, suffix: string): string {
   const key = `${slug.toUpperCase().replace(/-/g, '_')}_${suffix}`;
   return `\${env:${key}}`;
+}
+
+function buildStdioEnv(
+  slug: string,
+  stdio: ServerStdioConfig | undefined,
+  stdioEnv: Record<string, string> | undefined,
+): Record<string, string> | undefined {
+  const keys = stdio?.envKeys?.length
+    ? stdio.envKeys
+    : stdioEnv
+      ? Object.keys(stdioEnv)
+      : [];
+  if (keys.length === 0) return undefined;
+
+  const env: Record<string, string> = {};
+  for (const key of keys) {
+    env[key] = envVar(slug, key);
+  }
+  return env;
+}
+
+function buildStdioEntry(
+  slug: string,
+  stdio: ServerStdioConfig | undefined,
+  stdioEnv: Record<string, string> | undefined,
+  includeType: boolean,
+): Record<string, unknown> | undefined {
+  if (!stdio?.command) return undefined;
+
+  const env = buildStdioEnv(slug, stdio, stdioEnv);
+  return {
+    ...(includeType ? { type: 'stdio' as const } : {}),
+    command: stdio.command,
+    args: stdio.args ?? [],
+    ...(stdio.cwd ? { cwd: stdio.cwd } : {}),
+    ...(env ? { env } : {}),
+  };
 }
 
 /**
@@ -98,6 +138,12 @@ function buildHeadersVSCode(
  */
 export function generateCursorConfig(input: ClientConfigInput): string {
   const slug = serverSlug(input.name);
+
+  if (input.transport === 'stdio') {
+    const entry = buildStdioEntry(slug, input.stdio, input.stdioEnv, false);
+    return JSON.stringify({ mcpServers: { [slug]: entry ?? {} } }, null, 2);
+  }
+
   const headers = buildHeaders(slug, input.auth);
 
   const entry: Record<string, unknown> = {
@@ -117,6 +163,12 @@ export function generateCursorConfig(input: ClientConfigInput): string {
  */
 export function generateClaudeDesktopConfig(input: ClientConfigInput): string {
   const slug = serverSlug(input.name);
+
+  if (input.transport === 'stdio') {
+    const entry = buildStdioEntry(slug, input.stdio, input.stdioEnv, true);
+    return JSON.stringify({ mcpServers: { [slug]: entry ?? {} } }, null, 2);
+  }
+
   const headers = buildHeaders(slug, input.auth);
 
   const entry: Record<string, unknown> = {
@@ -138,6 +190,12 @@ export function generateClaudeDesktopConfig(input: ClientConfigInput): string {
  */
 export function generateVSCodeConfig(input: ClientConfigInput): string {
   const slug = serverSlug(input.name);
+
+  if (input.transport === 'stdio') {
+    const entry = buildStdioEntry(slug, input.stdio, input.stdioEnv, true);
+    return JSON.stringify({ servers: { [slug]: entry ?? {} } }, null, 2);
+  }
+
   const headers = buildHeadersVSCode(slug, input.auth);
 
   const entry: Record<string, unknown> = {

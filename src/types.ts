@@ -1,5 +1,14 @@
 export type ServerStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
+export type ServerTransport = 'http' | 'stdio';
+
+export interface ServerStdioConfig {
+  command: string;
+  args: string[];
+  cwd?: string;
+  envKeys?: string[];
+}
+
 /** Persisted auth configuration for MCP HTTP requests (merged into StreamableHTTPClientTransport requestInit). */
 export type ServerAuthMethod = 'none' | 'bearer' | 'api_key' | 'basic';
 
@@ -23,6 +32,9 @@ export interface ServerEntry {
   auth?: ServerAuth;
   /** Route browser MCP traffic through the local static server proxy. Defaults to true. */
   proxyThroughLocal?: boolean;
+  transport?: ServerTransport;
+  stdio?: ServerStdioConfig;
+  stdioEnv?: Record<string, string>;
   status: ServerStatus;
   error?: string;
   tools?: ToolDef[];

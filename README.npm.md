@@ -1,6 +1,6 @@
 # MCP Explorer
 
-Browser-based explorer for MCP servers over streamable HTTP — list and invoke tools with auto-generated forms.
+Browser-based explorer for MCP servers over **streamable HTTP** or **stdio** — list and invoke tools with auto-generated forms.
 
 ## Install
 
@@ -34,10 +34,18 @@ npm update -g @orenvill/mcp-explorer
 
 ## What it does
 
-Point it at any MCP server that exposes a streamable HTTP endpoint (typically `http://host:port/mcp`). The explorer auto-connects, lists all available tools, and generates input forms from each tool's JSON Schema so you can invoke them immediately from the browser.
+Point it at any MCP server:
 
-- Add / edit / remove MCP servers — persisted to `localStorage`
-- Local proxy mode for MCP servers that do not expose browser CORS headers
+- **HTTP** — streamable HTTP endpoint (typically `http://host:port/mcp`)
+- **Stdio** — local subprocess (`command`, `args`, optional `cwd` and env), same as Cursor/Claude Desktop MCP config
+
+The explorer auto-connects, lists all available tools, and generates input forms from each tool's JSON Schema so you can invoke them immediately from the browser.
+
+**Stdio note:** stdio servers use a local Node bridge built into `mcp-explorer`. You must run the app via **`mcp-explorer`** (or `npm run dev` from source) — opening static files alone does not spawn subprocesses.
+
+- Add / edit / remove HTTP or stdio MCP servers — persisted to `localStorage`
+- Stdio bridge for local command-based MCP servers (requires `mcp-explorer` or `npm run dev`)
+- Local proxy mode for HTTP MCP servers that do not expose browser CORS headers
 - Auto-discovered tool list via `tools/list`
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
 - Protocol Inspector timeline for debugging MCP calls, results, errors, and durations

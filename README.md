@@ -1,14 +1,15 @@
 # MCP Explorer
 
-A small Vite + React + TypeScript app that connects to **MCP servers over HTTP** from the browser, lists their tools, and lets you invoke them with auto-generated forms.
+A small Vite + React + TypeScript app that connects to **MCP servers over HTTP or stdio** from the browser, lists their tools, and lets you invoke them with auto-generated forms.
 
-Add any MCP HTTP endpoint, the explorer auto-connects on add and persists the list to `localStorage`.
+Add any MCP HTTP endpoint or a local stdio command (Cursor/Claude-style `command` / `args` / `env`); the explorer auto-connects on add and persists the list to `localStorage`.
 
 ## Features
 
-- **Add / edit / remove** any MCP HTTP server — persisted to `localStorage`, no presets.
-- **Auto-connect on add** — registers the server and immediately establishes the streamable HTTP transport.
-- **Embedded local proxy mode** — optionally routes MCP requests through the explorer's localhost server so HTTP MCP servers do not need browser CORS support.
+- **Add / edit / remove** any MCP server — HTTP or stdio — persisted to `localStorage`, no presets.
+- **Auto-connect on add** — registers the server and immediately connects (streamable HTTP for HTTP servers; local stdio bridge for stdio servers).
+- **Stdio transport** — spawn local MCP subprocesses (`command`, `args`, optional `cwd` and env vars) via a Node-side bridge; same tool UI as HTTP. Requires **`npm run dev`** or the **`mcp-explorer` CLI** (not plain static `dist/index.html`).
+- **Embedded local proxy mode** — optionally routes HTTP MCP requests through the explorer's localhost server so HTTP MCP servers do not need browser CORS support.
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).
 - **Live tool invocation** with text + structured result display.
@@ -29,7 +30,10 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-Then make sure an MCP server is running somewhere (it must expose a streamable-HTTP endpoint, typically at `/mcp`) and click **+ Add** in the sidebar.
+Then click **+ Add** in the sidebar:
+
+- **HTTP:** point at a streamable-HTTP endpoint (typically `http://host:port/mcp`).
+- **Stdio:** choose **Stdio**, enter `command` and `args` (one arg per line), optional working directory and env vars. The dev server (`npm run dev`) provides the local stdio bridge automatically.
 
 ## Installation
 
@@ -81,9 +85,28 @@ SPA fallback. Configure with `PORT=3000 npm start` or `node server.js 3000`.
 
 ## Connecting to a server
 
-The app starts with no servers. Click **+ Add** in the sidebar, fill in a name and the streamable HTTP URL (typically `http://host:port/mcp`), and the explorer will register and auto-connect.
+The app starts with no servers. Click **+ Add** in the sidebar and pick **HTTP** or **Stdio**.
 
-Use the **✎** button next to a server to edit its name, URL, or description; **✕** removes it.
+### HTTP
+
+Fill in a name and the streamable HTTP URL (typically `http://host:port/mcp`); the explorer registers and auto-connects over streamable HTTP.
+
+### Stdio
+
+Choose **Stdio** and configure:
+
+| Field | Description |
+|-------|-------------|
+| Command | Executable to spawn (e.g. `npx`, `node`, `python`) |
+| Arguments | One argument per line |
+| Working directory | Optional |
+| Environment | Optional key/value pairs (secrets stored in the encrypted vault) |
+
+Stdio servers run as a local subprocess on your machine. The explorer's Node server (`server.js`, started by **`mcp-explorer`** or **`npm run dev`**) exposes a same-origin Streamable HTTP bridge at `/__mcp_stdio/…` so the browser can reuse the same MCP client and dev tools as HTTP servers.
+
+**Stdio requires the local explorer server.** Opening `dist/index.html` directly (without `server.js` or Vite) will not work — run `npm run dev` during development or `mcp-explorer` / `npm start` for the built app.
+
+Use the **✎** button next to a server to edit its name, transport settings, or description; **✕** removes it.
 
 ## Layout
 

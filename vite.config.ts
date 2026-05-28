@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import type { PluginOption } from 'vite';
 import { handleMcpProxy, PROXY_PATH } from './proxy.js';
+import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 
@@ -70,13 +71,33 @@ function appDataPlugin(): PluginOption {
   };
 }
 
+function stdioBridgeMiddleware(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void,
+) {
+  if ((req.url ?? '/').startsWith(STDIO_BRIDGE_PREFIX)) {
+    void handleStdioBridge(req, res).catch((err: unknown) => {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      }
+      res.end(err instanceof Error ? err.message : String(err));
+    });
+    return;
+  }
+  next();
+}
+
 function mcpProxyPlugin(): PluginOption {
   return {
     name: 'mcp-explorer-proxy',
     configureServer(server) {
+      server.middlewares.use(stdioBridgeMiddleware);
       server.middlewares.use(PROXY_PATH, handleMcpProxy);
     },
     configurePreviewServer(server) {
+      server.middlewares.use(stdioBridgeMiddleware);
       server.middlewares.use(PROXY_PATH, handleMcpProxy);
     },
   };

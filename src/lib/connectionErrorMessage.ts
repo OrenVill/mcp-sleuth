@@ -144,6 +144,24 @@ function formatBadGateway(raw: string): string {
 function formatGenericMessage(message: string): string {
   const lower = message.toLowerCase();
 
+  if (lower.includes('stdio requires the local explorer')) {
+    return join(
+      'Stdio requires the local explorer server',
+      'Run npm run dev or mcp-explorer instead of opening dist/index.html directly.',
+    );
+  }
+
+  if (/\bspawn\b[\s\S]*\benoent\b/i.test(message) || /\benoent\b[\s\S]*\bspawn\b/i.test(message)) {
+    const cmdMatch = message.match(/spawn\s+(\S+)\s+enoent/i);
+    const cmd = cmdMatch?.[1];
+    return join(
+      'Could not start process',
+      cmd
+        ? `The command "${cmd}" was not found on your PATH. Check the command and working directory in Edit server.`
+        : 'The configured command was not found. Check the command path and that it is installed on your system.',
+    );
+  }
+
   if (lower.includes('bad gateway:')) {
     const tail = message.replace(/^[\s\S]*?bad gateway:\s*/i, '').trim();
     return formatBadGateway(tail || message);
