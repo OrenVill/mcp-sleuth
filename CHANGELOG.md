@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.8.0](https://github.com/OrenVill/mcp-explorer/compare/v0.7.0...v0.8.0) (2026-05-28)
+
+
+### Features
+
+* add stdio MCP transport with local Node bridge ([#44](https://github.com/OrenVill/mcp-explorer/issues/44)) ([db0d924](https://github.com/OrenVill/mcp-explorer/commit/db0d924010b0d7282a8f0bcb2c2b19faefceb43e))
+
+
+### Documentation
+
+* enrich .cursorrules with full project architecture and add CLAUDE.md copy ([#40](https://github.com/OrenVill/mcp-explorer/issues/40)) ([67a604b](https://github.com/OrenVill/mcp-explorer/commit/67a604b2a0fe9a20ad2d7addd2343400453dbad3))
+
 ## [0.7.0](https://github.com/OrenVill/mcp-explorer/compare/v0.6.0...v0.7.0) (2026-05-25)
 
 
