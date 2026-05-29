@@ -59,6 +59,9 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
+All 98 tests must pass (4 conditional skips are acceptable — they fire only when the fixture server lacks a specific tool type). Any failure blocks the release.
+
+The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar, fixture connection, tool forms, result pane rendering, call history diff, bookmarks persistence, cross-server search, export dialog, meta-tool discovery, resources tab, prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client Config Export, Handoff README, Scenario Runner, and Trust evaluators (Permission Surface, Prompt Injection scan, Observation Journal).
 All 96 tests must pass (4 conditional skips are acceptable — they fire only when the fixture server lacks a specific tool type). Any failure blocks the release.
 
 The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar, fixture connection, tool forms, result pane rendering, call history diff, bookmarks persistence, cross-server search, export dialog, meta-tool discovery, resources tab, prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client Config Export, Handoff README, Scenario Runner, and stdio transport (local bridge + echo tool).

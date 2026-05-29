@@ -50,6 +50,7 @@ The explorer auto-connects, lists all available tools, and generates input forms
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
 - Protocol Inspector timeline for debugging MCP calls, results, errors, and durations
 - Schema Lab for inspecting tool schemas, generating example args, and copying JSON-RPC calls
+- Permission Surface audit, Prompt Injection scan, and Observation Journal for MCP trust evaluation
 - Meta-tool discovery with one-click **Discover all tools**
 
 ## Full documentation

@@ -1,12 +1,14 @@
 import type { CallRecord } from './history';
+import type { ObservationJournalsStore } from './observationJournal';
 
 export interface AppData {
   version: number;
   bookmarks: string[];
   history: CallRecord[];
+  observationJournals: ObservationJournalsStore;
 }
 
-const DEFAULT: AppData = { version: 1, bookmarks: [], history: [] };
+const DEFAULT: AppData = { version: 1, bookmarks: [], history: [], observationJournals: {} };
 const APP_DATA_PATH = '/__app_data';
 const LS_BOOKMARKS = 'mcp-explorer:bookmarks';
 const LS_HISTORY = 'mcp-explorer:call-history';
@@ -28,6 +30,10 @@ function parseAppData(raw: unknown): AppData {
       ? (obj.bookmarks as unknown[]).filter((b): b is string => typeof b === 'string')
       : [],
     history: Array.isArray(obj.history) ? (obj.history as CallRecord[]) : [],
+    observationJournals:
+      obj.observationJournals && typeof obj.observationJournals === 'object' && !Array.isArray(obj.observationJournals)
+        ? (obj.observationJournals as ObservationJournalsStore)
+        : {},
   };
 }
 
@@ -45,6 +51,7 @@ function loadFromLocalStorage(): AppData {
         ? ((JSON.parse(rawBookmarks) as unknown[]).filter((b): b is string => typeof b === 'string'))
         : [],
       history: rawHistory ? (JSON.parse(rawHistory) as CallRecord[]) : [],
+      observationJournals: {},
     };
   } catch {
     return { ...DEFAULT };

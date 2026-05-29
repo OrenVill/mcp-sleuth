@@ -1,11 +1,21 @@
 import { useEffect, useState } from 'react';
 import type { ServerEntry, ToolResult } from '../types';
 import { AgentReadinessPanel } from './AgentReadinessPanel';
+import { ObservationJournalPanel } from './ObservationJournalPanel';
+import { PermissionSurfacePanel } from './PermissionSurfacePanel';
+import { PromptInjectionPanel } from './PromptInjectionPanel';
 import { ProtocolInspectorPanel } from './ProtocolInspectorPanel';
 import { ReplaySuitesPanel } from './ReplaySuitesPanel';
 import { SchemaLabPanel } from './SchemaLabPanel';
 
-export type DevToolsTab = 'protocol' | 'replay' | 'schema' | 'readiness';
+export type DevToolsTab =
+  | 'protocol'
+  | 'replay'
+  | 'schema'
+  | 'permission'
+  | 'injection'
+  | 'journal'
+  | 'readiness';
 
 interface Props {
   open: boolean;
@@ -38,6 +48,9 @@ const TABS: Array<{ id: DevToolsTab; label: string }> = [
   { id: 'protocol', label: 'Protocol Inspector' },
   { id: 'replay', label: 'Replay Suites' },
   { id: 'schema', label: 'Schema Lab' },
+  { id: 'permission', label: 'Permission Surface' },
+  { id: 'injection', label: 'Prompt Injection' },
+  { id: 'journal', label: 'Observation Journal' },
   { id: 'readiness', label: 'Agent Readiness' },
 ];
 
@@ -63,7 +76,8 @@ function DevToolsModalContent({
           <div>
             <h2 className="text-sm font-semibold text-zinc-100">Dev Tools</h2>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Inspect runtime MCP traffic, replay calls, debug schemas, and score agent readiness.
+              Inspect MCP traffic, audit permission risk, scan for prompt injection, document trust
+              decisions, and score agent readiness.
             </p>
           </div>
           <button
@@ -78,7 +92,7 @@ function DevToolsModalContent({
           </button>
         </div>
 
-        <div className="flex items-center px-5 pt-2 shrink-0 border-b border-zinc-800/80">
+        <div className="flex items-center px-5 pt-2 shrink-0 border-b border-zinc-800/80 overflow-x-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
@@ -86,7 +100,7 @@ function DevToolsModalContent({
               onClick={() => setActiveTab(tab.id)}
               aria-pressed={activeTab === tab.id}
               className={[
-                'px-3 py-2 text-[11px] font-medium transition-colors border-b-2 -mb-px uppercase tracking-wide',
+                'px-3 py-2 text-[11px] font-medium transition-colors border-b-2 -mb-px uppercase tracking-wide whitespace-nowrap',
                 activeTab === tab.id
                   ? 'border-violet-500 text-zinc-100'
                   : 'border-transparent text-zinc-500 hover:text-zinc-300',
@@ -106,6 +120,19 @@ function DevToolsModalContent({
           </div>
           <div hidden={activeTab !== 'schema'} className="h-full min-h-0 overflow-hidden">
             <SchemaLabPanel
+              servers={servers}
+              selectedServerId={selectedServerId}
+              selectedToolName={selectedToolName}
+            />
+          </div>
+          <div hidden={activeTab !== 'permission'} className="h-full min-h-0 overflow-hidden">
+            <PermissionSurfacePanel servers={servers} />
+          </div>
+          <div hidden={activeTab !== 'injection'} className="h-full min-h-0 overflow-hidden">
+            <PromptInjectionPanel servers={servers} />
+          </div>
+          <div hidden={activeTab !== 'journal'} className="h-full min-h-0 overflow-hidden">
+            <ObservationJournalPanel
               servers={servers}
               selectedServerId={selectedServerId}
               selectedToolName={selectedToolName}

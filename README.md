@@ -15,6 +15,9 @@ Add any MCP HTTP endpoint or a local stdio command (Cursor/Claude-style `command
 - **Live tool invocation** with text + structured result display.
 - **Protocol Inspector** — session-local MCP call timeline with method, params, result/error, status, and duration for debugging server behavior.
 - **Schema Lab** — inspect tool input schemas, highlight required fields, generate example arguments, and copy JSON-RPC `tools/call` payloads.
+- **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).
+- **Prompt Injection scan** — flags suspicious patterns in tool names, descriptions, and parameter metadata with highlighted matches.
+- **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-explorer/` and exportable as Markdown.
 - **Meta-tool discovery** — recognizes tools that exist to discover *other* tools (`list_tools`, `search_tools`, `invoke_tool`, `get_manifest`, etc.) and surfaces a one-click **Discover all tools** button. Discovered tools appear in a collapsible section in the tool list and can be invoked directly or routed through a proxy meta-tool.
 
 ## Tech

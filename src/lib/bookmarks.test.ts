@@ -5,7 +5,7 @@ import { _seedCache, _resetCache } from './appData';
 describe('bookmarks', () => {
   beforeEach(() => {
     _resetCache();
-    _seedCache({ version: 1, bookmarks: [], history: [] });
+    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {} });
   });
 
   it('loadBookmarks returns empty set when no bookmarks', () => {
