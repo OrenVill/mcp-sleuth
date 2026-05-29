@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/OrenVill/mcp-explorer/compare/v0.8.0...v0.8.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* include daemon-lock.js in npm package files ([#46](https://github.com/OrenVill/mcp-explorer/issues/46)) ([0386c68](https://github.com/OrenVill/mcp-explorer/commit/0386c6873a8b8f248dbc89771785d6c58a8ff94a))
+
 ## [0.8.0](https://github.com/OrenVill/mcp-explorer/compare/v0.7.0...v0.8.0) (2026-05-28)
 
 
