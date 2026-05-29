@@ -24,6 +24,7 @@
   "files": [
     "bin",
     "dist",
+    "daemon-lock.js",
     "server.js",
     "proxy.js",
     "proxy.d.ts",
