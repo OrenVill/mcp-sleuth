@@ -71,6 +71,26 @@ test.describe.serial('Electron — launch and security posture', () => {
     expect(message).toContain('Blocked IPC channel');
   });
 
+  test('the OS draws no native title bar', async () => {
+    // A native bar would appear as a light strip above the dark app. Its absence
+    // is the difference between "an app" and "a stray browser window".
+    const px = await launched.app.evaluate(async ({ BrowserWindow }) => {
+      const w = BrowserWindow.getAllWindows()[0];
+      return w.getBounds().height - w.getContentBounds().height;
+    });
+    expect(px).toBe(0);
+  });
+
+  test('the pre-vault screen still offers a drag handle', async () => {
+    // No header is rendered before the vault exists, so without this strip the
+    // window could not be moved at all.
+    const region = await launched.page.evaluate(() => {
+      const strip = document.querySelector('.app-drag-strip');
+      return strip ? getComputedStyle(strip).getPropertyValue('-webkit-app-region') : null;
+    });
+    expect(region).toBe('drag');
+  });
+
   test('no console errors during startup', () => {
     expect(consoleErrors).toEqual([]);
   });

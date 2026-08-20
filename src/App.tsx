@@ -29,6 +29,7 @@ import {
 import { detectMetaTools } from './lib/discovery/detect';
 import { runDiscovery } from './lib/discovery/orchestrator';
 import { loadLegacyServers, type StoredServer } from './lib/storage';
+import { getHost } from './lib/host';
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
@@ -631,28 +632,41 @@ export default function App() {
     setSelectedResourceUri(null);
   }
 
+  // The desktop build hides the native title bar, so the app header doubles as it.
+  // The pre-vault screens render no header, hence this strip — otherwise there is
+  // nothing to grab to move the window.
+  const dragStrip =
+    getHost().kind === 'electron' ? <div className="app-drag-strip" aria-hidden /> : null;
+
   if (vaultPhase === 'loading') {
     return (
-      <div className="h-full flex items-center justify-center bg-zinc-950 text-zinc-300">
-        Loading...
-      </div>
+      <>
+        {dragStrip}
+        <div className="h-full flex items-center justify-center bg-zinc-950 text-zinc-300">
+          Loading...
+        </div>
+      </>
     );
   }
 
   if (vaultPhase === 'needs-setup') {
     return (
-      <VaultSetup
-        onCreate={handleVaultCreate}
-        migrationHint={Boolean(loadLegacyServers()?.length)}
-        error={vaultError}
-        busy={vaultBusy}
-      />
+      <>
+        {dragStrip}
+        <VaultSetup
+          onCreate={handleVaultCreate}
+          migrationHint={Boolean(loadLegacyServers()?.length)}
+          error={vaultError}
+          busy={vaultBusy}
+        />
+      </>
     );
   }
 
   if (vaultPhase === 'needs-unlock') {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-zinc-950 px-4">
+        {dragStrip}
         <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
         <button
           type="button"
@@ -668,7 +682,7 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      <header className="border-b border-zinc-800/80 px-5 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
+      <header className="app-header border-b border-zinc-800/80 px-5 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
         <div className="flex items-center gap-3">
           <Logo size={30} className="shadow-lg shadow-violet-900/30 rounded-[8px]" />
           <div className="flex items-baseline gap-2">

@@ -13,6 +13,15 @@ export function createWindow() {
     minHeight: 600,
     backgroundColor: '#09090b',
     show: false,
+    // The app draws its own header, so the native title bar is hidden and the
+    // window controls are overlaid into it. Without this the OS draws a light
+    // title bar above a dark app, which looks like a stray browser window.
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#09090b',
+      symbolColor: '#a1a1aa',
+      height: 55,
+    },
     webPreferences: {
       // The renderer displays tool descriptions, markdown, and images from
       // untrusted MCP servers. It must never get Node.
