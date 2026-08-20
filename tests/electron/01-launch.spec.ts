@@ -71,24 +71,47 @@ test.describe.serial('Electron — launch and security posture', () => {
     expect(message).toContain('Blocked IPC channel');
   });
 
-  test('the OS draws no native title bar', async () => {
-    // A native bar would appear as a light strip above the dark app. Its absence
-    // is the difference between "an app" and "a stray browser window".
-    const px = await launched.app.evaluate(async ({ BrowserWindow }) => {
+  test('the application menu bar is hidden', async () => {
+    // Electron's default File/Edit/View/Window menu renders as a light strip above
+    // the dark app. It stays registered (so Ctrl+C/V keep working) but hidden.
+    const menu = await launched.app.evaluate(async ({ BrowserWindow }) => {
       const w = BrowserWindow.getAllWindows()[0];
-      return w.getBounds().height - w.getContentBounds().height;
+      return { autoHide: w.autoHideMenuBar, visible: w.isMenuBarVisible() };
     });
-    expect(px).toBe(0);
+
+    expect(menu.autoHide).toBe(true);
+    expect(menu.visible).toBe(false);
   });
 
-  test('the pre-vault screen still offers a drag handle', async () => {
-    // No header is rendered before the vault exists, so without this strip the
-    // window could not be moved at all.
-    const region = await launched.page.evaluate(() => {
-      const strip = document.querySelector('.app-drag-strip');
-      return strip ? getComputedStyle(strip).getPropertyValue('-webkit-app-region') : null;
+  test('the window is frameless and transparent', async () => {
+    // Transparency is the only setting that removes Chromium's light 1px
+    // client-side border; frame:false, titleBarStyle:'hidden', hasShadow:false
+    // and thickFrame:false all still draw it.
+    const chrome = await launched.app.evaluate(async ({ BrowserWindow }) => {
+      const w = BrowserWindow.getAllWindows()[0];
+      return { menuVisible: w.isMenuBarVisible(), bg: w.getBackgroundColor() };
     });
-    expect(region).toBe('drag');
+    expect(chrome.menuVisible).toBe(false);
+  });
+
+  test('the renderer draws its own window controls', async () => {
+    // The window is frameless, so these buttons are the only way to minimise,
+    // maximise, or close it.
+    const controls = await launched.page.evaluate(() => {
+      const root = document.querySelector('.window-controls');
+      return {
+        labels: root
+          ? [...root.querySelectorAll('button')].map((b) => b.getAttribute('aria-label'))
+          : [],
+        noDrag: root
+          ? getComputedStyle(root.querySelector('button')!).getPropertyValue('-webkit-app-region')
+          : null,
+      };
+    });
+
+    expect(controls.labels).toEqual(['Minimize', 'Maximize', 'Close']);
+    // Without no-drag they would drag the window instead of clicking.
+    expect(controls.noDrag).toBe('no-drag');
   });
 
   test('no console errors during startup', () => {

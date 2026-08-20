@@ -113,32 +113,26 @@ body::before {
   z-index: -1;
 }
 
-/* Desktop build: the app header is the window title bar.
-   `app-region: drag` makes it move the window; interactive children opt back out,
-   and the right padding keeps content clear of the overlaid window controls. */
-[data-host='electron'] .app-header {
+/* Desktop build: the OS title bar is hidden, so the app's own header is it. */
+.app-titlebar {
+  height: 55px;
+  flex: 0 0 55px;
+}
+
+[data-host='electron'] .app-header,
+[data-host='electron'] .app-titlebar {
   -webkit-app-region: drag;
   app-region: drag;
-  padding-right: 140px;
 }
 
 [data-host='electron'] .app-header button,
 [data-host='electron'] .app-header a,
 [data-host='electron'] .app-header input,
-[data-host='electron'] .app-header select {
+[data-host='electron'] .app-header select,
+[data-host='electron'] .app-titlebar button,
+[data-host='electron'] .app-titlebar a,
+[data-host='electron'] .window-controls button {
   -webkit-app-region: no-drag;
   app-region: no-drag;
 }
 
-/* Pre-vault screens have no header, so this strip provides the drag handle.
-   It sits only in the top band, clear of the centred vault card. */
-[data-host='electron'] .app-drag-strip {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 140px;
-  height: 55px;
-  z-index: 50;
-  -webkit-app-region: drag;
-  app-region: drag;
-}

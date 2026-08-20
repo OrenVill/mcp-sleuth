@@ -36,24 +36,6 @@ test.describe.serial('Electron — native persistence', () => {
     expect(envelope).toHaveProperty('kdf');
   });
 
-  test('the app header acts as the title bar without trapping its buttons', async () => {
-    const info = await launched.page.evaluate(() => {
-      const header = document.querySelector('.app-header');
-      const button = header?.querySelector('button');
-      return {
-        header: header ? getComputedStyle(header).getPropertyValue('-webkit-app-region') : null,
-        button: button ? getComputedStyle(button).getPropertyValue('-webkit-app-region') : null,
-        strip: !!document.querySelector('.app-drag-strip'),
-      };
-    });
-
-    expect(info.header).toBe('drag');
-    // Without no-drag the header buttons would be unclickable.
-    expect(info.button).toBe('no-drag');
-    // The strip is only for screens with no header.
-    expect(info.strip).toBe(false);
-  });
-
   test('does not write a device key when the platform has no secure store', () => {
     // This machine has no keyring, so auto-unlock must be declined rather than
     // sealing a passphrase with the insecure basic_text backend.

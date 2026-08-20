@@ -6,6 +6,7 @@ import { APP_ORIGIN, APP_SCHEME, resolveAppPath } from './protocol.js';
 import { createSessionManager } from './mcp/sessions.js';
 import { registerMcpHandlers } from './ipc/mcpHandlers.js';
 import { registerNativeHandlers } from './ipc/nativeHandlers.js';
+import { forwardWindowState, registerWindowHandlers } from './ipc/windowHandlers.js';
 import { createSecretsStore } from './secrets/store.js';
 import { createAppDataStore } from './appdata/store.js';
 import { createWindow } from './window.js';
@@ -58,8 +59,10 @@ if (!app.requestSingleInstanceLock()) {
     const appData = createAppDataStore({ fs: nodeFs, filePath: getAppDataFilePath() });
 
     registerNativeHandlers({ secrets, appData, getWindow: () => mainWindow });
+    registerWindowHandlers(() => mainWindow);
 
     mainWindow = createWindow();
+    forwardWindowState(mainWindow);
 
     const devUrl = process.env.MCP_EXPLORER_DEV_URL;
     void mainWindow.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);

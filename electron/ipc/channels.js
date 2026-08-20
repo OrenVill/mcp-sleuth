@@ -23,6 +23,12 @@ export const CHANNELS = {
   saveEnvelope: 'mcp:saveEnvelope',
   deleteEnvelope: 'mcp:deleteEnvelope',
   autoUnlockPassphrase: 'mcp:autoUnlockPassphrase',
+  // window chrome
+  windowMinimize: 'mcp:windowMinimize',
+  windowMaximizeToggle: 'mcp:windowMaximizeToggle',
+  windowClose: 'mcp:windowClose',
+  windowIsMaximized: 'mcp:windowIsMaximized',
+  windowMaximizedChanged: 'mcp:windowMaximizedChanged',
   // files + app data
   saveFile: 'mcp:saveFile',
   readAppData: 'mcp:readAppData',

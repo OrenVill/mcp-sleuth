@@ -30,6 +30,8 @@ import { detectMetaTools } from './lib/discovery/detect';
 import { runDiscovery } from './lib/discovery/orchestrator';
 import { loadLegacyServers, type StoredServer } from './lib/storage';
 import { getHost } from './lib/host';
+import { TitleBar } from './components/TitleBar';
+import { WindowControls } from './components/WindowControls';
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
@@ -632,57 +634,57 @@ export default function App() {
     setSelectedResourceUri(null);
   }
 
-  // The desktop build hides the native title bar, so the app header doubles as it.
-  // The pre-vault screens render no header, hence this strip — otherwise there is
-  // nothing to grab to move the window.
-  const dragStrip =
-    getHost().kind === 'electron' ? <div className="app-drag-strip" aria-hidden /> : null;
+  // The desktop build hides the OS title bar; these screens render no app header,
+  // so they get a slim one — otherwise there is no app identity and no drag handle.
+  const titleBar = getHost().kind === 'electron' ? <TitleBar /> : null;
 
   if (vaultPhase === 'loading') {
     return (
-      <>
-        {dragStrip}
-        <div className="h-full flex items-center justify-center bg-zinc-950 text-zinc-300">
-          Loading...
-        </div>
-      </>
+      <div className="h-full flex flex-col bg-zinc-950">
+        {titleBar}
+        <div className="flex-1 flex items-center justify-center text-zinc-300">Loading...</div>
+      </div>
     );
   }
 
   if (vaultPhase === 'needs-setup') {
     return (
-      <>
-        {dragStrip}
-        <VaultSetup
-          onCreate={handleVaultCreate}
-          migrationHint={Boolean(loadLegacyServers()?.length)}
-          error={vaultError}
-          busy={vaultBusy}
-        />
-      </>
+      <div className="h-full flex flex-col bg-zinc-950">
+        {titleBar}
+        <div className="flex-1 min-h-0">
+          <VaultSetup
+            onCreate={handleVaultCreate}
+            migrationHint={Boolean(loadLegacyServers()?.length)}
+            error={vaultError}
+            busy={vaultBusy}
+          />
+        </div>
+      </div>
     );
   }
 
   if (vaultPhase === 'needs-unlock') {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-zinc-950 px-4">
-        {dragStrip}
-        <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
-        <button
-          type="button"
-          onClick={() => void handleVaultReset()}
-          disabled={vaultBusy}
-          className="mt-4 text-xs px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-300 hover:text-red-300 hover:border-red-800 hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Reset vault
-        </button>
+      <div className="h-full flex flex-col bg-zinc-950">
+        {titleBar}
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
+          <button
+            type="button"
+            onClick={() => void handleVaultReset()}
+            disabled={vaultBusy}
+            className="mt-4 text-xs px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-300 hover:text-red-300 hover:border-red-800 hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Reset vault
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      <header className="app-header border-b border-zinc-800/80 px-5 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
+      <header className="app-header border-b border-zinc-800/80 pl-5 pr-3 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
         <div className="flex items-center gap-3">
           <Logo size={30} className="shadow-lg shadow-violet-900/30 rounded-[8px]" />
           <div className="flex items-baseline gap-2">
@@ -753,6 +755,7 @@ export default function App() {
             </svg>
             GitHub
           </a>
+          <WindowControls />
         </div>
       </header>
       <div className="flex-1 flex min-h-0">
