@@ -638,7 +638,7 @@ connection. That asymmetry is intentional — it reproduces exactly what
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npm test -- src/lib/host/browser/mcpBrowser.test.ts`
-Expected: PASS, 6 tests.
+Expected: PASS, 7 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -970,7 +970,7 @@ so the `traceOptionalProtocolCall` fallback is `[]`, not `{ prompts: [] }`. Read
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `npm test -- src/lib/mcpClient.test.ts`
-Expected: PASS, 10 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Verify types and the whole unit suite**
 
@@ -1197,8 +1197,18 @@ Run: `grep -n "modelcontextprotocol" src/lib/mcpClient.ts`
 Expected: no output. The SDK must now only be imported by
 `src/lib/host/browser/mcpBrowser.ts`.
 
-Run: `grep -rn "modelcontextprotocol" src/ --include="*.ts" --include="*.tsx" | grep -v test`
-Expected: matches only in `src/lib/host/browser/mcpBrowser.ts`.
+Run: `grep -rln "modelcontextprotocol" src/ --include="*.ts" --include="*.tsx" | grep -v test`
+Expected: exactly three files, and no others:
+- `src/lib/host/browser/mcpBrowser.ts` — the only transport construction. This is the one that matters.
+- `src/lib/connectionErrorMessage.ts` — pre-existing, imports the `UnauthorizedError` and
+  `StreamableHTTPError` *classes* for `instanceof` checks, not transport. Out of scope here.
+- `src/components/ServerFormDialog.tsx` — a false positive: the string
+  `@modelcontextprotocol/server-filesystem` appears in placeholder text, not an import.
+
+**Phase 2 note:** `connectionErrorMessage.ts` relying on `instanceof` is a known problem for
+Electron. Errors crossing the IPC boundary lose their prototype chain, so those checks will
+silently stop matching. Phase 2 must serialise an error code across IPC rather than relying
+on class identity.
 
 - [ ] **Step 5: Commit any fixes and tag the phase complete**
 
