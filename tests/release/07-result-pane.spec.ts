@@ -89,6 +89,8 @@ test.describe.serial('§3.7 — Result pane — rich rendering', () => {
     const imageResources = page.locator('aside + aside ul li').filter({ hasText: /png|jpg|jpeg|svg|image/i });
     if (await imageResources.first().isVisible({ timeout: 1_000 }).catch(() => false)) {
       await imageResources.first().click();
+      // Contents are fetched on demand, same as the HTML resource above.
+      await page.getByRole('button', { name: /^Read$/ }).click();
       await expect(page.locator('img').first()).toBeVisible({ timeout: 3_000 });
       await page.screenshot({ path: 'test-results/07-image-resource.png' });
     }
