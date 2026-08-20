@@ -31,6 +31,17 @@ export function getDataDir(env = process.env) {
   );
 }
 
+/**
+ * True when the data directory is the default location.
+ *
+ * An explicit override means "use exactly this directory", so importing another
+ * directory's vault into it would be wrong — and it would also let a developer's
+ * real vault leak into a throwaway test directory.
+ */
+export function isDefaultDataDir(env = process.env) {
+  return !env.MCP_SLEUTH_DATA_DIR && !env.MCP_EXPLORER_DATA_DIR;
+}
+
 export function getLegacyDataDir() {
   return join(homedir(), LEGACY_DATA_DIR_NAME);
 }
@@ -57,9 +68,12 @@ export function filesToMigrate(legacyEntries, currentEntries) {
 export function migrateLegacyDataDir({
   dataDir = getDataDir(),
   legacyDir = getLegacyDataDir(),
+  isDefault = isDefaultDataDir(),
   fs = { existsSync, readdirSync, mkdirSync, copyFileSync },
 } = {}) {
   try {
+    // Only ever migrate into the default location.
+    if (!isDefault) return [];
     if (dataDir === legacyDir) return [];
     if (!fs.existsSync(legacyDir)) return [];
 

@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { join } from 'node:path';
-import { filesToMigrate, getDataDir, migrateLegacyDataDir } from './data-dir.js';
+import {
+  filesToMigrate,
+  getDataDir,
+  isDefaultDataDir,
+  migrateLegacyDataDir,
+} from './data-dir.js';
 
 describe('getDataDir', () => {
   it('prefers the current env var', () => {
@@ -18,6 +23,17 @@ describe('getDataDir', () => {
 
   it('falls back to a home directory', () => {
     expect(getDataDir({})).toMatch(/\.mcp-sleuth$/);
+  });
+});
+
+describe('isDefaultDataDir', () => {
+  it('is true with no override', () => {
+    expect(isDefaultDataDir({})).toBe(true);
+  });
+
+  it('is false when either override is set', () => {
+    expect(isDefaultDataDir({ MCP_SLEUTH_DATA_DIR: '/x' })).toBe(false);
+    expect(isDefaultDataDir({ MCP_EXPLORER_DATA_DIR: '/x' })).toBe(false);
   });
 });
 
@@ -58,7 +74,7 @@ function fakeFs(tree) {
 describe('migrateLegacyDataDir', () => {
   it('copies a pre-rename vault into the new directory', () => {
     const fs = fakeFs({ '/legacy': ['vault.json', 'data.gz'] });
-    const names = migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', fs });
+    const names = migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs });
 
     expect(names).toEqual(['vault.json', 'data.gz']);
     expect(fs.copied).toEqual([
@@ -69,24 +85,39 @@ describe('migrateLegacyDataDir', () => {
 
   it('leaves the legacy directory in place so a downgrade still works', () => {
     const fs = fakeFs({ '/legacy': ['vault.json'] });
-    migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', fs });
+    migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs });
     // Copy, never move: nothing is unlinked.
     expect(fs.copied).toHaveLength(1);
   });
 
   it('does nothing when there is no legacy directory', () => {
     const fs = fakeFs({});
-    expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', fs })).toEqual([]);
+    expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs })).toEqual([]);
   });
 
   it('does nothing on a second run', () => {
     const fs = fakeFs({ '/legacy': ['vault.json'], '/new': ['vault.json'] });
-    expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', fs })).toEqual([]);
+    expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs })).toEqual([]);
+  });
+
+  it('does not migrate into an explicitly overridden directory', () => {
+    // An override means "use exactly this directory". Migrating into it would
+    // also drag a developer's real vault into a throwaway test directory.
+    const fs = fakeFs({ '/legacy': ['vault.json'] });
+    const names = migrateLegacyDataDir({
+      dataDir: '/custom',
+      legacyDir: '/legacy',
+      isDefault: false,
+      fs,
+    });
+
+    expect(names).toEqual([]);
+    expect(fs.copied).toEqual([]);
   });
 
   it('is a no-op when both paths are the same', () => {
     const fs = fakeFs({ '/same': ['vault.json'] });
-    expect(migrateLegacyDataDir({ dataDir: '/same', legacyDir: '/same', fs })).toEqual([]);
+    expect(migrateLegacyDataDir({ dataDir: '/same', legacyDir: '/same', isDefault: true, fs })).toEqual([]);
   });
 
   it('never throws — a failed migration must not stop startup', () => {
@@ -98,7 +129,7 @@ describe('migrateLegacyDataDir', () => {
       mkdirSync: vi.fn(),
       copyFileSync: vi.fn(),
     };
-    expect(() => migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', fs })).not.toThrow();
-    expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', fs })).toEqual([]);
+    expect(() => migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs })).not.toThrow();
+    expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs })).toEqual([]);
   });
 });
