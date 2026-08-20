@@ -1,3 +1,4 @@
+import { getHost } from './host';
 import type { CallRecord } from './history';
 import type { ObservationJournalsStore } from './observationJournal';
 
@@ -9,17 +10,12 @@ export interface AppData {
 }
 
 const DEFAULT: AppData = { version: 1, bookmarks: [], history: [], observationJournals: {} };
-const APP_DATA_PATH = '/__app_data';
 const LS_BOOKMARKS = 'mcp-explorer:bookmarks';
 const LS_HISTORY = 'mcp-explorer:call-history';
 const LS_APP_DATA = 'mcp-explorer:app-data';
 
 let cache: AppData = { ...DEFAULT };
 let initialized = false;
-
-function prefersFileApi(): boolean {
-  return typeof window !== 'undefined' && window.location.protocol !== 'file:';
-}
 
 function parseAppData(raw: unknown): AppData {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT };
@@ -77,12 +73,7 @@ function clearLegacyLocalStorage(): void {
 }
 
 async function persistToFile(data: AppData): Promise<void> {
-  const res = await fetch(APP_DATA_PATH, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  await getHost().files.writeAppData(data);
 }
 
 function persistToLocalStorage(data: AppData): void {
@@ -92,13 +83,11 @@ function persistToLocalStorage(data: AppData): void {
 }
 
 async function persistAppData(): Promise<void> {
-  if (!prefersFileApi()) {
-    persistToLocalStorage(cache);
-    return;
-  }
   try {
     await persistToFile(cache);
   } catch {
+    // No host-backed store (static build opened from file://, or the server is
+    // gone) — localStorage keeps the app working.
     persistToLocalStorage(cache);
   }
 }
@@ -106,38 +95,29 @@ async function persistAppData(): Promise<void> {
 export async function initAppData(): Promise<void> {
   if (initialized) return;
 
-  if (!prefersFileApi()) {
-    cache = loadFromLocalStorage();
-    initialized = true;
-    return;
-  }
-
   try {
-    const res = await fetch(APP_DATA_PATH, {
-      headers: { Accept: 'application/json' },
-    });
+    const raw = await getHost().files.readAppData();
 
-    if (res.ok) {
-      const raw = await res.json() as unknown;
+    if (raw !== null) {
       cache = parseAppData(raw);
       initialized = true;
       return;
     }
 
-    if (res.status === 404) {
-      const migrated = loadFromLocalStorage();
-      cache = migrated;
-      initialized = true;
-      if (hasLegacyLocalStorage()) {
-        let persistedOk = false;
-        try {
-          await persistToFile(cache);
-          persistedOk = true;
-        } catch { /* keep legacy keys as fallback */ }
-        if (persistedOk) clearLegacyLocalStorage();
-      }
-      return;
+    // null means "nothing stored yet" — the same signal the old 404 branch used.
+    // Migrate any legacy localStorage data into the store on first run.
+    const migrated = loadFromLocalStorage();
+    cache = migrated;
+    initialized = true;
+    if (hasLegacyLocalStorage()) {
+      let persistedOk = false;
+      try {
+        await persistToFile(cache);
+        persistedOk = true;
+      } catch { /* keep legacy keys as fallback */ }
+      if (persistedOk) clearLegacyLocalStorage();
     }
+    return;
   } catch { /* fall through to localStorage */ }
 
   cache = loadFromLocalStorage();
