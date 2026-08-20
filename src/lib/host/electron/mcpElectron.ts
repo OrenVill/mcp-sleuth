@@ -29,7 +29,7 @@ export interface ElectronBridge {
 }
 
 /** Rethrow an IPC failure as an Error carrying `.code`. */
-function unwrap<T>(envelope: IpcEnvelope<unknown>): T {
+export function unwrapEnvelope<T>(envelope: IpcEnvelope<unknown>): T {
   if (envelope.ok) return envelope.value as T;
   const err = new Error(envelope.error.message) as Error & { code?: string };
   err.code = envelope.error.code;
@@ -44,7 +44,7 @@ export function createElectronMcpHost(bridge: ElectronBridge): McpHost {
   bridge.onClosed((serverId) => connected.delete(serverId));
 
   async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
-    return unwrap<T>(await bridge.invoke(channel, ...args));
+    return unwrapEnvelope<T>(await bridge.invoke(channel, ...args));
   }
 
   return {
