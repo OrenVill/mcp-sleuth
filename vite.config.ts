@@ -107,7 +107,7 @@ export default defineConfig({
   plugins: [vaultStoragePlugin(), appDataPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', '*.test.js'],
+    include: ['src/**/*.test.ts', '*.test.js', 'electron/**/*.test.js'],
     passWithNoTests: true,
   },
 });
