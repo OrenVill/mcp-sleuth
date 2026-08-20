@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.0](https://github.com/OrenVill/mcp-sleuth/compare/v0.8.1...v1.0.0) (2026-08-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* ship Sleuth as a desktop app, and rename from MCP Explorer ([#48](https://github.com/OrenVill/mcp-sleuth/issues/48))
+
+### Features
+
+* ship Sleuth as a desktop app, and rename from MCP Explorer ([#48](https://github.com/OrenVill/mcp-sleuth/issues/48)) ([4066718](https://github.com/OrenVill/mcp-sleuth/commit/40667182318ff22634f0d6bdbac9a501cd49b8e4))
+
+
+### Chores
+
+* release the rename as 1.0.0 rather than 0.9.0 ([#50](https://github.com/OrenVill/mcp-sleuth/issues/50)) ([07549e4](https://github.com/OrenVill/mcp-sleuth/commit/07549e43b042dc03a52115970d3afaa0130aaa4a))
+
 ## [0.8.1](https://github.com/OrenVill/mcp-explorer/compare/v0.8.0...v0.8.1) (2026-05-29)
 
 
