@@ -1,13 +1,13 @@
 /**
  * HTTP handler for gzip-compressed app data (bookmarks + history) stored on disk.
- * Default path: ~/.mcp-explorer/data.gz
- * Override directory: MCP_EXPLORER_DATA_DIR=/path/to/dir
+ * Default path: ~/.mcp-sleuth/data.gz
+ * Override directory: MCP_SLEUTH_DATA_DIR=/path/to/dir
  */
 import { gzip, gunzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { homedir } from 'node:os';
+import { getDataDir } from './data-dir.js';
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -21,9 +21,7 @@ export function isAppDataRequest(url) {
 }
 
 export function getAppDataFilePath() {
-  const dir =
-    process.env.MCP_EXPLORER_DATA_DIR ?? join(homedir(), '.mcp-explorer');
-  return join(dir, 'data.gz');
+  return join(getDataDir(), 'data.gz');
 }
 
 async function readBody(req) {

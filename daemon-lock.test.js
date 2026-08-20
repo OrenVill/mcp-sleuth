@@ -1,22 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { readLock, writeLock, deleteLock, isAlive } from './daemon-lock.js';
 
-const TEST_DIR = `/tmp/mcp-explorer-test-${process.pid}`;
+const TEST_DIR = `/tmp/mcp-sleuth-test-${process.pid}`;
 
 describe('daemon-lock', () => {
-  const originalEnv = process.env.MCP_EXPLORER_DATA_DIR;
+  const originalEnv = process.env.MCP_SLEUTH_DATA_DIR;
 
   beforeEach(async () => {
-    process.env.MCP_EXPLORER_DATA_DIR = TEST_DIR;
+    process.env.MCP_SLEUTH_DATA_DIR = TEST_DIR;
     await deleteLock();
   });
 
   afterEach(async () => {
     await deleteLock();
     if (originalEnv === undefined) {
-      delete process.env.MCP_EXPLORER_DATA_DIR;
+      delete process.env.MCP_SLEUTH_DATA_DIR;
     } else {
-      process.env.MCP_EXPLORER_DATA_DIR = originalEnv;
+      process.env.MCP_SLEUTH_DATA_DIR = originalEnv;
     }
   });
 

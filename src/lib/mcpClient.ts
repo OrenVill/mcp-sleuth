@@ -1,95 +1,29 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import type {
-  ResourceEntry,
-  ResourceTemplate,
-  ResourceContent,
   PromptDef,
   PromptMessage,
+  ResourceContent,
+  ResourceEntry,
+  ResourceTemplate,
   ServerAuth,
   ServerStdioConfig,
   ToolDef,
   ToolResult,
 } from '../types';
+import { getHost } from './host';
+import type { McpHost } from './host/types';
 import { traceOptionalProtocolCall, traceProtocolCall } from './protocolTrace';
-import { stdioBridgeMcpUrl } from './stdioParse';
-import { startStdioSession, stopStdioSession } from './stdioSession';
 
-const clients = new Map<string, Client>();
-const transports = new Map<string, StreamableHTTPClientTransport>();
-
-export function transportUrlForServer(
-  target: string,
-  proxyThroughLocal = true,
-  baseOrigin?: string,
-): URL {
-  if (!proxyThroughLocal) return new URL(target);
-
-  const base = baseOrigin ?? window.location.origin;
-  return new URL(`/__mcp_proxy?target=${encodeURIComponent(target)}`, base);
+function mcp(): McpHost {
+  return getHost().mcp;
 }
 
-/** UTF-8 safe Base64 (for HTTP Basic credentials beyond Latin-1). */
-function utf8ToBase64(value: string): string {
-  const bytes = new TextEncoder().encode(value);
-  let binary = '';
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  return btoa(binary);
-}
-
-/** Builds RequestInit headers from persisted MCP auth (StreamableHTTPClientTransport merges these on every request). */
-export function requestInitFromAuth(auth: ServerAuth | undefined): RequestInit | undefined {
-  if (!auth || auth.method === 'none') return undefined;
-
-  const headers = new Headers();
-
-  switch (auth.method) {
-    case 'bearer': {
-      const t = auth.bearerToken?.trim();
-      if (t) headers.set('Authorization', `Bearer ${t}`);
-      break;
-    }
-    case 'api_key': {
-      const name = auth.apiKeyHeader?.trim();
-      const value = auth.apiKeyValue?.trim();
-      if (name && value) headers.set(name, value);
-      break;
-    }
-    case 'basic': {
-      const u = auth.basicUsername ?? '';
-      const p = auth.basicPassword ?? '';
-      headers.set('Authorization', `Basic ${utf8ToBase64(`${u}:${p}`)}`);
-      break;
-    }
-    default:
-      break;
-  }
-
-  if ([...headers.keys()].length === 0) return undefined;
-  return { headers };
-}
-
-async function releaseHttpConnection(serverId: string): Promise<void> {
-  const client = clients.get(serverId);
-  if (client) {
-    try {
-      await client.close();
-    } catch {
-      /* ignore close errors */
-    }
-    clients.delete(serverId);
-  }
-  const transport = transports.get(serverId);
-  if (transport) {
-    try {
-      await transport.close();
-    } catch {
-      /* ignore */
-    }
-    transports.delete(serverId);
+/**
+ * Throws before a trace span is opened, so calls to a disconnected server
+ * do not appear in the Protocol Inspector.
+ */
+function requireConnected(host: McpHost, serverId: string): void {
+  if (!host.isConnected(serverId)) {
+    throw new Error(`Not connected to server "${serverId}"`);
   }
 }
 
@@ -98,35 +32,13 @@ export async function connect(
   url: string,
   auth?: ServerAuth,
   proxyThroughLocal = true,
-  preserveStdioSession = false,
 ): Promise<ToolDef[]> {
-  await releaseHttpConnection(serverId);
-  if (!preserveStdioSession) {
-    await stopStdioSession(serverId);
-  }
-
-  const requestInit = requestInitFromAuth(auth);
-  const transport = new StreamableHTTPClientTransport(
-    transportUrlForServer(url, proxyThroughLocal),
-    requestInit ? { requestInit } : undefined,
-  );
-  const client = new Client(
-    { name: 'mcp-explorer', version: '0.1.0' },
-    { capabilities: {} },
-  );
-
+  const host = mcp();
   await traceProtocolCall(
     { serverId, method: 'initialize', params: { url, proxyThroughLocal } },
-    () => client.connect(transport),
+    () => host.connect(serverId, url, auth, proxyThroughLocal),
   );
-  clients.set(serverId, client);
-  transports.set(serverId, transport);
-
-  const list = await traceProtocolCall(
-    { serverId, method: 'tools/list' },
-    () => client.listTools(),
-  );
-  return list.tools as unknown as ToolDef[];
+  return traceProtocolCall({ serverId, method: 'tools/list' }, () => host.listTools(serverId));
 }
 
 export async function connectStdio(
@@ -134,14 +46,21 @@ export async function connectStdio(
   stdio: ServerStdioConfig,
   stdioEnv: Record<string, string> = {},
 ): Promise<ToolDef[]> {
-  await stopStdioSession(serverId);
-  await startStdioSession(serverId, stdio, stdioEnv);
-  return connect(serverId, stdioBridgeMcpUrl(serverId), undefined, false, true);
+  const host = mcp();
+  await traceProtocolCall(
+    {
+      serverId,
+      method: 'initialize',
+      // `env` is deliberately excluded: it can hold secrets.
+      params: { transport: 'stdio', command: stdio.command, args: stdio.args },
+    },
+    () => host.connectStdio(serverId, stdio, stdioEnv),
+  );
+  return traceProtocolCall({ serverId, method: 'tools/list' }, () => host.listTools(serverId));
 }
 
 export async function disconnect(serverId: string): Promise<void> {
-  await releaseHttpConnection(serverId);
-  await stopStdioSession(serverId);
+  await mcp().disconnect(serverId);
 }
 
 export async function callTool(
@@ -149,19 +68,16 @@ export async function callTool(
   name: string,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
-  const client = clients.get(serverId);
-  if (!client) {
-    throw new Error(`Not connected to server "${serverId}"`);
-  }
-  const result = await traceProtocolCall(
+  const host = mcp();
+  requireConnected(host, serverId);
+  return traceProtocolCall(
     { serverId, method: 'tools/call', params: { name, arguments: args } },
-    () => client.callTool({ name, arguments: args }),
+    () => host.callTool(serverId, name, args),
   );
-  return result as unknown as ToolResult;
 }
 
 export function isConnected(serverId: string): boolean {
-  return clients.has(serverId);
+  return mcp().isConnected(serverId);
 }
 
 /**
@@ -169,13 +85,11 @@ export function isConnected(serverId: string): boolean {
  * Returns an empty array if the server is disconnected.
  */
 export async function refetchTools(serverId: string): Promise<ToolDef[]> {
-  const client = clients.get(serverId);
-  if (!client) return [];
-  const list = await traceProtocolCall(
-    { serverId, method: 'tools/list', params: { refresh: true } },
-    () => client.listTools(),
+  const host = mcp();
+  if (!host.isConnected(serverId)) return [];
+  return traceProtocolCall({ serverId, method: 'tools/list', params: { refresh: true } }, () =>
+    host.listTools(serverId),
   );
-  return list.tools as unknown as ToolDef[];
 }
 
 /**
@@ -183,53 +97,41 @@ export async function refetchTools(serverId: string): Promise<ToolDef[]> {
  * Returns an unsubscribe function. No-op if disconnected.
  */
 export function onToolsChanged(serverId: string, handler: () => void): () => void {
-  const client = clients.get(serverId);
-  if (!client) return () => {};
-  client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
-    handler();
-  });
-  return () => {
-    client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {});
-  };
+  return mcp().onToolsChanged(serverId, handler);
 }
 
 export async function listResources(
   serverId: string,
 ): Promise<{ resources: ResourceEntry[]; templates: ResourceTemplate[] }> {
-  const client = clients.get(serverId);
-  if (!client) throw new Error(`Not connected to server "${serverId}"`);
+  const host = mcp();
+  requireConnected(host, serverId);
   const result = await traceOptionalProtocolCall(
     { serverId, method: 'resources/list' },
-    () => client.listResources(),
+    () => host.listResources(serverId),
     { resources: [], resourceTemplates: [] },
   );
-  const resources = (result.resources ?? []) as unknown as ResourceEntry[];
-  const templates = (result.resourceTemplates ?? []) as unknown as ResourceTemplate[];
-  return { resources, templates };
+  return { resources: result.resources, templates: result.resourceTemplates };
 }
 
 export async function readResource(
   serverId: string,
   uri: string,
 ): Promise<{ contents: ResourceContent[] }> {
-  const client = clients.get(serverId);
-  if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await traceProtocolCall(
-    { serverId, method: 'resources/read', params: { uri } },
-    () => client.readResource({ uri }),
+  const host = mcp();
+  requireConnected(host, serverId);
+  return traceProtocolCall({ serverId, method: 'resources/read', params: { uri } }, () =>
+    host.readResource(serverId, uri),
   );
-  return { contents: result.contents as unknown as ResourceContent[] };
 }
 
 export async function listPrompts(serverId: string): Promise<PromptDef[]> {
-  const client = clients.get(serverId);
-  if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await traceOptionalProtocolCall(
+  const host = mcp();
+  requireConnected(host, serverId);
+  return traceOptionalProtocolCall(
     { serverId, method: 'prompts/list' },
-    () => client.listPrompts(),
-    { prompts: [] },
+    () => host.listPrompts(serverId),
+    [] as PromptDef[],
   );
-  return result.prompts as unknown as PromptDef[];
 }
 
 export async function getPrompt(
@@ -237,11 +139,10 @@ export async function getPrompt(
   name: string,
   args: Record<string, string>,
 ): Promise<PromptMessage[]> {
-  const client = clients.get(serverId);
-  if (!client) throw new Error(`Not connected to server "${serverId}"`);
-  const result = await traceProtocolCall(
+  const host = mcp();
+  requireConnected(host, serverId);
+  return traceProtocolCall(
     { serverId, method: 'prompts/get', params: { name, arguments: args } },
-    () => client.getPrompt({ name, arguments: args }),
+    () => host.getPrompt(serverId, name, args),
   );
-  return result.messages as unknown as PromptMessage[];
 }

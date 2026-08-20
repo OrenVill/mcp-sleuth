@@ -111,7 +111,9 @@ function DevToolsModalContent({
           ))}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
+        {/* data-selectable: dev tools panels are read-only inspection surfaces
+            users copy JSON, schemas and findings out of. */}
+        <div data-selectable className="flex-1 min-h-0 overflow-hidden">
           <div hidden={activeTab !== 'protocol'} className="h-full min-h-0 overflow-hidden">
             <ProtocolInspectorPanel servers={servers} />
           </div>

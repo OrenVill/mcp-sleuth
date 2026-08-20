@@ -29,11 +29,15 @@ import {
 import { detectMetaTools } from './lib/discovery/detect';
 import { runDiscovery } from './lib/discovery/orchestrator';
 import { loadLegacyServers, type StoredServer } from './lib/storage';
+import { getHost } from './lib/host';
+import { TitleBar } from './components/TitleBar';
+import { WindowControls } from './components/WindowControls';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
+  bootstrapVault,
   createVault,
-  getBootstrapPhase,
   resetVault,
   saveVault,
   unlockVault,
@@ -103,6 +107,7 @@ export default function App() {
   const [vaultPhase, setVaultPhase] = useState<VaultPhase>('loading');
   const [vaultError, setVaultError] = useState<string | null>(null);
   const [vaultBusy, setVaultBusy] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [servers, setServers] = useState<ServerEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
@@ -130,8 +135,14 @@ export default function App() {
     void (async () => {
       await initAppData().catch(() => { /* silent — falls back to in-memory defaults */ });
       try {
-        const phase = await getBootstrapPhase();
-        setVaultPhase(phase);
+        const result = await bootstrapVault();
+        if (result.phase === 'ready') {
+          aesKeyRef.current = result.aesKey;
+          setServers(fromStoredServers(result.servers));
+          setVaultPhase('ready');
+        } else {
+          setVaultPhase(result.phase);
+        }
       } catch {
         setVaultError('Could not initialize vault.');
         setVaultPhase('needs-setup');
@@ -154,7 +165,7 @@ export default function App() {
       const key = aesKeyRef.current;
       if (phase !== 'ready' || !key) return;
       void saveVault(key, toStoredServers(serversRef.current)).catch((err: unknown) => {
-        console.error('mcp-explorer: vault background save failed', err);
+        console.error('mcp-sleuth: vault background save failed', err);
       });
     }
 
@@ -582,9 +593,7 @@ export default function App() {
   }
 
   async function handleVaultReset() {
-    if (!window.confirm('Reset vault? This will permanently remove all stored servers and credentials.')) {
-      return;
-    }
+    setResetConfirmOpen(false);
     setVaultBusy(true);
     try {
       await resetVault();
@@ -625,53 +634,81 @@ export default function App() {
     setSelectedResourceUri(null);
   }
 
+  // Desktop builds drop a couple of web-page affordances from the header: a
+  // marketing tagline and a labelled GitHub link read as a website, not an app.
+  const isDesktop = getHost().kind === 'electron';
+
+  // The desktop build hides the OS title bar; these screens render no app header,
+  // so they get a slim one — otherwise there is no app identity and no drag handle.
+  const titleBar = getHost().kind === 'electron' ? <TitleBar /> : null;
+
   if (vaultPhase === 'loading') {
     return (
-      <div className="h-full flex items-center justify-center bg-zinc-950 text-zinc-300">
-        Loading...
+      <div className="h-full flex flex-col bg-zinc-950">
+        {titleBar}
+        <div className="flex-1 flex items-center justify-center text-zinc-300">Loading...</div>
       </div>
     );
   }
 
   if (vaultPhase === 'needs-setup') {
     return (
-      <VaultSetup
-        onCreate={handleVaultCreate}
-        migrationHint={Boolean(loadLegacyServers()?.length)}
-        error={vaultError}
-        busy={vaultBusy}
-      />
+      <div className="h-full flex flex-col bg-zinc-950">
+        {titleBar}
+        <div className="flex-1 min-h-0">
+          <VaultSetup
+            onCreate={handleVaultCreate}
+            migrationHint={Boolean(loadLegacyServers()?.length)}
+            error={vaultError}
+            busy={vaultBusy}
+          />
+        </div>
+      </div>
     );
   }
 
   if (vaultPhase === 'needs-unlock') {
     return (
-      <div className="h-full flex flex-col items-center justify-center bg-zinc-950 px-4">
-        <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
-        <button
-          type="button"
-          onClick={() => void handleVaultReset()}
-          disabled={vaultBusy}
-          className="mt-4 text-xs px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-300 hover:text-red-300 hover:border-red-800 hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          Reset vault
-        </button>
+      <div className="h-full flex flex-col bg-zinc-950">
+        {titleBar}
+        <div className="flex-1 flex flex-col items-center justify-center px-4">
+          <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
+          <button
+            type="button"
+            onClick={() => setResetConfirmOpen(true)}
+            disabled={vaultBusy}
+            className="mt-4 text-xs px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-300 hover:text-red-300 hover:border-red-800 hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Reset vault
+          </button>
+        </div>
+        <ConfirmDialog
+          open={resetConfirmOpen}
+          title="Reset vault?"
+          message="This permanently removes all stored servers and credentials. It cannot be undone."
+          confirmLabel="Reset vault"
+          danger
+          onConfirm={() => void handleVaultReset()}
+          onCancel={() => setResetConfirmOpen(false)}
+        />
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col bg-zinc-950">
-      <header className="border-b border-zinc-800/80 px-5 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
+      <header className="app-header border-b border-zinc-800/80 pl-5 pr-3 py-3 flex items-center justify-between bg-zinc-950/80 backdrop-blur">
         <div className="flex items-center gap-3">
           <Logo size={30} className="shadow-lg shadow-violet-900/30 rounded-[8px]" />
           <div className="flex items-baseline gap-2">
             <h1 className="text-zinc-50 font-semibold tracking-tight">
-              MCP Explorer
+              Sleuth
             </h1>
-            <span className="text-xs text-zinc-500 hidden sm:inline">
-              connect · list · invoke
-            </span>
+            {!isDesktop && (
+              <span className="text-xs text-zinc-500 hidden sm:inline">
+                connect · list · invoke
+              </span>
+            )}
           </div>
           {servers.length > 0 && (
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
@@ -723,16 +760,17 @@ export default function App() {
             <span>⌘K</span>
           </button>
           <a
-            href="https://github.com/OrenVill/mcp-explorer"
+            href="https://github.com/OrenVill/mcp-sleuth"
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-zinc-500 hover:text-zinc-200 transition-colors flex items-center gap-1.5"
+            className={`text-xs text-zinc-500 hover:text-zinc-200 transition-colors flex items-center gap-1.5${isDesktop ? ' p-1.5 rounded-md hover:bg-zinc-800/80' : ''}`}
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
               <path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" />
             </svg>
-            GitHub
+            {!isDesktop && 'GitHub'}
           </a>
+          <WindowControls />
         </div>
       </header>
       <div className="flex-1 flex min-h-0">

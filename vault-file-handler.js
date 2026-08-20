@@ -1,11 +1,11 @@
 /**
  * HTTP handler for encrypted vault JSON stored on disk (npm / node server + Vite dev).
- * Default path: ~/.mcp-explorer/vault.json
- * Override directory: MCP_EXPLORER_DATA_DIR=/path/to/dir (file will be vault.json inside it).
+ * Default path: ~/.mcp-sleuth/vault.json
+ * Override directory: MCP_SLEUTH_DATA_DIR=/path/to/dir (file will be vault.json inside it).
  */
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { homedir } from 'node:os';
+import { getDataDir } from './data-dir.js';
 
 export const VAULT_STORAGE_URL_PATH = '/__vault_storage';
 
@@ -17,9 +17,7 @@ export function isVaultStorageRequest(url) {
 }
 
 export function getVaultFilePath() {
-  const dir =
-    process.env.MCP_EXPLORER_DATA_DIR ?? join(homedir(), '.mcp-explorer');
-  return join(dir, 'vault.json');
+  return join(getDataDir(), 'vault.json');
 }
 
 async function readBody(req) {

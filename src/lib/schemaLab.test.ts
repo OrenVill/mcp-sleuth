@@ -295,7 +295,7 @@ describe('schemaLab', () => {
     expect(validateToolSchema(noTypeTool)).toEqual([
       {
         severity: 'info',
-        message: 'No obvious schema issues found for the subset supported by MCP Explorer.',
+        message: 'No obvious schema issues found for the subset supported by Sleuth.',
       },
     ]);
   });
@@ -330,7 +330,7 @@ describe('schemaLab', () => {
     expect(validateToolSchema(nullableTool)).toEqual([
       {
         severity: 'info',
-        message: 'No obvious schema issues found for the subset supported by MCP Explorer.',
+        message: 'No obvious schema issues found for the subset supported by Sleuth.',
       },
     ]);
   });
@@ -339,7 +339,7 @@ describe('schemaLab', () => {
     expect(validateToolSchema(tool)).toEqual([
       {
         severity: 'info',
-        message: 'No obvious schema issues found for the subset supported by MCP Explorer.',
+        message: 'No obvious schema issues found for the subset supported by Sleuth.',
       },
     ]);
   });

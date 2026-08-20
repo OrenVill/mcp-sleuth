@@ -72,6 +72,9 @@ test.describe.serial('§3.7 — Result pane — rich rendering', () => {
     const resources = page.locator('aside + aside ul li').filter({ hasText: /html/i });
     if (await resources.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
       await resources.first().click();
+      // Resource contents are fetched on demand — ResourceDetail renders a Read
+      // button and only mounts the Code/Preview toggle once contents arrive.
+      await page.getByRole('button', { name: /^Read$/ }).click();
       const previewBtn = page.getByRole('button', { name: /preview/i }).or(
         page.getByRole('tab', { name: /preview/i }),
       );
@@ -86,6 +89,8 @@ test.describe.serial('§3.7 — Result pane — rich rendering', () => {
     const imageResources = page.locator('aside + aside ul li').filter({ hasText: /png|jpg|jpeg|svg|image/i });
     if (await imageResources.first().isVisible({ timeout: 1_000 }).catch(() => false)) {
       await imageResources.first().click();
+      // Contents are fetched on demand, same as the HTML resource above.
+      await page.getByRole('button', { name: /^Read$/ }).click();
       await expect(page.locator('img').first()).toBeVisible({ timeout: 3_000 });
       await page.screenshot({ path: 'test-results/07-image-resource.png' });
     }
