@@ -105,4 +105,23 @@ describe('sessionManager', () => {
       env: { FOO: 'bar' },
     });
   });
+
+  it('drops the session and notifies when the transport closes', async () => {
+    const transport = { close: vi.fn(async () => undefined) };
+    manager = createSessionManager({
+      createClient: () => client,
+      createHttpTransport: () => transport,
+      createStdioTransport: vi.fn(),
+    });
+    const closed = [];
+    manager.onClosed((id) => closed.push(id));
+
+    await manager.connect('srv-1', 'https://x/mcp');
+    expect(manager.isConnected('srv-1')).toBe(true);
+
+    transport.onclose();
+
+    expect(manager.isConnected('srv-1')).toBe(false);
+    expect(closed).toEqual(['srv-1']);
+  });
 });

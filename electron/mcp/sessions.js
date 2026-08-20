@@ -55,6 +55,7 @@ export function createSessionManager(deps = createDefaultDeps()) {
   /** @type {Map<string, {client: any, transport: any}>} */
   const sessions = new Map();
   const toolsChangedListeners = new Set();
+  const closedListeners = new Set();
 
   function requireId(serverId) {
     if (!isValidServerId(serverId)) {
@@ -90,6 +91,14 @@ export function createSessionManager(deps = createDefaultDeps()) {
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
       for (const listener of toolsChangedListeners) listener(serverId);
     });
+    // A transport can drop without the renderer asking (server restart, stdio child
+    // exit). Guard on identity so a stale transport cannot evict a newer session.
+    transport.onclose = () => {
+      if (sessions.get(serverId)?.transport === transport) {
+        sessions.delete(serverId);
+        for (const listener of closedListeners) listener(serverId);
+      }
+    };
     sessions.set(serverId, { client, transport });
   }
 
@@ -164,6 +173,11 @@ export function createSessionManager(deps = createDefaultDeps()) {
     onToolsChanged(listener) {
       toolsChangedListeners.add(listener);
       return () => toolsChangedListeners.delete(listener);
+    },
+
+    onClosed(listener) {
+      closedListeners.add(listener);
+      return () => closedListeners.delete(listener);
     },
 
     async closeAll() {
