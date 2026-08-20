@@ -40,3 +40,40 @@ describe('formatConnectionError', () => {
     expect(out).toContain('not-a-real-command');
   });
 });
+
+describe('electron IPC errors', () => {
+  it('treats an E_CONNECT code like a transport failure', () => {
+    const err = Object.assign(new Error('fetch failed'), { code: 'E_CONNECT' });
+    const message = formatConnectionError(err);
+
+    expect(message).toBeTruthy();
+    expect(message).not.toContain('[object Object]');
+  });
+
+  it('gives the same refused-connection guidance as the browser path', () => {
+    const err = Object.assign(new Error('ECONNREFUSED 127.0.0.1:9999'), {
+      code: 'E_CONNECT',
+    });
+
+    expect(formatConnectionError(err)).toContain('Connection refused');
+  });
+
+  it('gives spawn guidance for a stdio failure that crossed IPC', () => {
+    const err = Object.assign(new Error('spawn nonesuch ENOENT'), {
+      code: 'E_CONNECT_STDIO',
+    });
+    const message = formatConnectionError(err);
+
+    expect(message).toContain('Could not start process');
+    expect(message).toContain('nonesuch');
+  });
+
+  it('formats a coded error identically to the same error without a code', () => {
+    const plain = new Error('ECONNREFUSED 127.0.0.1:9999');
+    const coded = Object.assign(new Error('ECONNREFUSED 127.0.0.1:9999'), {
+      code: 'E_CONNECT',
+    });
+
+    expect(formatConnectionError(coded)).toBe(formatConnectionError(plain));
+  });
+});
