@@ -1,7 +1,7 @@
 {
   "name": "@orenvill/mcp-sleuth",
-  "version": "1.0.0",
-  "description": "Investigate any MCP server \u2014 inspect the protocol, invoke tools, and audit what a server can reach, from the browser or the desktop app.",
+  "version": "1.0.1",
+  "description": "Investigate any MCP server — inspect the protocol, invoke tools, and audit what a server can reach, from the browser or the desktop app.",
   "license": "MIT",
   "author": "OrenVill (https://github.com/OrenVill)",
   "type": "module",
