@@ -32,8 +32,8 @@ import { loadLegacyServers, type StoredServer } from './lib/storage';
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
+  bootstrapVault,
   createVault,
-  getBootstrapPhase,
   resetVault,
   saveVault,
   unlockVault,
@@ -130,8 +130,14 @@ export default function App() {
     void (async () => {
       await initAppData().catch(() => { /* silent — falls back to in-memory defaults */ });
       try {
-        const phase = await getBootstrapPhase();
-        setVaultPhase(phase);
+        const result = await bootstrapVault();
+        if (result.phase === 'ready') {
+          aesKeyRef.current = result.aesKey;
+          setServers(fromStoredServers(result.servers));
+          setVaultPhase('ready');
+        } else {
+          setVaultPhase(result.phase);
+        }
       } catch {
         setVaultError('Could not initialize vault.');
         setVaultPhase('needs-setup');
