@@ -18,10 +18,21 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run build && node server.js',
-    url: 'http://127.0.0.1:4173',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: 'npm run build && node server.js',
+      url: 'http://127.0.0.1:4173',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
+      // MCP fixture the live-connection specs (05 onward) connect to.
+      // Uses `port` rather than `url`: GET /mcp returns 406 by design, so a
+      // URL health check would never go green.
+      command: 'node tests/fixtures/http-mcp-server.mjs',
+      port: 3001,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+  ],
 });
