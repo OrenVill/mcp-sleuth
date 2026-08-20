@@ -52,13 +52,36 @@ export interface McpHost {
   onToolsChanged(serverId: string, handler: () => void): () => void;
 }
 
-/** Writing generated content out of the app. */
+/** The encrypted vault envelope, opaque at this layer. */
+export type VaultEnvelopeBlob = unknown;
+
+/**
+ * Credential storage. The browser implementation has no OS secure store, so it
+ * never offers an automatic unlock; Electron seals a generated passphrase with
+ * `safeStorage` and unlocks the same PBKDF2 envelope without prompting.
+ */
+export interface SecretsHost {
+  loadEnvelope(): Promise<VaultEnvelopeBlob | null>;
+  saveEnvelope(envelope: VaultEnvelopeBlob): Promise<void>;
+  deleteEnvelope(): Promise<void>;
+  /**
+   * A device-managed passphrase that unlocks the vault without prompting, or null
+   * when this platform has no secure store and the user must type one.
+   */
+  getAutoUnlockPassphrase(): Promise<string | null>;
+}
+
+/** Writing generated content out of the app, and persisted app data. */
 export interface FilesHost {
   saveFile(filename: string, content: string, mimeType: string): void;
+  /** Persisted app data (bookmarks, history, journals), or null if none stored. */
+  readAppData(): Promise<unknown | null>;
+  writeAppData(data: unknown): Promise<void>;
 }
 
 export interface Host {
   readonly kind: 'browser' | 'electron';
   readonly mcp: McpHost;
   readonly files: FilesHost;
+  readonly secrets: SecretsHost;
 }
