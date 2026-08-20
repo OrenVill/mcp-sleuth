@@ -386,7 +386,7 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="relative flex bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+      <div data-selectable className="relative flex bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
         {/* Sidebar — scenario list */}
         <div className="w-56 shrink-0 border-r border-zinc-800 flex flex-col">
           <div className="px-3 pt-4 pb-3 border-b border-zinc-800 flex items-center justify-between">
