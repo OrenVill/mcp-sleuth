@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getHost, resetHost, setHost } from './index';
 import type { Host } from './types';
 
@@ -21,6 +21,35 @@ describe('getHost', () => {
   it('restores the default after reset', () => {
     setHost(fakeHost);
     resetHost();
+    expect(getHost().kind).toBe('browser');
+  });
+});
+
+describe('bridge detection', () => {
+  afterEach(() => {
+    resetHost();
+    vi.unstubAllGlobals();
+  });
+
+  it('picks the electron host when the preload bridge is present', () => {
+    vi.stubGlobal('window', {
+      mcpExplorer: {
+        kind: 'electron',
+        invoke: async () => ({ ok: true, value: undefined }),
+        onToolsChanged: () => () => {},
+        onClosed: () => () => {},
+      },
+    });
+
+    expect(getHost().kind).toBe('electron');
+  });
+
+  it('falls back to the browser host when the bridge is absent', () => {
+    vi.stubGlobal('window', {});
+    expect(getHost().kind).toBe('browser');
+  });
+
+  it('falls back to the browser host when there is no window at all', () => {
     expect(getHost().kind).toBe('browser');
   });
 });
