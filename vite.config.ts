@@ -29,7 +29,7 @@ function vaultStorageMiddleware(
 /** Run before Vite's SPA HTML fallback so GET /__vault_storage hits the file store. */
 function vaultStoragePlugin(): PluginOption {
   return {
-    name: 'mcp-explorer-vault-storage',
+    name: 'mcp-sleuth-vault-storage',
     enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(vaultStorageMiddleware);
@@ -60,7 +60,7 @@ function appDataMiddleware(
 
 function appDataPlugin(): PluginOption {
   return {
-    name: 'mcp-explorer-app-data',
+    name: 'mcp-sleuth-app-data',
     enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(appDataMiddleware);
@@ -91,7 +91,7 @@ function stdioBridgeMiddleware(
 
 function mcpProxyPlugin(): PluginOption {
   return {
-    name: 'mcp-explorer-proxy',
+    name: 'mcp-sleuth-proxy',
     configureServer(server) {
       server.middlewares.use(stdioBridgeMiddleware);
       server.middlewares.use(PROXY_PATH, handleMcpProxy);
@@ -107,7 +107,7 @@ export default defineConfig({
   plugins: [vaultStoragePlugin(), appDataPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', '*.test.js'],
+    include: ['src/**/*.test.ts', '*.test.js', 'electron/**/*.test.js'],
     passWithNoTests: true,
   },
 });

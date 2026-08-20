@@ -1,9 +1,9 @@
 ---
 name: prepare-for-release
-description: Pre-release checklist for mcp-explorer. Run before merging the release-please PR or triggering npm publish. Covers build, tests, lint, and the automated Playwright release suite.
+description: Pre-release checklist for mcp-sleuth. Run before merging the release-please PR or triggering npm publish. Covers build, tests, lint, and the automated Playwright release suite.
 ---
 
-# Pre-Release Checklist — mcp-explorer
+# Pre-Release Checklist — mcp-sleuth
 
 Use this skill before merging the release-please PR or publishing to npm.
 Work through every section in order. Do not mark the release ready until all sections pass.
@@ -29,21 +29,21 @@ All three must exit 0. A failing build means the published package is broken. A 
 Start the built output the way an end-user would (not the Vite dev server):
 
 ```bash
-mcp-explorer --no-open   # or: node bin/mcp-explorer.js --no-open
+mcp-sleuth --no-open   # or: node bin/mcp-sleuth.js --no-open
 ```
 
 Confirm:
 - The process starts without error.
-- It prints the ready line: `mcp-explorer  ➜  http://127.0.0.1:4173/`
+- It prints the ready line: `mcp-sleuth  ➜  http://127.0.0.1:4173/`
 - `curl -s http://127.0.0.1:4173/ | head -5` returns HTML (not an error page).
 
 Then test the stop subcommand:
 
 ```bash
-mcp-explorer stop
+mcp-sleuth stop
 ```
 
-Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-explorer.js` for the lock path).
+Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-sleuth.js` for the lock path).
 
 **Why this matters:** The daemon/lock-file and stop subcommand were added in v0.6.0. If either is broken, the CLI is the user's primary entry point and the release is a regression.
 
@@ -102,5 +102,5 @@ All of the above pass → merge the release-please PR. The GitHub Action will:
 3. Run `npm publish` (which fires `prepublishOnly` → swaps README → publishes → `postpublish` → restores README)
 
 After the Action completes, verify:
-- `https://www.npmjs.com/package/@orenvill/mcp-explorer` shows the new version, and the README displayed is the npm-focused one (starts with install instructions, not the Layout section).
-- In a clean shell: `npm install -g @orenvill/mcp-explorer@latest` → `mcp-explorer` → confirms it opens the browser correctly.
+- `https://www.npmjs.com/package/@orenvill/mcp-sleuth` shows the new version, and the README displayed is the npm-focused one (starts with install instructions, not the Layout section).
+- In a clean shell: `npm install -g @orenvill/mcp-sleuth@latest` → `mcp-sleuth` → confirms it opens the browser correctly.

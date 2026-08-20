@@ -192,7 +192,7 @@ function renderReplaySuitesSection(suites: ReplaySuite[]): string {
   const lines: string[] = [];
   lines.push('## Replay Suites');
   lines.push('');
-  lines.push('_These suites can be imported and executed in MCP Explorer._');
+  lines.push('_These suites can be imported and executed in Sleuth._');
 
   for (const suite of suites) {
     lines.push('');

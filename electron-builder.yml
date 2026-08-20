@@ -1,0 +1,66 @@
+appId: com.orenvill.sleuth
+productName: Sleuth
+copyright: MIT
+
+directories:
+  output: release
+  buildResources: build
+
+# Without this the artifact name is derived from the scoped package name and the
+# "/" in "@orenvill/mcp-sleuth" is treated as a path separator, so the deb is
+# written to release/@orenvill/ (and silently fails).
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+# `main` is injected only into the packaged app. The published npm package must
+# keep no `main` field — it is a CLI (`bin`), and a `main` pointing at
+# electron/main.js would make `require('@orenvill/mcp-sleuth')` boot a window.
+extraMetadata:
+  main: electron/main.js
+
+# electron/main.js and electron/windowState.js import these three root modules.
+# Omitting any of them produces an app that installs cleanly then crashes on
+# launch, which is the failure this list exists to prevent.
+files:
+  - dist/**
+  - electron/**
+  - vault-file-handler.js
+  - app-data-handler.js
+  - daemon-lock.js
+  - data-dir.js
+  - package.json
+  - '!**/*.test.js'
+  - '!**/*.map'
+
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+    - target: zip
+      arch: [x64, arm64]
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+
+linux:
+  category: Development
+  # Debian requires a maintainer with an address. A GitHub noreply address keeps
+  # a personal one out of the published package; change it if you prefer.
+  maintainer: OrenVill <OrenVill@users.noreply.github.com>
+  # Without this the binary is named from the scoped package — "@orenvillmcp-sleuth".
+  executableName: mcp-sleuth
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]

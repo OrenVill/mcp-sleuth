@@ -37,3 +37,6 @@ _README.github.md
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# electron-builder output
+/release/

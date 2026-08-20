@@ -1,10 +1,9 @@
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { homedir } from 'node:os';
+import { getDataDir } from './data-dir.js';
 
 export function getLockPath() {
-  const dir = process.env.MCP_EXPLORER_DATA_DIR ?? join(homedir(), '.mcp-explorer');
-  return join(dir, 'daemon.json');
+  return join(getDataDir(), 'daemon.json');
 }
 
 export async function readLock() {

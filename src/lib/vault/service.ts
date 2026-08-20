@@ -1,4 +1,5 @@
-import { clearLegacyServers, type StoredServer } from '../storage';
+import { getHost } from '../host';
+import { clearLegacyServers, loadLegacyServers, type StoredServer } from '../storage';
 import {
   buildCipherBlob,
   buildKdfParams,
@@ -12,7 +13,10 @@ import {
 import { deleteVaultRecord, getVaultEnvelope, putVaultEnvelope } from './vaultPersistence';
 import type { VaultEnvelope } from './types';
 
-export type BootstrapPhase = 'needs-setup' | 'needs-unlock';
+export type VaultBootstrap =
+  | { phase: 'ready'; aesKey: CryptoKey; servers: StoredServer[] }
+  | { phase: 'needs-setup' }
+  | { phase: 'needs-unlock' };
 
 function parseStoredServers(jsonText: string): StoredServer[] {
   let parsed: unknown;
@@ -34,9 +38,35 @@ function requireEnvelope(envelope: VaultEnvelope | null): VaultEnvelope {
   return envelope;
 }
 
-export async function getBootstrapPhase(): Promise<BootstrapPhase> {
+/**
+ * Decide how the app should start.
+ *
+ * On a platform with a secure store the desktop app never prompts: a generated
+ * device passphrase creates or unlocks the vault. Everywhere else this reduces to
+ * the existing needs-setup / needs-unlock split.
+ */
+export async function bootstrapVault(): Promise<VaultBootstrap> {
   const envelope = await getVaultEnvelope();
-  return envelope ? 'needs-unlock' : 'needs-setup';
+  const autoPassphrase = await getHost().secrets.getAutoUnlockPassphrase();
+
+  if (!autoPassphrase) {
+    return envelope ? { phase: 'needs-unlock' } : { phase: 'needs-setup' };
+  }
+
+  if (envelope) {
+    try {
+      const { aesKey, servers } = await unlockVault(autoPassphrase);
+      return { phase: 'ready', aesKey, servers };
+    } catch {
+      // A vault created before the secure store existed, or with a user-chosen
+      // passphrase. Fall back to prompting rather than destroying it.
+      return { phase: 'needs-unlock' };
+    }
+  }
+
+  const legacyServers = loadLegacyServers() ?? [];
+  const aesKey = await createVault(autoPassphrase, legacyServers);
+  return { phase: 'ready', aesKey, servers: legacyServers };
 }
 
 export async function createVault(

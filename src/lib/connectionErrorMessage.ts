@@ -5,7 +5,14 @@ function join(title: string, detail: string): string {
   return `${title}\n\n${detail}`;
 }
 
-/** Human-readable connection failure for MCP HTTP / Streamable HTTP transport. */
+/**
+ * Human-readable connection failure for MCP HTTP / Streamable HTTP transport.
+ *
+ * Errors that crossed the Electron IPC boundary lose their prototype chain, so the
+ * `instanceof` branches below cannot match them. They need no special case: they
+ * fall through to `formatGenericMessage`, which keys off the raw message text and
+ * so produces the same guidance in both hosts.
+ */
 export function formatConnectionError(err: unknown): string {
   if (err instanceof UnauthorizedError) {
     return join(
@@ -147,7 +154,7 @@ function formatGenericMessage(message: string): string {
   if (lower.includes('stdio requires the local explorer')) {
     return join(
       'Stdio requires the local explorer server',
-      'Run npm run dev or mcp-explorer instead of opening dist/index.html directly.',
+      'Run npm run dev or mcp-sleuth instead of opening dist/index.html directly.',
     );
   }
 

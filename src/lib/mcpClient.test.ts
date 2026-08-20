@@ -1,96 +1,140 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearProtocolTraces, getProtocolTraces } from './protocolTrace';
+import { resetHost, setHost } from './host';
+import type { Host, McpHost } from './host/types';
 
-const { callOrder, startStdioSession, stopStdioSession, clientConnect } = vi.hoisted(() => {
-  const callOrder: string[] = [];
-  const startStdioSession = vi.fn(async () => {
-    callOrder.push('startStdio');
-  });
-  const stopStdioSession = vi.fn(async () => undefined);
-  const clientConnect = vi.fn(async () => {
-    callOrder.push('clientConnect');
-  });
-  return { callOrder, startStdioSession, stopStdioSession, clientConnect };
+function makeFakeMcp(overrides: Partial<McpHost> = {}): McpHost {
+  return {
+    connect: vi.fn(async () => undefined),
+    connectStdio: vi.fn(async () => undefined),
+    disconnect: vi.fn(async () => undefined),
+    isConnected: vi.fn(() => true),
+    listTools: vi.fn(async () => [{ name: 'echo', description: 'Echo' }]),
+    callTool: vi.fn(async () => ({ content: [] })),
+    listResources: vi.fn(async () => ({ resources: [], resourceTemplates: [] })),
+    readResource: vi.fn(async () => ({ contents: [] })),
+    listPrompts: vi.fn(async () => []),
+    getPrompt: vi.fn(async () => []),
+    onToolsChanged: vi.fn(() => () => {}),
+    ...overrides,
+  } as unknown as McpHost;
+}
+
+function install(mcp: McpHost): void {
+  setHost({ kind: 'browser', mcp, files: { saveFile: vi.fn() } } as unknown as Host);
+}
+
+let mcp: McpHost;
+
+beforeEach(() => {
+  clearProtocolTraces();
+  mcp = makeFakeMcp();
+  install(mcp);
 });
 
-vi.mock('./stdioSession', () => ({
-  startStdioSession,
-  stopStdioSession,
-}));
+afterEach(() => {
+  resetHost();
+  vi.clearAllMocks();
+});
 
-vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
-  Client: vi.fn(function Client() {
-    return {
-      connect: clientConnect,
-      listTools: vi.fn().mockResolvedValue({ tools: [{ name: 'echo', description: 'Echo' }] }),
-      close: vi.fn().mockResolvedValue(undefined),
-      setNotificationHandler: vi.fn(),
-    };
-  }),
-}));
+describe('connect', () => {
+  it('delegates to the host and returns its tool list', async () => {
+    const { connect } = await import('./mcpClient');
+    const tools = await connect('srv-1', 'https://example.com/mcp', undefined, true);
 
-vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-  StreamableHTTPClientTransport: vi.fn(function StreamableHTTPClientTransport() {
-    return { close: vi.fn().mockResolvedValue(undefined) };
-  }),
-}));
-
-import { connectStdio, disconnect, transportUrlForServer } from './mcpClient';
-import { stdioBridgeMcpUrl } from './stdioParse';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-
-describe('transportUrlForServer', () => {
-  it('routes through the local proxy by default', () => {
-    const url = transportUrlForServer(
-      'https://example.com/mcp?tenant=a',
-      undefined,
-      'http://127.0.0.1:4173',
-    );
-
-    expect(url.toString()).toBe(
-      'http://127.0.0.1:4173/__mcp_proxy?target=https%3A%2F%2Fexample.com%2Fmcp%3Ftenant%3Da',
-    );
+    expect(mcp.connect).toHaveBeenCalledWith('srv-1', 'https://example.com/mcp', undefined, true);
+    expect(tools).toEqual([{ name: 'echo', description: 'Echo' }]);
   });
 
-  it('uses the real server URL when local proxying is disabled', () => {
-    const url = transportUrlForServer(
-      'https://example.com/mcp',
-      false,
-      'http://127.0.0.1:4173',
-    );
+  it('traces initialize then tools/list', async () => {
+    const { connect } = await import('./mcpClient');
+    await connect('srv-1', 'https://example.com/mcp', undefined, true);
 
-    expect(url.toString()).toBe('https://example.com/mcp');
+    const methods = getProtocolTraces().map((e) => e.method);
+    expect(methods).toContain('initialize');
+    expect(methods).toContain('tools/list');
   });
 });
 
 describe('connectStdio', () => {
-  beforeEach(() => {
-    callOrder.length = 0;
-    vi.clearAllMocks();
+  it('traces initialize with the command instead of a bridge URL', async () => {
+    const { connectStdio } = await import('./mcpClient');
+    await connectStdio('srv-1', { command: 'node', args: ['server.mjs'] }, { FOO: 'bar' });
+
+    expect(mcp.connectStdio).toHaveBeenCalledWith(
+      'srv-1',
+      { command: 'node', args: ['server.mjs'] },
+      { FOO: 'bar' },
+    );
+
+    const initialize = getProtocolTraces().find((e) => e.method === 'initialize');
+    expect(initialize?.params).toEqual({
+      transport: 'stdio',
+      command: 'node',
+      args: ['server.mjs'],
+    });
   });
 
-  it('starts bridge then connects HTTP client', async () => {
-    const stdio = { command: 'node', args: ['server.mjs'] };
-    const tools = await connectStdio('srv-1', stdio, { FOO: 'bar' });
+  it('never puts env in the trace', async () => {
+    const { connectStdio } = await import('./mcpClient');
+    await connectStdio('srv-1', { command: 'node', args: [] }, { SECRET: 'hunter2' });
 
-    expect(startStdioSession).toHaveBeenCalledWith('srv-1', stdio, { FOO: 'bar' });
-    expect(callOrder).toEqual(['startStdio', 'clientConnect']);
-    expect(tools).toEqual([{ name: 'echo', description: 'Echo' }]);
+    expect(JSON.stringify(getProtocolTraces())).not.toContain('hunter2');
+  });
+});
 
-    const bridgeUrl = stdioBridgeMcpUrl('srv-1', 'http://127.0.0.1:4173');
-    expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(
-      new URL(bridgeUrl),
-      undefined,
+describe('callTool', () => {
+  it('traces tools/call', async () => {
+    const { callTool } = await import('./mcpClient');
+    await callTool('srv-1', 'echo', { text: 'hi' });
+
+    expect(mcp.callTool).toHaveBeenCalledWith('srv-1', 'echo', { text: 'hi' });
+    expect(getProtocolTraces().map((e) => e.method)).toContain('tools/call');
+  });
+
+  it('throws without tracing when the server is disconnected', async () => {
+    mcp = makeFakeMcp({ isConnected: vi.fn(() => false) });
+    install(mcp);
+    const { callTool } = await import('./mcpClient');
+
+    await expect(callTool('srv-1', 'echo', {})).rejects.toThrow(
+      'Not connected to server "srv-1"',
     );
+    expect(getProtocolTraces()).toHaveLength(0);
+  });
+});
+
+describe('listResources', () => {
+  it('renames resourceTemplates to templates', async () => {
+    mcp = makeFakeMcp({
+      listResources: vi.fn(async () => ({
+        resources: [{ uri: 'file:///a', name: 'a' }],
+        resourceTemplates: [{ uriTemplate: 'file:///{p}', name: 't' }],
+      })),
+    } as unknown as Partial<McpHost>);
+    install(mcp);
+    const { listResources } = await import('./mcpClient');
+
+    const result = await listResources('srv-1');
+    expect(result.resources).toHaveLength(1);
+    expect(result.templates).toHaveLength(1);
+  });
+});
+
+describe('refetchTools', () => {
+  it('returns an empty array when disconnected', async () => {
+    mcp = makeFakeMcp({ isConnected: vi.fn(() => false) });
+    install(mcp);
+    const { refetchTools } = await import('./mcpClient');
+
+    expect(await refetchTools('srv-1')).toEqual([]);
   });
 });
 
 describe('disconnect', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('stops stdio session after client teardown', async () => {
+  it('delegates to the host', async () => {
+    const { disconnect } = await import('./mcpClient');
     await disconnect('srv-1');
-    expect(stopStdioSession).toHaveBeenCalledWith('srv-1');
+    expect(mcp.disconnect).toHaveBeenCalledWith('srv-1');
   });
 });

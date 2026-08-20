@@ -31,21 +31,21 @@ describe('appData (localStorage fallback path)', () => {
   });
 
   it('initAppData loads from localStorage bookmark key', async () => {
-    store['mcp-explorer:bookmarks'] = JSON.stringify(['s::t']);
+    store['mcp-sleuth:bookmarks'] = JSON.stringify(['s::t']);
     await initAppData();
     expect(getAppData().bookmarks).toEqual(['s::t']);
   });
 
   it('initAppData loads from localStorage history key', async () => {
     const rec = { id: 'r1', timestamp: 1, serverId: 's', serverName: 'S', toolName: 't', args: {} };
-    store['mcp-explorer:call-history'] = JSON.stringify([rec]);
+    store['mcp-sleuth:call-history'] = JSON.stringify([rec]);
     await initAppData();
     expect(getAppData().history).toHaveLength(1);
     expect(getAppData().history[0].id).toBe('r1');
   });
 
   it('initAppData loads from unified localStorage key when present', async () => {
-    store['mcp-explorer:app-data'] = JSON.stringify({
+    store['mcp-sleuth:app-data'] = JSON.stringify({
       version: 1,
       bookmarks: ['s::unified'],
       history: [],
@@ -55,9 +55,9 @@ describe('appData (localStorage fallback path)', () => {
   });
 
   it('initAppData is idempotent — second call is a no-op', async () => {
-    store['mcp-explorer:bookmarks'] = JSON.stringify(['s::t']);
+    store['mcp-sleuth:bookmarks'] = JSON.stringify(['s::t']);
     await initAppData();
-    store['mcp-explorer:bookmarks'] = JSON.stringify(['s::other']);
+    store['mcp-sleuth:bookmarks'] = JSON.stringify(['s::other']);
     await initAppData(); // should not re-read
     expect(getAppData().bookmarks).toEqual(['s::t']);
   });
@@ -73,7 +73,7 @@ describe('appData (localStorage fallback path)', () => {
     patchAppData({ bookmarks: ['a::b'] });
     // wait for the async background save to flush
     await new Promise((r) => setTimeout(r, 10));
-    const saved = JSON.parse(store['mcp-explorer:app-data'] ?? 'null');
+    const saved = JSON.parse(store['mcp-sleuth:app-data'] ?? 'null');
     expect(saved?.bookmarks).toEqual(['a::b']);
   });
 

@@ -112,3 +112,155 @@ body::before {
   pointer-events: none;
   z-index: -1;
 }
+
+/* Desktop build: the OS title bar is hidden, so the app's own header is it. */
+.app-titlebar {
+  height: 55px;
+  flex: 0 0 55px;
+}
+
+[data-host='electron'] .app-header,
+[data-host='electron'] .app-titlebar {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+[data-host='electron'] .app-header button,
+[data-host='electron'] .app-header a,
+[data-host='electron'] .app-header input,
+[data-host='electron'] .app-header select,
+[data-host='electron'] .app-titlebar button,
+[data-host='electron'] .app-titlebar a,
+[data-host='electron'] .window-controls button {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+/* ── Desktop window chrome ────────────────────────────────────────────────
+   The Electron window is transparent and frameless, so the app paints its own
+   rounded shell. html/body stay see-through and #root supplies the surface,
+   which is what turns a full-bleed web page into something window-shaped.
+   Squared off when maximised, where rounded corners would clip the display. */
+[data-host='electron'] html,
+[data-host='electron'] body {
+  background-color: transparent;
+}
+
+[data-host='electron'] #root {
+  background-color: #09090b;
+  border: 1px solid rgb(39 39 42 / 0.85);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+[data-host='electron'][data-maximized='true'] #root {
+  border-color: transparent;
+  border-radius: 0;
+}
+
+
+/* ── Desktop native feel ──────────────────────────────────────────────────
+   Everything below is scoped to [data-host='electron'] so the browser build
+   is byte-for-byte unchanged. The goal is to strip the web affordances that
+   make a packaged app read as "a web page in a window" — stray text
+   selection, image/link ghost drags, finger cursors, fat scrollbars —
+   without removing anything a debugging tool actually needs. */
+
+/* 1. Chrome is not selectable; content is.
+   -------------------------------------------------------------------- */
+[data-host='electron'] #root {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Re-enable selection wherever copyable output lives. `user-select: text`
+   overrides an inherited `none`, so these islands stay fully selectable. */
+[data-host='electron'] input,
+[data-host='electron'] textarea,
+[data-host='electron'] pre,
+[data-host='electron'] code,
+[data-host='electron'] kbd,
+[data-host='electron'] samp,
+[data-host='electron'] table,
+[data-host='electron'] main,
+[data-host='electron'] .shiki-block,
+[data-host='electron'] .md-preview,
+[data-host='electron'] .md-preview-compact,
+[data-host='electron'] [data-selectable] {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* …but controls sitting inside those regions behave like native controls. */
+[data-host='electron'] button,
+[data-host='electron'] [role='button'],
+[data-host='electron'] summary {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 2. No browser-style drag ghosts. */
+[data-host='electron'] img,
+[data-host='electron'] a,
+[data-host='electron'] svg {
+  -webkit-user-drag: none;
+}
+
+/* 3. Keyboard focus stays visible — a subtle violet ring, mouse clicks stay
+      ring-free thanks to :focus-visible.
+
+   The base sheet sets `:focus-visible { outline: none }` and draws a box-shadow
+   ring on inputs and buttons only, which leaves every other focusable element
+   with no indicator at all. The outline below restores one; the elements that
+   already carry the box-shadow ring opt out so they do not show two. */
+[data-host='electron'] :focus-visible {
+  outline: 2px solid rgb(167 139 250 / 0.55);
+  outline-offset: 2px;
+}
+
+[data-host='electron'] input:focus,
+[data-host='electron'] textarea:focus,
+[data-host='electron'] select:focus,
+[data-host='electron'] button:focus-visible {
+  outline: none;
+}
+
+/* 4. Arrow cursor for app controls; I-beam stays on text fields. */
+[data-host='electron'] button,
+[data-host='electron'] [role='button'],
+[data-host='electron'] a,
+[data-host='electron'] label,
+[data-host='electron'] select,
+[data-host='electron'] summary,
+[data-host='electron'] .cursor-pointer {
+  cursor: default;
+}
+[data-host='electron'] input[type='checkbox'],
+[data-host='electron'] input[type='radio'],
+[data-host='electron'] input[type='file'],
+[data-host='electron'] input[type='color'] {
+  cursor: default;
+}
+/* Real hyperlinks keep the hand. */
+[data-host='electron'] a[href^='http'] {
+  cursor: pointer;
+}
+
+/* 5. Thinner, quieter scrollbars — still visible, the lists get long. */
+[data-host='electron'] *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+[data-host='electron'] *::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+[data-host='electron'] *::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+  background-clip: padding-box;
+}
+[data-host='electron'] *::-webkit-scrollbar-corner {
+  background: transparent;
+}

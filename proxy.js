@@ -131,7 +131,7 @@ export function handleMcpProxy(req, res) {
   upstream.on('error', (err) => {
     const detail = err.code ? `${err.code} ${err.message}` : err.message;
     console.error(
-      `[mcp-explorer] proxy upstream error for ${req.method} ${target}: ${detail}`,
+      `[mcp-sleuth] proxy upstream error for ${req.method} ${target}: ${detail}`,
     );
     if (!res.headersSent) {
       res.writeHead(502, {

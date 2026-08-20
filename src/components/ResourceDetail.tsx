@@ -24,16 +24,39 @@ function BinaryContent({ content }: { content: ResourceContent }) {
   const mime = content.mimeType ?? 'application/octet-stream';
   const byteLength = Math.ceil((blob.length * 3) / 4);
   const dataUrl = `data:${mime};base64,${blob}`;
+  const filename = content.uri.split('/').pop() ?? 'resource';
+
+  const downloadLink = (
+    <a
+      href={dataUrl}
+      download={filename}
+      className="ml-3 text-violet-400 hover:text-violet-300 underline transition-colors"
+    >
+      Download
+    </a>
+  );
+
+  // Images render inline, matching how ResultPane shows images returned by tools.
+  if (mime.startsWith('image/')) {
+    return (
+      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+        <img
+          src={dataUrl}
+          alt={content.uri}
+          className="max-w-full rounded-lg border border-zinc-800"
+        />
+        <div className="mt-3 text-sm text-zinc-400">
+          {byteLength} bytes, <span className="text-zinc-500">{mime}</span>
+          {downloadLink}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-5 text-sm text-zinc-400">
       Binary content ({byteLength} bytes, <span className="text-zinc-500">{mime}</span>)
-      <a
-        href={dataUrl}
-        download={content.uri.split('/').pop() ?? 'resource'}
-        className="ml-3 text-violet-400 hover:text-violet-300 underline transition-colors"
-      >
-        Download
-      </a>
+      {downloadLink}
     </div>
   );
 }

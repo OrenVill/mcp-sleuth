@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { getHost } from '../lib/host';
 
 interface Props {
   onCreate: (passphrase: string) => Promise<void>;
@@ -13,6 +14,8 @@ const inputClass =
 export function VaultSetup({ onCreate, migrationHint, error, busy }: Props) {
   const [passphrase, setPassphrase] = useState('');
   const [confirmPassphrase, setConfirmPassphrase] = useState('');
+  // The desktop app writes a real file, so "stays in this browser" would be wrong there.
+  const isDesktop = useMemo(() => getHost().kind === 'electron', []);
 
   const mismatch = useMemo(() => {
     if (!confirmPassphrase) return false;
@@ -34,8 +37,10 @@ export function VaultSetup({ onCreate, migrationHint, error, busy }: Props) {
         <div>
           <h2 className="text-zinc-50 text-lg font-semibold tracking-tight">Create vault</h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Set a passphrase to encrypt servers and credentials on this device. With the dev
-            server, the vault is an encrypted file; otherwise it stays in this browser.
+            Set a passphrase to encrypt servers and credentials on this device.{' '}
+            {isDesktop
+              ? 'The vault is an encrypted file in your mcp-sleuth data folder.'
+              : 'With the dev server, the vault is an encrypted file; otherwise it stays in this browser.'}
           </p>
         </div>
 
