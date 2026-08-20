@@ -1345,3 +1345,52 @@ This is the only check that the file-backed browser path still writes where the 
 - [ ] `src/lib/vault/crypto.ts` and `envelope.ts` are unmodified.
 
 Packaging, CI, and user-facing docs are Phase 3.
+
+---
+
+## Phase 2b outcome — COMPLETE
+
+Verified: `npm run build`, `npm run lint`, 289 unit tests, 99/99 browser release specs with
+`tests/release/` unmodified, and 20/20 Electron E2E specs.
+
+### Corrections made to this plan during execution
+
+1. **Task 2 would have caused data loss.** The plan said to move the persistence logic and
+   "return raw unknown", dropping `parseVaultEnvelope`. But the original code used that
+   parse for *decisions*, not just for its return value: it deletes the IndexedDB record
+   only when the HTTP body is a valid envelope, and migrates IDB→file only when the IDB
+   value is valid. Without validation, a server returning unrelated JSON would delete a
+   good IDB vault. `secretsBrowser.ts` now uses `isVaultEnvelope` as a boolean predicate,
+   keeping the `SecretsHost` signatures opaque.
+
+2. **The plan's fake `safeStorage` was self-contradictory.** It was
+   `encryptString: (s) => Buffer.from('sealed:' + s)` — a passthrough embedding the
+   plaintext — while the next test asserted the passphrase never appears on disk. The fake
+   now hex-encodes, as a real keychain would. `store.js` itself was correct.
+
+3. **Task 10's app-data trigger was wrong.** The bookmark toggle lives in `ToolList` as a
+   `☆` icon, not a button matching `/bookmark/i`, so the guarded click silently skipped and
+   nothing wrote app data. The spec now invokes a tool, which appends to call history
+   (`src/lib/history.ts:24` → `patchAppData`).
+
+4. **Servers persist across reload but connections do not**, so the persistence spec has to
+   click Connect after reloading. That is correct app behaviour, not a bug.
+
+### Unrelated hazard found and fixed
+
+`tests/release/helpers.ts` sends `DELETE /__vault_storage` on every `setupVault()`, and the
+release suite did not isolate `MCP_EXPLORER_DATA_DIR` — so running it deleted the
+developer's real `~/.mcp-explorer/vault.json` and overwrote their `data.gz`. The static
+server in `playwright.config.ts` now runs against a temp directory. `tests/release/` itself
+is unchanged.
+
+### Carried into Phase 3
+
+- `electron/main.js` imports `../vault-file-handler.js`, `../app-data-handler.js`, and
+  `../daemon-lock.js` from the repo root. The electron-builder `files` config must include
+  them or the packaged app fails at startup.
+- The `preload.cjs` channel allow-list is hand-duplicated from `channels.js`; a channel
+  added to one and not the other fails only at runtime.
+- ESLint still does not cover `electron/**/*.js` (see the Phase 2a notes).
+- Auto-unlock has no E2E coverage because no CI or dev machine here has a keyring. It is
+  covered by unit tests against an injected fake.
