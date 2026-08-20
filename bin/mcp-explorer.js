@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { readLock, writeLock, deleteLock, isAlive } from '../daemon-lock.js';
+import { migrateLegacyDataDir } from '../data-dir.js';
 
 const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const viteBin = resolve(
@@ -88,6 +89,9 @@ function openBrowser(url) {
     /* ignore */
   }
 }
+
+// Carry a pre-rename ~/.mcp-explorer vault across, once. Non-destructive.
+migrateLegacyDataDir();
 
 const args = process.argv.slice(2);
 

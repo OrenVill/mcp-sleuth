@@ -20,6 +20,7 @@ import {
 import { getVaultFilePath } from '../vault-file-handler.js';
 import { getAppDataFilePath } from '../app-data-handler.js';
 import { isAlive, readLock } from '../daemon-lock.js';
+import { migrateLegacyDataDir } from '../data-dir.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const distRoot = resolve(here, '..', 'dist');
@@ -56,6 +57,13 @@ if (!app.requestSingleInstanceLock()) {
 
     // safeStorage must not be touched before the app is ready, so the stores are
     // built here rather than at module top level.
+    // Carry a pre-rename ~/.mcp-explorer vault across, once, before anything
+    // resolves a path. Non-destructive and never throws.
+    const migrated = migrateLegacyDataDir();
+    if (migrated.length > 0) {
+      console.log(`sleuth: migrated ${migrated.join(', ')} from ~/.mcp-explorer`);
+    }
+
     const vaultPath = getVaultFilePath();
     const secrets = createSecretsStore({
       fs: nodeFs,
