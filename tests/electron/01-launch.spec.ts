@@ -114,6 +114,46 @@ test.describe.serial('Electron — launch and security posture', () => {
     expect(controls.noDrag).toBe('no-drag');
   });
 
+  test('maximizing fills the work area exactly, with no offset', async () => {
+    // A frameless window cannot use the manager's maximize: it sizes to the
+    // screen plus frame thickness, leaving the window offset down-right and
+    // overflowing. We size to the work area ourselves instead.
+    await launched.app.evaluate(async ({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0].setBounds({ x: 120, y: 90, width: 900, height: 600 });
+    });
+    await launched.page.waitForTimeout(400);
+
+    await launched.page.getByRole('button', { name: 'Maximize' }).click();
+
+    await expect
+      .poll(
+        async () =>
+          launched.app.evaluate(async ({ BrowserWindow, screen }) => {
+            const win = BrowserWindow.getAllWindows()[0];
+            const b = win.getBounds();
+            const w = screen.getDisplayMatching(b).workArea;
+            return Math.abs(b.x - w.x) <= 2 && Math.abs(b.y - w.y) <= 2;
+          }),
+        { timeout: 5_000 },
+      )
+      .toBe(true);
+  });
+
+  test('restoring returns the window to its previous bounds', async () => {
+    await launched.page.getByRole('button', { name: 'Restore' }).click();
+
+    await expect
+      .poll(
+        async () =>
+          launched.app.evaluate(async ({ BrowserWindow }) => {
+            const b = BrowserWindow.getAllWindows()[0].getBounds();
+            return `${b.x},${b.y},${b.width},${b.height}`;
+          }),
+        { timeout: 5_000 },
+      )
+      .toBe('120,90,900,600');
+  });
+
   test('no console errors during startup', () => {
     expect(consoleErrors).toEqual([]);
   });
