@@ -51,7 +51,13 @@ Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-e
 
 ## 3. Playwright release suite
 
-The fixture server at `http://localhost:3001/mcp` must be running before this step.
+Playwright starts both servers itself — the static server on `127.0.0.1:4173` and the
+MCP fixture on `127.0.0.1:3001` (`tests/fixtures/http-mcp-server.mjs`). No manual setup
+is needed. To run the fixture on its own while debugging:
+
+```bash
+node tests/fixtures/http-mcp-server.mjs
+```
 
 Run the full automated release suite:
 
@@ -59,12 +65,25 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 98 tests must pass (4 conditional skips are acceptable — they fire only when the fixture server lacks a specific tool type). Any failure blocks the release.
+All 99 tests must pass. Any failure blocks the release.
 
-The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar, fixture connection, tool forms, result pane rendering, call history diff, bookmarks persistence, cross-server search, export dialog, meta-tool discovery, resources tab, prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client Config Export, Handoff README, Scenario Runner, and Trust evaluators (Permission Surface, Prompt Injection scan, Observation Journal).
-All 96 tests must pass (4 conditional skips are acceptable — they fire only when the fixture server lacks a specific tool type). Any failure blocks the release.
+Two specs additionally connect to an external MCP server on the LAN
+(`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
+(meta-tool discovery). If that host is unreachable those two specs fail — check it
+before assuming a regression.
 
-The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar, fixture connection, tool forms, result pane rendering, call history diff, bookmarks persistence, cross-server search, export dialog, meta-tool discovery, resources tab, prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client Config Export, Handoff README, Scenario Runner, and stdio transport (local bridge + echo tool).
+The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar,
+fixture connection, tool forms, result pane rendering, call history diff, bookmarks
+persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
+prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
+Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + echo
+tool), and Trust evaluators (Permission Surface, Prompt Injection scan, Observation
+Journal).
+
+**Fixture content is load-bearing.** `http-mcp-server.mjs` documents which spec depends
+on each tool, resource, and prompt it registers — read that header before changing it.
+In particular no name or description may contain the word "fixture", because
+`helpers.ts` locates the server row with a case-insensitive `hasText: 'Fixture'` match.
 
 **§3.22 — Stdio transport (manual pass):** Add a stdio server with command `node` (or `process.execPath`) and args pointing at `tests/fixtures/stdio-mcp-server.mjs`; confirm the sidebar shows connected (green dot), the `echo` tool appears, invoking with a message returns that text in the result pane, and disconnect/reconnect still works. Automated: `tests/release/22-stdio-transport.spec.ts` (no HTTP fixture server required).
 
