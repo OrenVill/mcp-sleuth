@@ -1791,3 +1791,51 @@ If Steps 1-4 required no changes there is nothing to commit.
 
 Documentation (`README.md`, `README.npm.md`, `CLAUDE.md`, `SKILL.md`) is updated in
 Phase 3 alongside packaging, when the desktop app becomes something a user can download.
+
+---
+
+## Phase 2a outcome — COMPLETE
+
+Verified: `npm run build`, `npm run lint`, 261 unit tests, 99/99 browser release specs
+with `tests/release/` unmodified, and 15/15 Electron E2E specs.
+
+### Corrections made to this plan during execution
+
+1. **`resolveAppPath` had a real traversal bug.** The WHATWG URL parser collapses `..`
+   segments for `app://` URLs *before* `.pathname` is read, so the containment check
+   alone silently rewrote traversal requests instead of refusing them — and the plan's
+   own test 5 could not pass. Fixed with a `hasTraversalSegment` guard applied to both
+   the raw request string and the decoded pathname, retaining the containment check as
+   defence in depth. Verified against eight adversarial inputs including backslash and
+   mixed-encoding variants.
+
+2. **Task 9 needed no code change at all.** See the rewritten Task 9 above.
+
+3. **`01-launch.spec.ts` asserted an `<h1>` that does not exist yet.** The navbar mounts
+   only after the vault exists, so the first screen is Create vault. The spec now asserts
+   that instead, and gained two extra security assertions (`ipcRenderer` unreachable,
+   channel allow-list enforced).
+
+4. **The plan's `makeBridge()` test helper did not typecheck.** Inferred object literals
+   widen `ok: true` to `boolean`, so the mock was not assignable to `ElectronBridge`.
+   Fixed with explicit `Mock<...>` type aliases.
+
+### Known gaps carried into Phase 2b
+
+- **`mcp:closed` is declared but never emitted.** `CHANNELS.closed` exists and
+  `preload.cjs` exposes `onClosed`, but nothing in `sessions.js` or `mcpHandlers.js`
+  sends it. The renderer's connection mirror therefore self-corrects only on explicit
+  disconnect, not when a transport drops underneath it. Note the browser host has the
+  same behaviour (`clients.has()` is not cleaned on transport drop), so this is parity,
+  not a regression — but Electron is the place to fix it properly, by having
+  `sessions.js` listen for transport close and push the event.
+
+- **ESLint does not cover `electron/**/*.js`.** `eslint.config.js` scopes its rules to
+  `**/*.{ts,tsx}`, so `npm run lint` staying green says nothing about that directory.
+  This matches how `server.js`, `proxy.js`, and the other Node-side files are already
+  treated, so it was left alone rather than changed unilaterally — but widening lint
+  coverage to the Node-side JS belongs in Phase 3.
+
+- **The vault copy says "otherwise it stays in this browser."** Accurate for the web
+  build, misleading in a desktop app. Phase 2b replaces that flow with keychain
+  auto-unlock and should update the copy.
