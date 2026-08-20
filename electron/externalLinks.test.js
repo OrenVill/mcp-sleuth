@@ -3,7 +3,7 @@ import { isSafeExternalUrl, isWsl } from './externalLinks.js';
 
 describe('isSafeExternalUrl', () => {
   it('allows http and https', () => {
-    expect(isSafeExternalUrl('https://github.com/OrenVill/mcp-explorer')).toBe(true);
+    expect(isSafeExternalUrl('https://github.com/OrenVill/mcp-sleuth')).toBe(true);
     expect(isSafeExternalUrl('http://localhost:3001/docs')).toBe(true);
   });
 

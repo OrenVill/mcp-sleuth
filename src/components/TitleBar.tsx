@@ -12,7 +12,7 @@ export function TitleBar() {
   return (
     <div className="app-titlebar flex items-center gap-2.5 border-b border-zinc-800/80 bg-zinc-950/80 pl-4">
       <Logo size={20} className="rounded-[6px]" />
-      <span className="text-sm font-semibold tracking-tight text-zinc-200">MCP Explorer</span>
+      <span className="text-sm font-semibold tracking-tight text-zinc-200">Sleuth</span>
       <div className="ml-auto flex items-center self-stretch">
         <WindowControls />
       </div>

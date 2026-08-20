@@ -54,4 +54,4 @@ const api = {
   },
 };
 
-contextBridge.exposeInMainWorld('mcpExplorer', Object.freeze(api));
+contextBridge.exposeInMainWorld('mcpSleuth', Object.freeze(api));

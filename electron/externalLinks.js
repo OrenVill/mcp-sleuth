@@ -25,7 +25,7 @@ export function isWsl(env = process.env) {
 /**
  * Open a link in the user's real browser.
  *
- * Mirrors the CLI's `openBrowser` in bin/mcp-explorer.js, which already handles
+ * Mirrors the CLI's `openBrowser` in bin/mcp-sleuth.js, which already handles
  * the WSL case the same way.
  */
 export function openExternalUrl(url, { env = process.env } = {}) {

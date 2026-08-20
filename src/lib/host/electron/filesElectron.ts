@@ -10,7 +10,7 @@ export function createElectronFilesHost(bridge: ElectronBridge): FilesHost {
         .invoke('mcp:saveFile', filename, content, mimeType)
         .then((envelope) => unwrapEnvelope<string | null>(envelope))
         .catch((err: unknown) => {
-          console.error('mcp-explorer: save failed', err);
+          console.error('mcp-sleuth: save failed', err);
         });
     },
     async readAppData() {

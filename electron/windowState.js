@@ -3,7 +3,7 @@
  * restart puts the window back where the user left it.
  *
  * The state file is a sibling of the CLI's app-data file (`getAppDataFilePath()`),
- * so `MCP_EXPLORER_DATA_DIR` keeps working and no new directory is invented.
+ * so `MCP_SLEUTH_DATA_DIR` keeps working and no new directory is invented.
  *
  * The restore decision (`resolveRestoredBounds`) is pure so it can be unit-tested
  * without Electron: it is the part that has to cope with an unplugged monitor, a

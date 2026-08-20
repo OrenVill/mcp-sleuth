@@ -2,7 +2,7 @@
  * Vault envelope storage and the device auto-unlock passphrase.
  *
  * The vault file is the *same* file the CLI uses (`getVaultFilePath()`), so a user
- * who switches between `npx mcp-explorer` and the desktop app keeps one vault.
+ * who switches between `npx mcp-sleuth` and the desktop app keeps one vault.
  *
  * The vault format is unchanged: Electron does not replace PBKDF2, it just stores a
  * generated passphrase in the OS keychain so the user is never prompted.

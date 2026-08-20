@@ -21,20 +21,20 @@ export interface LaunchedApp {
  * vault and no leftover IndexedDB state.
  */
 export async function launchApp(options: { dataDir?: string } = {}): Promise<LaunchedApp> {
-  const userDataDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-e2e-'));
+  const userDataDir = mkdtempSync(join(tmpdir(), 'mcp-sleuth-e2e-'));
   // Both must exist before launch: nativeHandlers writes into saveDir without mkdir.
   // Passing an existing dataDir relaunches against a vault created earlier, which
   // is the only way to reach the unlock screen.
-  const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), 'mcp-explorer-data-'));
-  const saveDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-save-'));
+  const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), 'mcp-sleuth-data-'));
+  const saveDir = mkdtempSync(join(tmpdir(), 'mcp-sleuth-save-'));
 
   const app = await electron.launch({
     args: ['electron/main.js', `--user-data-dir=${userDataDir}`],
     env: {
       ...process.env,
-      MCP_EXPLORER_E2E: '1',
-      MCP_EXPLORER_DATA_DIR: dataDir,
-      MCP_EXPLORER_E2E_SAVE_DIR: saveDir,
+      MCP_SLEUTH_E2E: '1',
+      MCP_SLEUTH_DATA_DIR: dataDir,
+      MCP_SLEUTH_E2E_SAVE_DIR: saveDir,
     },
   });
   const page = await app.firstWindow();

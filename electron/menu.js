@@ -35,7 +35,7 @@ export function isReloadShortcut(input) {
  *
  * These are swallowed in the packaged app — it is an application, not a browser,
  * and DevTools is not part of its surface. They stay live under
- * `npm run electron:dev`, where MCP_EXPLORER_DEV_URL is set.
+ * `npm run electron:dev`, where MCP_SLEUTH_DEV_URL is set.
  */
 export function isDevToolsShortcut(input) {
   if (!input || typeof input !== 'object') return false;

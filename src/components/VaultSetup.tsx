@@ -39,7 +39,7 @@ export function VaultSetup({ onCreate, migrationHint, error, busy }: Props) {
           <p className="mt-1 text-sm text-zinc-400">
             Set a passphrase to encrypt servers and credentials on this device.{' '}
             {isDesktop
-              ? 'The vault is an encrypted file in your mcp-explorer data folder.'
+              ? 'The vault is an encrypted file in your mcp-sleuth data folder.'
               : 'With the dev server, the vault is an encrypted file; otherwise it stays in this browser.'}
           </p>
         </div>

@@ -20,7 +20,7 @@ export async function startStdioSession(
     const body = await res.text().catch(() => '');
     if (res.status === 404) {
       throw new Error(
-        'Stdio requires the local explorer server. Run npm run dev or mcp-explorer instead of opening dist/index.html directly.',
+        'Stdio requires the local explorer server. Run npm run dev or mcp-sleuth instead of opening dist/index.html directly.',
       );
     }
     throw new Error(body || `Stdio bridge start failed (${res.status})`);

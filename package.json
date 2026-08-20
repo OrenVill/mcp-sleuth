@@ -1,29 +1,32 @@
 {
-  "name": "@orenvill/mcp-explorer",
+  "name": "@orenvill/mcp-sleuth",
   "version": "0.8.1",
-  "description": "Browser-based explorer for MCP servers over streamable HTTP — list and invoke tools with auto-generated forms.",
+  "description": "Investigate any MCP server \u2014 inspect the protocol, invoke tools, and audit what a server can reach, from the browser or the desktop app.",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/OrenVill/mcp-explorer.git"
+    "url": "git+https://github.com/OrenVill/mcp-sleuth.git"
   },
-  "homepage": "https://github.com/OrenVill/mcp-explorer",
+  "homepage": "https://github.com/OrenVill/mcp-sleuth",
   "keywords": [
     "mcp",
     "model-context-protocol",
+    "mcp-inspector",
     "developer-tools",
+    "debugging",
     "cli"
   ],
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "mcp-explorer": "bin/mcp-explorer.js"
+    "mcp-sleuth": "bin/mcp-sleuth.js"
   },
   "files": [
     "bin",
     "dist",
+    "data-dir.js",
     "daemon-lock.js",
     "server.js",
     "proxy.js",
@@ -45,8 +48,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test --headed",
     "test:e2e:electron": "playwright test --config playwright.electron.config.ts",
-    "electron:dev": "MCP_EXPLORER_DEV_URL=http://localhost:5173 electron electron/main.js",
+    "electron:dev": "MCP_SLEUTH_DEV_URL=http://localhost:5173 electron electron/main.js",
     "electron:start": "npm run build && electron electron/main.js",
+    "package": "npm run build && electron-builder --publish never",
+    "package:dir": "npm run build && electron-builder --dir --publish never",
+    "package:linux": "npm run build && electron-builder --linux --publish never",
     "prepublishOnly": "cp README.md _README.github.md && cp README.npm.md README.md",
     "postpublish": "mv _README.github.md README.md"
   },
@@ -64,6 +70,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

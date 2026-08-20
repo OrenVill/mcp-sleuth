@@ -9,7 +9,7 @@
 import { extname, join, resolve, sep } from 'node:path';
 
 export const APP_SCHEME = 'app';
-export const APP_ORIGIN = 'app://mcp-explorer';
+export const APP_ORIGIN = 'app://mcp-sleuth';
 
 /**
  * True if any path segment of `value` is a `..` traversal step.

@@ -1,15 +1,15 @@
-# MCP Explorer — Agent Rules
+# Sleuth — Agent Rules
 
 ## What This Project Is
 
-MCP Explorer is a **Vite + React + TypeScript browser app** that connects to MCP (Model Context
+Sleuth is a **Vite + React + TypeScript browser app** that connects to MCP (Model Context
 Protocol) servers over streamable HTTP. Users add any MCP HTTP endpoint; the app auto-connects,
 lists all tools, and generates input forms so you can invoke any tool interactively. It also
 exposes prompts, resources, and a suite of developer tooling (Protocol Inspector, Schema Lab,
 Replay Suites, Scenario Runner, Agent Readiness scoring).
 
-The app ships as an npm CLI package (`@orenvill/mcp-explorer`) and as a self-contained static
-build. The CLI (`bin/mcp-explorer.js`) runs a zero-dep Node static server (`server.js`) and
+The app ships as an npm CLI package (`@orenvill/mcp-sleuth`) and as a self-contained static
+build. The CLI (`bin/mcp-sleuth.js`) runs a zero-dep Node static server (`server.js`) and
 opens the browser. A local proxy (`proxy.js`) rewrites browser MCP requests to bypass CORS,
 and two IPC-style file handlers (`vault-file-handler.js`, `app-data-handler.js`) are intercepted
 by the static server for secrets and app-data persistence.
@@ -120,9 +120,9 @@ functionality here unless it fits one of these existing boundaries.
 |------|---------|
 | `server.js` | Zero-dep static file server for `dist/`. Proper MIME types, immutable cache headers for hashed assets, SPA fallback. Intercepts `/__mcp_proxy`, `/__app_data`, `/__vault_file`. |
 | `proxy.js` | Rewrites browser MCP requests to real MCP server URLs; adds CORS headers. Called by `server.js`. |
-| `app-data-handler.js` | Reads/writes `mcp-explorer-data.json` alongside the binary for bookmarks + history persistence outside the browser sandbox. |
+| `app-data-handler.js` | Reads/writes `mcp-sleuth-data.json` alongside the binary for bookmarks + history persistence outside the browser sandbox. |
 | `vault-file-handler.js` | Reads/writes the encrypted vault blob to disk (non-browser persistence). |
-| `bin/mcp-explorer.js` | CLI entry: builds if needed → starts `server.js` as a daemon → opens browser → handles `mcp-explorer stop`. |
+| `bin/mcp-sleuth.js` | CLI entry: builds if needed → starts `server.js` as a daemon → opens browser → handles `mcp-sleuth stop`. |
 | `daemon-lock.js` | PID lock-file management for the CLI daemon process. |
 
 ---
@@ -131,7 +131,7 @@ functionality here unless it fits one of these existing boundaries.
 
 | Store | Mechanism | What lives there |
 |-------|-----------|-----------------|
-| Server list | `localStorage` key `mcp-explorer:servers` | Server URLs, names, proxy toggle, connection state |
+| Server list | `localStorage` key `mcp-sleuth:servers` | Server URLs, names, proxy toggle, connection state |
 | Bookmarks | `appData` → `/__app_data` file, or `localStorage` fallback | Bookmarked tool call IDs |
 | Call history | `appData` → `/__app_data` file, or `localStorage` fallback | Ring buffer of recent tool calls |
 | Credentials | Encrypted vault → IndexedDB + `/__vault_file` | API keys, bearer tokens, Basic auth (AES-GCM encrypted) |

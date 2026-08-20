@@ -57,11 +57,11 @@ if (!app.requestSingleInstanceLock()) {
 
     // safeStorage must not be touched before the app is ready, so the stores are
     // built here rather than at module top level.
-    // Carry a pre-rename ~/.mcp-explorer vault across, once, before anything
+    // Carry a pre-rename ~/.mcp-sleuth vault across, once, before anything
     // resolves a path. Non-destructive and never throws.
     const migrated = migrateLegacyDataDir();
     if (migrated.length > 0) {
-      console.log(`sleuth: migrated ${migrated.join(', ')} from ~/.mcp-explorer`);
+      console.log(`sleuth: migrated ${migrated.join(', ')} from ~/.mcp-sleuth`);
     }
 
     const vaultPath = getVaultFilePath();
@@ -78,7 +78,7 @@ if (!app.requestSingleInstanceLock()) {
 
     // Replaces Electron's default menu, which carries Reload / Force Reload.
     applyApplicationMenu(process.platform, {
-      devMode: Boolean(process.env.MCP_EXPLORER_DEV_URL),
+      devMode: Boolean(process.env.MCP_SLEUTH_DEV_URL),
     });
 
     const windowState = createWindowStateStore({
@@ -91,16 +91,16 @@ if (!app.requestSingleInstanceLock()) {
     forwardWindowState(mainWindow);
     attachWindowState(mainWindow, windowState);
 
-    const devUrl = process.env.MCP_EXPLORER_DEV_URL;
+    const devUrl = process.env.MCP_SLEUTH_DEV_URL;
     void mainWindow.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);
 
-    // The CLI daemon shares ~/.mcp-explorer/ and last write wins. Running both is
+    // The CLI daemon shares ~/.mcp-sleuth/ and last write wins. Running both is
     // legitimate, just lossy, so warn rather than block.
     const lock = await readLock();
     if (lock && isAlive(lock.pid)) {
       console.warn(
-        `mcp-explorer: the CLI daemon is running on port ${lock.port} and shares ` +
-          `~/.mcp-explorer/. Changes may overwrite each other. Run "mcp-explorer stop" first.`,
+        `mcp-sleuth: the CLI daemon is running on port ${lock.port} and shares ` +
+          `~/.mcp-sleuth/. Changes may overwrite each other. Run "mcp-sleuth stop" first.`,
       );
     }
 

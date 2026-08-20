@@ -154,7 +154,7 @@ function formatGenericMessage(message: string): string {
   if (lower.includes('stdio requires the local explorer')) {
     return join(
       'Stdio requires the local explorer server',
-      'Run npm run dev or mcp-explorer instead of opening dist/index.html directly.',
+      'Run npm run dev or mcp-sleuth instead of opening dist/index.html directly.',
     );
   }
 

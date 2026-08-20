@@ -1,7 +1,7 @@
 import type { JsonSchemaProperty, ToolDef } from '../types';
 
 const SUPPORTED_TYPES = new Set(['string', 'number', 'integer', 'boolean', 'object', 'array']);
-const NO_ISSUES_MESSAGE = 'No obvious schema issues found for the subset supported by MCP Explorer.';
+const NO_ISSUES_MESSAGE = 'No obvious schema issues found for the subset supported by Sleuth.';
 
 export interface SchemaLabSummary {
   rootType: string;

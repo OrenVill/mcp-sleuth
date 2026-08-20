@@ -10,9 +10,24 @@ export interface AppData {
 }
 
 const DEFAULT: AppData = { version: 1, bookmarks: [], history: [], observationJournals: {} };
-const LS_BOOKMARKS = 'mcp-explorer:bookmarks';
-const LS_HISTORY = 'mcp-explorer:call-history';
-const LS_APP_DATA = 'mcp-explorer:app-data';
+const LS_BOOKMARKS = 'mcp-sleuth:bookmarks';
+const LS_HISTORY = 'mcp-sleuth:call-history';
+const LS_APP_DATA = 'mcp-sleuth:app-data';
+// Written under the old product name; read so a rename does not drop anyone's
+// bookmarks or history. Writes only ever use the keys above.
+const PRE_RENAME_KEYS = {
+  bookmarks: 'mcp-explorer:bookmarks',
+  history: 'mcp-explorer:call-history',
+  appData: 'mcp-explorer:app-data',
+} as const;
+
+function readKey(current: string, preRename: string): string | null {
+  try {
+    return localStorage.getItem(current) ?? localStorage.getItem(preRename);
+  } catch {
+    return null;
+  }
+}
 
 let cache: AppData = { ...DEFAULT };
 let initialized = false;
@@ -36,11 +51,11 @@ function parseAppData(raw: unknown): AppData {
 function loadFromLocalStorage(): AppData {
   try {
     // Try the unified key first (post-migration), then fall back to the legacy split keys
-    const unified = localStorage.getItem(LS_APP_DATA);
+    const unified = readKey(LS_APP_DATA, PRE_RENAME_KEYS.appData);
     if (unified) return parseAppData(JSON.parse(unified) as unknown);
 
-    const rawBookmarks = localStorage.getItem(LS_BOOKMARKS);
-    const rawHistory = localStorage.getItem(LS_HISTORY);
+    const rawBookmarks = readKey(LS_BOOKMARKS, PRE_RENAME_KEYS.bookmarks);
+    const rawHistory = readKey(LS_HISTORY, PRE_RENAME_KEYS.history);
     return {
       version: 1,
       bookmarks: rawBookmarks
@@ -57,8 +72,8 @@ function loadFromLocalStorage(): AppData {
 function hasLegacyLocalStorage(): boolean {
   try {
     return (
-      localStorage.getItem(LS_BOOKMARKS) !== null ||
-      localStorage.getItem(LS_HISTORY) !== null
+      readKey(LS_BOOKMARKS, PRE_RENAME_KEYS.bookmarks) !== null ||
+      readKey(LS_HISTORY, PRE_RENAME_KEYS.history) !== null
     );
   } catch {
     return false;
@@ -69,6 +84,8 @@ function clearLegacyLocalStorage(): void {
   try {
     localStorage.removeItem(LS_BOOKMARKS);
     localStorage.removeItem(LS_HISTORY);
+    localStorage.removeItem(PRE_RENAME_KEYS.bookmarks);
+    localStorage.removeItem(PRE_RENAME_KEYS.history);
   } catch { /* ignore */ }
 }
 

@@ -24,7 +24,7 @@ export function registerNativeHandlers({ secrets, appData, getWindow }) {
 
   handle(CHANNELS.saveFile, 'E_SAVE_FILE', async (filename, content) => {
     // Playwright cannot drive a native dialog, so E2E writes to a fixed directory.
-    const e2eDir = process.env.MCP_EXPLORER_E2E_SAVE_DIR;
+    const e2eDir = process.env.MCP_SLEUTH_E2E_SAVE_DIR;
     if (e2eDir) {
       const target = join(e2eDir, filename);
       await writeFile(target, content, 'utf8');

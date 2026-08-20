@@ -3,7 +3,7 @@ import { type ElectronBridge, unwrapEnvelope } from './mcpElectron';
 
 /**
  * Credential storage over the preload bridge. Main writes the same
- * `~/.mcp-explorer/vault.json` the CLI uses and seals the auto-unlock passphrase
+ * `~/.mcp-sleuth/vault.json` the CLI uses and seals the auto-unlock passphrase
  * with Electron's `safeStorage`.
  */
 export function createElectronSecretsHost(bridge: ElectronBridge): SecretsHost {

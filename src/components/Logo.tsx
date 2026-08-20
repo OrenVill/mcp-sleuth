@@ -4,7 +4,7 @@ interface Props {
   title?: string;
 }
 
-export function Logo({ size = 28, className, title = 'MCP Explorer' }: Props) {
+export function Logo({ size = 28, className, title = 'Sleuth' }: Props) {
   return (
     <svg
       width={size}

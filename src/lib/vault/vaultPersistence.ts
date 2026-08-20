@@ -3,7 +3,7 @@
  *
  * The transport lives in the active host's `secrets` group — the browser host keeps
  * the file-API-with-IndexedDB-fallback behaviour, Electron writes the same
- * `~/.mcp-explorer/vault.json` the CLI uses. Envelope parsing stays here so the
+ * `~/.mcp-sleuth/vault.json` the CLI uses. Envelope parsing stays here so the
  * envelope shape never leaks into the host layer.
  */
 import { getHost } from '../host';

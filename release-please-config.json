@@ -7,7 +7,7 @@
   "include-component-in-tag": false,
   "packages": {
     ".": {
-      "package-name": "mcp-explorer",
+      "package-name": "mcp-sleuth",
       "changelog-path": "CHANGELOG.md",
       "changelog-sections": [
         { "type": "feat", "section": "Features" },

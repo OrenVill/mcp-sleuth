@@ -165,7 +165,7 @@ export default function App() {
       const key = aesKeyRef.current;
       if (phase !== 'ready' || !key) return;
       void saveVault(key, toStoredServers(serversRef.current)).catch((err: unknown) => {
-        console.error('mcp-explorer: vault background save failed', err);
+        console.error('mcp-sleuth: vault background save failed', err);
       });
     }
 
@@ -702,7 +702,7 @@ export default function App() {
           <Logo size={30} className="shadow-lg shadow-violet-900/30 rounded-[8px]" />
           <div className="flex items-baseline gap-2">
             <h1 className="text-zinc-50 font-semibold tracking-tight">
-              MCP Explorer
+              Sleuth
             </h1>
             {!isDesktop && (
               <span className="text-xs text-zinc-500 hidden sm:inline">
@@ -760,7 +760,7 @@ export default function App() {
             <span>⌘K</span>
           </button>
           <a
-            href="https://github.com/OrenVill/mcp-explorer"
+            href="https://github.com/OrenVill/mcp-sleuth"
             target="_blank"
             rel="noreferrer"
             className={`text-xs text-zinc-500 hover:text-zinc-200 transition-colors flex items-center gap-1.5${isDesktop ? ' p-1.5 rounded-md hover:bg-zinc-800/80' : ''}`}

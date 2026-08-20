@@ -27,7 +27,7 @@ describe('formatConnectionError', () => {
   it('maps stdio bridge missing to local server guidance', () => {
     const out = formatConnectionError(
       new Error(
-        'Stdio requires the local explorer server. Run npm run dev or mcp-explorer instead of opening dist/index.html directly.',
+        'Stdio requires the local explorer server. Run npm run dev or mcp-sleuth instead of opening dist/index.html directly.',
       ),
     );
     expect(out).toContain('Stdio requires the local explorer server');

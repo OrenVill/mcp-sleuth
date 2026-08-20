@@ -25,13 +25,13 @@ test.describe.serial('Electron — launch and security posture', () => {
 
   test('renderer is served over the app:// origin, not file://', async () => {
     const origin = await launched.page.evaluate(() => location.origin);
-    expect(origin).toBe('app://mcp-explorer');
+    expect(origin).toBe('app://mcp-sleuth');
   });
 
   test('the preload bridge is exposed and frozen', async () => {
     const info = await launched.page.evaluate(() => ({
-      kind: (window as unknown as { mcpExplorer?: { kind?: string } }).mcpExplorer?.kind,
-      frozen: Object.isFrozen((window as unknown as { mcpExplorer?: object }).mcpExplorer),
+      kind: (window as unknown as { mcpSleuth?: { kind?: string } }).mcpSleuth?.kind,
+      frozen: Object.isFrozen((window as unknown as { mcpSleuth?: object }).mcpSleuth),
     }));
 
     expect(info.kind).toBe('electron');
@@ -49,7 +49,7 @@ test.describe.serial('Electron — launch and security posture', () => {
 
   test('ipcRenderer is not reachable from the renderer', async () => {
     const reachable = await launched.page.evaluate(() => {
-      const bridge = (window as unknown as { mcpExplorer: Record<string, unknown> }).mcpExplorer;
+      const bridge = (window as unknown as { mcpSleuth: Record<string, unknown> }).mcpSleuth;
       return 'ipcRenderer' in bridge || 'send' in bridge || 'on' in bridge;
     });
     expect(reachable).toBe(false);
@@ -58,8 +58,8 @@ test.describe.serial('Electron — launch and security posture', () => {
   test('non-allow-listed IPC channels are blocked', async () => {
     const message = await launched.page.evaluate(async () => {
       const bridge = (window as unknown as {
-        mcpExplorer: { invoke: (c: string) => Promise<unknown> };
-      }).mcpExplorer;
+        mcpSleuth: { invoke: (c: string) => Promise<unknown> };
+      }).mcpSleuth;
       try {
         await bridge.invoke('mcp:evil');
         return 'allowed';
