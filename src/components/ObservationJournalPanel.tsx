@@ -12,6 +12,7 @@ import {
   getObservationJournal,
   updateObservationJournal,
 } from '../lib/observationJournalStore';
+import { downloadFile } from '../lib/export';
 import { getAllTools, getConnectedServers } from '../lib/serverTools';
 import type { ServerEntry } from '../types';
 
@@ -124,14 +125,12 @@ export function ObservationJournalPanel({
 
   const exportMarkdown = useCallback(() => {
     if (!journal) return;
-    const md = exportJournalMarkdown(journal);
-    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `observation-journal-${journal.serverName.replace(/\s+/g, '-').toLowerCase()}.md`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const slug = journal.serverName.replace(/\s+/g, '-').toLowerCase();
+    downloadFile(
+      `observation-journal-${slug}.md`,
+      exportJournalMarkdown(journal),
+      'text/markdown;charset=utf-8',
+    );
   }, [journal]);
 
   const copyMarkdown = useCallback(async () => {
