@@ -13,6 +13,13 @@ const INVOKE = [
   'mcp:readResource',
   'mcp:listPrompts',
   'mcp:getPrompt',
+  'mcp:loadEnvelope',
+  'mcp:saveEnvelope',
+  'mcp:deleteEnvelope',
+  'mcp:autoUnlockPassphrase',
+  'mcp:saveFile',
+  'mcp:readAppData',
+  'mcp:writeAppData',
 ];
 
 const api = {

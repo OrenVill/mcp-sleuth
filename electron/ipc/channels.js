@@ -18,6 +18,15 @@ export const CHANNELS = {
   readResource: 'mcp:readResource',
   listPrompts: 'mcp:listPrompts',
   getPrompt: 'mcp:getPrompt',
+  // secrets
+  loadEnvelope: 'mcp:loadEnvelope',
+  saveEnvelope: 'mcp:saveEnvelope',
+  deleteEnvelope: 'mcp:deleteEnvelope',
+  autoUnlockPassphrase: 'mcp:autoUnlockPassphrase',
+  // files + app data
+  saveFile: 'mcp:saveFile',
+  readAppData: 'mcp:readAppData',
+  writeAppData: 'mcp:writeAppData',
   // main → renderer pushes
   toolsChanged: 'mcp:toolsChanged',
   closed: 'mcp:closed',

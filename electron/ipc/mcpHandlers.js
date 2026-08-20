@@ -27,10 +27,21 @@ export function registerMcpHandlers(sessions, getWindow) {
     sessions.getPrompt(id, name, args),
   );
 
-  return sessions.onToolsChanged((serverId) => {
-    const win = getWindow();
-    if (win && !win.isDestroyed()) {
-      win.webContents.send(CHANNELS.toolsChanged, serverId);
-    }
-  });
+  function push(channel) {
+    return (serverId) => {
+      const win = getWindow();
+      if (win && !win.isDestroyed()) {
+        win.webContents.send(channel, serverId);
+      }
+    };
+  }
+
+  const unsubscribers = [
+    sessions.onToolsChanged(push(CHANNELS.toolsChanged)),
+    sessions.onClosed(push(CHANNELS.closed)),
+  ];
+
+  return () => {
+    for (const unsubscribe of unsubscribers) unsubscribe();
+  };
 }
