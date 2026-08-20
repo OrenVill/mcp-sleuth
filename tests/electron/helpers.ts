@@ -20,10 +20,12 @@ export interface LaunchedApp {
  * Launch against a throwaway userData dir so every spec starts with an empty
  * vault and no leftover IndexedDB state.
  */
-export async function launchApp(): Promise<LaunchedApp> {
+export async function launchApp(options: { dataDir?: string } = {}): Promise<LaunchedApp> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-e2e-'));
   // Both must exist before launch: nativeHandlers writes into saveDir without mkdir.
-  const dataDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-data-'));
+  // Passing an existing dataDir relaunches against a vault created earlier, which
+  // is the only way to reach the unlock screen.
+  const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), 'mcp-explorer-data-'));
   const saveDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-save-'));
 
   const app = await electron.launch({
@@ -40,9 +42,15 @@ export async function launchApp(): Promise<LaunchedApp> {
   return { app, page, userDataDir, dataDir, saveDir };
 }
 
-export async function closeApp(launched: LaunchedApp): Promise<void> {
+export async function closeApp(
+  launched: LaunchedApp,
+  options: { keepDataDir?: boolean } = {},
+): Promise<void> {
   await launched.app.close();
-  for (const dir of [launched.userDataDir, launched.dataDir, launched.saveDir]) {
+  const dirs = options.keepDataDir
+    ? [launched.userDataDir, launched.saveDir]
+    : [launched.userDataDir, launched.dataDir, launched.saveDir];
+  for (const dir of dirs) {
     rmSync(dir, { recursive: true, force: true });
   }
 }

@@ -32,6 +32,7 @@ import { loadLegacyServers, type StoredServer } from './lib/storage';
 import { getHost } from './lib/host';
 import { TitleBar } from './components/TitleBar';
 import { WindowControls } from './components/WindowControls';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
@@ -106,6 +107,7 @@ export default function App() {
   const [vaultPhase, setVaultPhase] = useState<VaultPhase>('loading');
   const [vaultError, setVaultError] = useState<string | null>(null);
   const [vaultBusy, setVaultBusy] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [servers, setServers] = useState<ServerEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
@@ -591,9 +593,7 @@ export default function App() {
   }
 
   async function handleVaultReset() {
-    if (!window.confirm('Reset vault? This will permanently remove all stored servers and credentials.')) {
-      return;
-    }
+    setResetConfirmOpen(false);
     setVaultBusy(true);
     try {
       await resetVault();
@@ -675,13 +675,22 @@ export default function App() {
           <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
           <button
             type="button"
-            onClick={() => void handleVaultReset()}
+            onClick={() => setResetConfirmOpen(true)}
             disabled={vaultBusy}
             className="mt-4 text-xs px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-300 hover:text-red-300 hover:border-red-800 hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reset vault
           </button>
         </div>
+        <ConfirmDialog
+          open={resetConfirmOpen}
+          title="Reset vault?"
+          message="This permanently removes all stored servers and credentials. It cannot be undone."
+          confirmLabel="Reset vault"
+          danger
+          onConfirm={() => void handleVaultReset()}
+          onCancel={() => setResetConfirmOpen(false)}
+        />
       </div>
     );
   }

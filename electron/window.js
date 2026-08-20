@@ -76,14 +76,13 @@ export function createWindow({ windowState = null } = {}) {
   });
 
   // A desktop app must not reload out from under the user: a reload drops every
-  // live MCP connection. DevTools stays reachable.
+  // live MCP connection. DevTools chords go too — this is an application, not a
+  // browser — except under `npm run electron:dev`, which sets a dev URL.
+  const devMode = Boolean(process.env.MCP_EXPLORER_DEV_URL);
   win.webContents.on('before-input-event', (event, input) => {
-    if (isReloadShortcut(input)) {
+    if (isReloadShortcut(input) || (!devMode && isDevToolsShortcut(input))) {
       event.preventDefault();
-      return;
     }
-    // Electron binds Ctrl+Shift+I (Alt+Cmd+I) via the menu but never F12.
-    if (isDevToolsShortcut(input)) win.webContents.toggleDevTools();
   });
 
   // Anything that tries to open a window goes to the user's real browser, never

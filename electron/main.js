@@ -69,7 +69,9 @@ if (!app.requestSingleInstanceLock()) {
     registerWindowHandlers(() => mainWindow);
 
     // Replaces Electron's default menu, which carries Reload / Force Reload.
-    applyApplicationMenu();
+    applyApplicationMenu(process.platform, {
+      devMode: Boolean(process.env.MCP_EXPLORER_DEV_URL),
+    });
 
     const windowState = createWindowStateStore({
       fs: nodeFs,

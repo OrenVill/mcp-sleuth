@@ -30,16 +30,22 @@ export function isReloadShortcut(input) {
   return modifier && key.toLowerCase() === 'r';
 }
 
-/** True for F12, which Electron does not bind by default. */
+/**
+ * True for the browser DevTools chords: F12 and Ctrl/Cmd+Shift+I.
+ *
+ * These are swallowed in the packaged app — it is an application, not a browser,
+ * and DevTools is not part of its surface. They stay live under
+ * `npm run electron:dev`, where MCP_EXPLORER_DEV_URL is set.
+ */
 export function isDevToolsShortcut(input) {
   if (!input || typeof input !== 'object') return false;
   if (input.type === 'keyUp') return false;
-  // Holding the key must not toggle DevTools open and shut repeatedly.
-  if (input.isAutoRepeat === true) return false;
-  return typeof input.key === 'string' && input.key.toUpperCase() === 'F12';
+  const key = typeof input.key === 'string' ? input.key.toUpperCase() : '';
+  if (key === 'F12') return true;
+  return key === 'I' && input.shift === true && (input.control === true || input.meta === true);
 }
 
-export function buildMenuTemplate(platform = process.platform) {
+export function buildMenuTemplate(platform = process.platform, { devMode = false } = {}) {
   const isMac = platform === 'darwin';
 
   return [
@@ -71,8 +77,8 @@ export function buildMenuTemplate(platform = process.platform) {
         { role: 'zoomOut' },
         { type: 'separator' },
         { role: 'togglefullscreen' },
-        { type: 'separator' },
-        { role: 'toggleDevTools' },
+        // DevTools is a browser affordance; it ships only in dev mode.
+        ...(devMode ? [{ type: 'separator' }, { role: 'toggleDevTools' }] : []),
       ],
     },
     {
@@ -87,8 +93,8 @@ export function buildMenuTemplate(platform = process.platform) {
   ];
 }
 
-export function applyApplicationMenu(platform = process.platform) {
-  const menu = Menu.buildFromTemplate(buildMenuTemplate(platform));
+export function applyApplicationMenu(platform = process.platform, options = {}) {
+  const menu = Menu.buildFromTemplate(buildMenuTemplate(platform, options));
   Menu.setApplicationMenu(menu);
   return menu;
 }

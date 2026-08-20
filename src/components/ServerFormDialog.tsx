@@ -84,6 +84,8 @@ function normalizeEnvRows(rows?: EnvRow[]): EnvRow[] {
   return rows && rows.length > 0 ? rows : [{ ...EMPTY_ENV_ROW }];
 }
 
+import { ConfirmDialog } from './ConfirmDialog';
+
 export function ServerFormDialog({
   open,
   mode,
@@ -101,6 +103,7 @@ export function ServerFormDialog({
   const initialStdioEnvRows = normalizeEnvRows(initialValues?.stdioEnvRows);
   const [name, setName] = useState(() => initialValues?.name ?? '');
   const [transport, setTransport] = useState<ServerTransport>(() => initialTransport);
+  const [pendingTransport, setPendingTransport] = useState<ServerTransport | null>(null);
   const [url, setUrl] = useState(() => initialUrl);
   const [proxyThroughLocal, setProxyThroughLocal] = useState(() => initialProxyThroughLocal);
   const [description, setDescription] = useState(() => initialValues?.description ?? '');
@@ -279,14 +282,21 @@ export function ServerFormDialog({
   function handleTransportChange(next: ServerTransport) {
     if (next === transport) return;
     const leavingEdited = transport === 'http' ? httpFieldsEdited : stdioFieldsEdited;
-    if (
-      leavingEdited &&
-      !window.confirm('You have unsaved edits in this transport section. Switch anyway?')
-    ) {
+    if (leavingEdited) {
+      // Confirm in-app rather than through window.confirm, which renders as
+      // unstyled browser chrome inside the desktop window.
+      setPendingTransport(next);
       return;
     }
     setError(null);
     setTransport(next);
+  }
+
+  function applyPendingTransport() {
+    if (pendingTransport === null) return;
+    setError(null);
+    setTransport(pendingTransport);
+    setPendingTransport(null);
   }
 
   function updateEnvRow(index: number, patch: Partial<EnvRow>) {
@@ -627,6 +637,16 @@ export function ServerFormDialog({
           </button>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={pendingTransport !== null}
+        title="Discard unsaved edits?"
+        message="You have unsaved edits in this transport section. Switching will discard them."
+        confirmLabel="Switch anyway"
+        danger
+        onConfirm={applyPendingTransport}
+        onCancel={() => setPendingTransport(null)}
+      />
     </div>
   );
 }

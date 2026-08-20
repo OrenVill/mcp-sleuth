@@ -64,17 +64,26 @@ describe('isReloadShortcut', () => {
 });
 
 describe('isDevToolsShortcut', () => {
-  it('ignores auto-repeat so holding F12 does not flicker DevTools', () => {
-    expect(isDevToolsShortcut({ ...key('F12'), isAutoRepeat: true })).toBe(false);
-    // A held reload chord is still swallowed every time.
-    expect(isReloadShortcut({ ...key('F5'), isAutoRepeat: true })).toBe(true);
+  it('matches both browser DevTools chords', () => {
+    expect(isDevToolsShortcut(key('F12'))).toBe(true);
+    expect(isDevToolsShortcut(key('i', { control: true, shift: true }))).toBe(true);
+    expect(isDevToolsShortcut(key('I', { control: true, shift: true }))).toBe(true);
+    expect(isDevToolsShortcut(key('i', { meta: true, shift: true }))).toBe(true);
   });
 
-  it('matches F12 only', () => {
-    expect(isDevToolsShortcut(key('F12'))).toBe(true);
+  it('does not match plain or unrelated chords', () => {
+    expect(isDevToolsShortcut(key('i'))).toBe(false);
+    // Ctrl+I without Shift is a text-formatting chord, not DevTools.
+    expect(isDevToolsShortcut(key('i', { control: true }))).toBe(false);
     expect(isDevToolsShortcut(key('F5'))).toBe(false);
     expect(isDevToolsShortcut(key('r', { control: true }))).toBe(false);
     expect(isDevToolsShortcut(null)).toBe(false);
+  });
+
+  it('ignores key-up so the chord is swallowed once', () => {
+    expect(isDevToolsShortcut({ ...key('F12'), type: 'keyUp' })).toBe(false);
+    // A held reload chord is still swallowed every time.
+    expect(isReloadShortcut({ ...key('F5'), isAutoRepeat: true })).toBe(true);
   });
 });
 
@@ -101,8 +110,15 @@ describe('buildMenuTemplate', () => {
     }
   });
 
-  it('keeps DevTools reachable from the View menu', () => {
-    expect(rolesIn(buildMenuTemplate('linux'), 'View')).toContain('toggleDevTools');
+  it('omits DevTools from the shipped menu — this is an app, not a browser', () => {
+    for (const platform of ['linux', 'win32', 'darwin']) {
+      expect(rolesIn(buildMenuTemplate(platform), 'View')).not.toContain('toggleDevTools');
+    }
+  });
+
+  it('offers DevTools only in dev mode', () => {
+    const view = rolesIn(buildMenuTemplate('linux', { devMode: true }), 'View');
+    expect(view).toContain('toggleDevTools');
   });
 
   it('has a Window menu with minimize', () => {
