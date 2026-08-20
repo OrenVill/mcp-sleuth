@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/OrenVill/mcp-sleuth/compare/v1.0.0...v1.0.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* **ci:** unbreak npm ci on macOS and Windows ([#51](https://github.com/OrenVill/mcp-sleuth/issues/51)) ([fe9b43c](https://github.com/OrenVill/mcp-sleuth/commit/fe9b43c6c1c4c33f88b18ae023b2366a32511990))
+
 ## [1.0.0](https://github.com/OrenVill/mcp-sleuth/compare/v0.8.1...v1.0.0) (2026-08-20)
 
 
