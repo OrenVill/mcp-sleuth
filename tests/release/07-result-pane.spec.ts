@@ -72,6 +72,9 @@ test.describe.serial('§3.7 — Result pane — rich rendering', () => {
     const resources = page.locator('aside + aside ul li').filter({ hasText: /html/i });
     if (await resources.first().isVisible({ timeout: 2_000 }).catch(() => false)) {
       await resources.first().click();
+      // Resource contents are fetched on demand — ResourceDetail renders a Read
+      // button and only mounts the Code/Preview toggle once contents arrive.
+      await page.getByRole('button', { name: /^Read$/ }).click();
       const previewBtn = page.getByRole('button', { name: /preview/i }).or(
         page.getByRole('tab', { name: /preview/i }),
       );
