@@ -3,6 +3,7 @@
   "version": "0.8.1",
   "description": "Investigate any MCP server \u2014 inspect the protocol, invoke tools, and audit what a server can reach, from the browser or the desktop app.",
   "license": "MIT",
+  "author": "OrenVill (https://github.com/OrenVill)",
   "type": "module",
   "repository": {
     "type": "git",
