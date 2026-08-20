@@ -13,8 +13,6 @@ import {
 import { deleteVaultRecord, getVaultEnvelope, putVaultEnvelope } from './vaultPersistence';
 import type { VaultEnvelope } from './types';
 
-export type BootstrapPhase = 'needs-setup' | 'needs-unlock';
-
 export type VaultBootstrap =
   | { phase: 'ready'; aesKey: CryptoKey; servers: StoredServer[] }
   | { phase: 'needs-setup' }
@@ -38,11 +36,6 @@ function requireEnvelope(envelope: VaultEnvelope | null): VaultEnvelope {
     throw new Error('Vault is not set up yet.');
   }
   return envelope;
-}
-
-export async function getBootstrapPhase(): Promise<BootstrapPhase> {
-  const envelope = await getVaultEnvelope();
-  return envelope ? 'needs-unlock' : 'needs-setup';
 }
 
 /**
