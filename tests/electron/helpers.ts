@@ -10,6 +10,10 @@ export interface LaunchedApp {
   app: ElectronApplication;
   page: Page;
   userDataDir: string;
+  /** Where the app writes vault.json and data.gz — the CLI's directory shape. */
+  dataDir: string;
+  /** Where the save dialog is short-circuited to during E2E. */
+  saveDir: string;
 }
 
 /**
@@ -18,18 +22,29 @@ export interface LaunchedApp {
  */
 export async function launchApp(): Promise<LaunchedApp> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-e2e-'));
+  // Both must exist before launch: nativeHandlers writes into saveDir without mkdir.
+  const dataDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-data-'));
+  const saveDir = mkdtempSync(join(tmpdir(), 'mcp-explorer-save-'));
+
   const app = await electron.launch({
     args: ['electron/main.js', `--user-data-dir=${userDataDir}`],
-    env: { ...process.env, MCP_EXPLORER_E2E: '1' },
+    env: {
+      ...process.env,
+      MCP_EXPLORER_E2E: '1',
+      MCP_EXPLORER_DATA_DIR: dataDir,
+      MCP_EXPLORER_E2E_SAVE_DIR: saveDir,
+    },
   });
   const page = await app.firstWindow();
   await page.waitForLoadState('domcontentloaded');
-  return { app, page, userDataDir };
+  return { app, page, userDataDir, dataDir, saveDir };
 }
 
 export async function closeApp(launched: LaunchedApp): Promise<void> {
   await launched.app.close();
-  rmSync(launched.userDataDir, { recursive: true, force: true });
+  for (const dir of [launched.userDataDir, launched.dataDir, launched.saveDir]) {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 /** Phase 2a still uses the passphrase vault; 2b replaces this with auto-unlock. */
