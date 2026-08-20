@@ -2,6 +2,7 @@ import { app, net, protocol, safeStorage } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import * as nodeFs from 'node:fs/promises';
+import * as nodeFsSync from 'node:fs';
 import { APP_ORIGIN, APP_SCHEME, resolveAppPath } from './protocol.js';
 import { createSessionManager } from './mcp/sessions.js';
 import { registerMcpHandlers } from './ipc/mcpHandlers.js';
@@ -10,6 +11,12 @@ import { forwardWindowState, registerWindowHandlers } from './ipc/windowHandlers
 import { createSecretsStore } from './secrets/store.js';
 import { createAppDataStore } from './appdata/store.js';
 import { createWindow } from './window.js';
+import { applyApplicationMenu } from './menu.js';
+import {
+  attachWindowState,
+  createWindowStateStore,
+  getWindowStateFilePath,
+} from './windowState.js';
 import { getVaultFilePath } from '../vault-file-handler.js';
 import { getAppDataFilePath } from '../app-data-handler.js';
 import { isAlive, readLock } from '../daemon-lock.js';
@@ -61,8 +68,18 @@ if (!app.requestSingleInstanceLock()) {
     registerNativeHandlers({ secrets, appData, getWindow: () => mainWindow });
     registerWindowHandlers(() => mainWindow);
 
-    mainWindow = createWindow();
+    // Replaces Electron's default menu, which carries Reload / Force Reload.
+    applyApplicationMenu();
+
+    const windowState = createWindowStateStore({
+      fs: nodeFs,
+      fsSync: nodeFsSync,
+      filePath: getWindowStateFilePath(),
+    });
+
+    mainWindow = createWindow({ windowState });
     forwardWindowState(mainWindow);
+    attachWindowState(mainWindow, windowState);
 
     const devUrl = process.env.MCP_EXPLORER_DEV_URL;
     void mainWindow.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);
@@ -79,7 +96,9 @@ if (!app.requestSingleInstanceLock()) {
 
     app.on('activate', () => {
       if (mainWindow === null) {
-        mainWindow = createWindow();
+        mainWindow = createWindow({ windowState });
+        forwardWindowState(mainWindow);
+        attachWindowState(mainWindow, windowState);
         void mainWindow.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);
       }
     });
