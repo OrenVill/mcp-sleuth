@@ -53,6 +53,24 @@ The explorer auto-connects, lists all available tools, and generates input forms
 - Permission Surface audit, Prompt Injection scan, and Observation Journal for MCP trust evaluation
 - Meta-tool discovery with one-click **Discover all tools**
 
+## Desktop app
+
+Sleuth also ships as an Electron desktop app — download an installer from the
+[GitHub releases page](https://github.com/OrenVill/mcp-sleuth/releases/latest). Compared with
+this CLI it adds:
+
+- No CORS proxy — MCP requests go out from the Electron main process, so browser CORS never applies
+- Stdio servers spawned directly as child processes, with no local HTTP bridge in between
+- Vault auto-unlock from the OS keychain where the platform has a real keyring
+- Native save dialogs for exports
+
+The builds are unsigned, so macOS and Windows warn on first launch; the README on GitHub has the
+click-through steps. There is no auto-update — updating means downloading a newer installer.
+
+The CLI stays fully supported and is the only option for a remote or SSH session, where there is
+no desktop to run an app on. Both share `~/.mcp-sleuth/` (override with `MCP_SLEUTH_DATA_DIR`), so
+running the CLI and the desktop app simultaneously is last-write-wins — use one at a time.
+
 ## Full documentation
 
 [github.com/OrenVill/mcp-sleuth](https://github.com/OrenVill/mcp-sleuth)

@@ -1,7 +1,7 @@
 /**
  * The directory holding the vault, app data, daemon lock, and window state.
  *
- * The product was renamed from "Sleuth" to "Sleuth". Existing installs keep
+ * The product was renamed from "MCP Explorer" to "Sleuth". Existing installs keep
  * their data in `~/.mcp-sleuth`, including encrypted vaults that cannot be
  * recreated, so this module migrates it once — non-destructively, leaving the old
  * directory in place so a downgrade still works.
@@ -11,7 +11,9 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 export const DATA_DIR_NAME = '.mcp-sleuth';
-export const LEGACY_DATA_DIR_NAME = '.mcp-sleuth';
+/** The pre-rename directory. Must NOT track DATA_DIR_NAME — it names data
+ *  written by older versions, so renaming it makes the migration a no-op. */
+export const LEGACY_DATA_DIR_NAME = '.mcp-explorer';
 
 /** Files worth carrying across a rename. */
 export const MIGRATABLE_FILES = [

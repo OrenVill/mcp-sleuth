@@ -425,7 +425,7 @@ export function ServerFormDialog({
                 className="mt-0.5 accent-violet-500 shrink-0"
               />
               <span>
-                <span className="block text-sm text-zinc-200 leading-tight">Proxy through local explorer</span>
+                <span className="block text-sm text-zinc-200 leading-tight">Proxy through local server</span>
                 <span className="block text-[11px] text-zinc-500 leading-snug mt-1">
                   Rewrites MCP requests through this localhost app so servers do not need browser CORS headers.
                 </span>

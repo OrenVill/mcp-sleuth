@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { join } from 'node:path';
 import {
+  DATA_DIR_NAME,
+  LEGACY_DATA_DIR_NAME,
   filesToMigrate,
   getDataDir,
+  getLegacyDataDir,
   isDefaultDataDir,
   migrateLegacyDataDir,
 } from './data-dir.js';
@@ -23,6 +26,25 @@ describe('getDataDir', () => {
 
   it('falls back to a home directory', () => {
     expect(getDataDir({})).toMatch(/\.mcp-sleuth$/);
+  });
+});
+
+describe('directory names', () => {
+  // The rest of this suite injects both paths, so it cannot catch the real
+  // defaults being wrong. A rename that rewrote LEGACY_DATA_DIR_NAME to match
+  // DATA_DIR_NAME made migration a silent no-op and every other test still passed.
+  it('keeps the pre-rename directory distinct from the current one', () => {
+    expect(LEGACY_DATA_DIR_NAME).not.toBe(DATA_DIR_NAME);
+  });
+
+  it('names the directories the shipped versions actually used', () => {
+    expect(DATA_DIR_NAME).toBe('.mcp-sleuth');
+    expect(LEGACY_DATA_DIR_NAME).toBe('.mcp-explorer');
+  });
+
+  it('resolves the two to different absolute paths', () => {
+    expect(getLegacyDataDir()).not.toBe(getDataDir({}));
+    expect(getLegacyDataDir().endsWith('.mcp-explorer')).toBe(true);
   });
 });
 
