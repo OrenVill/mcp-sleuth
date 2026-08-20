@@ -136,3 +136,25 @@ body::before {
   app-region: no-drag;
 }
 
+/* ── Desktop window chrome ────────────────────────────────────────────────
+   The Electron window is transparent and frameless, so the app paints its own
+   rounded shell. html/body stay see-through and #root supplies the surface,
+   which is what turns a full-bleed web page into something window-shaped.
+   Squared off when maximised, where rounded corners would clip the display. */
+[data-host='electron'] html,
+[data-host='electron'] body {
+  background-color: transparent;
+}
+
+[data-host='electron'] #root {
+  background-color: #09090b;
+  border: 1px solid rgb(39 39 42 / 0.85);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+[data-host='electron'][data-maximized='true'] #root {
+  border-color: transparent;
+  border-radius: 0;
+}
+

@@ -1,4 +1,5 @@
-import { BrowserWindow, shell } from 'electron';
+import { BrowserWindow } from 'electron';
+import { openExternalUrl } from './externalLinks.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { APP_ORIGIN } from './protocol.js';
@@ -45,9 +46,10 @@ export function createWindow() {
 
   win.once('ready-to-show', () => win.show());
 
-  // Anything that tries to navigate away or open a window goes to the real browser.
+  // Anything that tries to open a window goes to the user's real browser, never
+  // a second Electron window.
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+    openExternalUrl(url);
     return { action: 'deny' };
   });
 
@@ -56,7 +58,7 @@ export function createWindow() {
     const allowed = devUrl ? url.startsWith(devUrl) : url.startsWith(APP_ORIGIN);
     if (!allowed) {
       event.preventDefault();
-      void shell.openExternal(url);
+      openExternalUrl(url);
     }
   });
 
