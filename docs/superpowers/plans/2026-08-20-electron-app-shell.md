@@ -1421,99 +1421,30 @@ git commit -m "feat(host): detect the Electron preload bridge in getHost"
 
 ---
 
-## Task 9: Error codes in connectionErrorMessage
+## Task 9: Error codes in connectionErrorMessage — RESOLVED, NO CODE CHANGE
 
-The Phase 1 plan recorded this as a known hazard: `connectionErrorMessage.ts` uses
+**Status: complete.** Recorded here so the finding is not lost.
+
+The Phase 1 plan flagged a hazard: `connectionErrorMessage.ts` uses
 `instanceof UnauthorizedError` / `instanceof StreamableHTTPError`, and prototypes do not
-survive IPC. Add a code check **alongside** the existing checks so the browser path is
-unchanged.
+survive IPC. Investigation showed the hazard is real but needs **no implementation
+change**.
 
-**Files:**
-- Modify: `src/lib/connectionErrorMessage.ts`
-- Modify: `src/lib/connectionErrorMessage.test.ts`
+Coded errors fall through to the existing `err instanceof Error` branch, which calls
+`formatGenericMessage(err.message)`. That function keys off the raw message text —
+`econnrefused`, `spawn ... enoent`, `enotfound`, `etimedout` — so it produces the *same*
+guidance in Electron as in the browser.
 
-- [ ] **Step 1: Read the current implementation**
+An earlier draft of this task added an `ipcErrorCode` helper that returned `err.message`
+verbatim for any `E_*`-coded error. **Do not reintroduce it.** It bypassed every
+guidance branch, so the Electron path produced strictly worse error text than the
+browser path — raw `ECONNREFUSED 127.0.0.1:9999` instead of "Connection refused — No
+program is listening at that address."
 
-Run: `cat src/lib/connectionErrorMessage.ts`
-
-Note the exported function name and its exact signature before editing — the rest of
-this task assumes it is `formatConnectionError(err: unknown, ...)`, which is how
-`src/App.tsx:18` imports it. If the real signature differs, keep the real one.
-
-- [ ] **Step 2: Write the failing test**
-
-Append to `src/lib/connectionErrorMessage.test.ts`:
-
-```ts
-describe('electron IPC errors', () => {
-  it('treats an E_CONNECT code like a transport failure', () => {
-    const err = Object.assign(new Error('fetch failed'), { code: 'E_CONNECT' });
-    const message = formatConnectionError(err);
-
-    expect(message).toBeTruthy();
-    expect(message).not.toContain('[object Object]');
-  });
-
-  it('preserves the underlying message', () => {
-    const err = Object.assign(new Error('ECONNREFUSED 127.0.0.1:9999'), {
-      code: 'E_CONNECT',
-    });
-
-    expect(formatConnectionError(err)).toContain('ECONNREFUSED');
-  });
-});
-```
-
-Make sure `formatConnectionError` and `describe`/`it`/`expect` are imported at the top
-of that file — they already are if the file has existing tests.
-
-- [ ] **Step 3: Run the test to verify it fails or passes**
-
-Run: `npm test -- src/lib/connectionErrorMessage.test.ts`
-
-If it already passes, the existing fallback path handles coded errors correctly and
-**no implementation change is needed** — skip to Step 5 and commit only the tests. If it
-fails, continue to Step 4.
-
-- [ ] **Step 4: Add the code branch**
-
-In `src/lib/connectionErrorMessage.ts`, add this helper near the top and consult it
-before the `instanceof` checks:
-
-```ts
-/**
- * Errors that crossed the Electron IPC boundary lose their prototype chain, so
- * `instanceof` on SDK error classes cannot match. Main tags them with a code instead.
- */
-function ipcErrorCode(err: unknown): string | undefined {
-  if (err && typeof err === 'object' && 'code' in err) {
-    const code = (err as { code?: unknown }).code;
-    return typeof code === 'string' && code.startsWith('E_') ? code : undefined;
-  }
-  return undefined;
-}
-```
-
-Then, at the top of `formatConnectionError`, before the existing `instanceof` branches:
-
-```ts
-  const code = ipcErrorCode(err);
-  if (code && err instanceof Error) {
-    return err.message;
-  }
-```
-
-- [ ] **Step 5: Run the test to verify it passes**
-
-Run: `npm test -- src/lib/connectionErrorMessage.test.ts`
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add src/lib/connectionErrorMessage.ts src/lib/connectionErrorMessage.test.ts
-git commit -m "fix(errors): handle coded errors that crossed the Electron IPC boundary"
-```
+What actually shipped: a doc comment on `formatConnectionError` explaining why no
+special case is needed, plus four tests in `src/lib/connectionErrorMessage.test.ts`
+covering coded errors, including one asserting that a coded error formats **identically**
+to the same error without a code.
 
 ---
 
