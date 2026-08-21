@@ -105,6 +105,23 @@ function mcpProxyPlugin(): PluginOption {
 
 export default defineConfig({
   plugins: [vaultStoragePlugin(), appDataPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the big third-party deps out of the app chunk. They change far
+        // less often than the app does, so browsers keep them cached across
+        // releases instead of re-downloading everything for a one-line fix.
+        // Rolldown takes a function here, not the object map Rollup accepts.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/node_modules[/\\]react(-dom)?[/\\]/.test(id)) return 'vendor-react';
+          if (id.includes('@modelcontextprotocol')) return 'vendor-mcp';
+          if (/node_modules[/\\]marked[/\\]/.test(id)) return 'vendor-markdown';
+          return undefined;
+        },
+      },
+    },
+  },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts', '*.test.js', 'electron/**/*.test.js'],

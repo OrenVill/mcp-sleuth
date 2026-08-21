@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { getHost } from './lib/host'
 import { hasCustomWindowControls, windowControls } from './lib/windowControls'
 
@@ -20,6 +21,18 @@ if (hasCustomWindowControls()) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
+
+// A rejected promise with no handler used to vanish silently; an MCP call that
+// fails outside a try/catch left the UI stuck with no clue why.
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('sleuth: unhandled rejection', event.reason)
+})
+
+window.addEventListener('error', (event) => {
+  console.error('sleuth: uncaught error', event.error ?? event.message)
+})

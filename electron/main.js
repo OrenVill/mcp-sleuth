@@ -33,6 +33,17 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
+// A throw anywhere in main used to take the app down with no window, no dialog,
+// and nothing on screen. Log it and keep running: the MCP sessions and the
+// user's unsaved vault state are worth more than a clean exit.
+process.on('uncaughtException', (err) => {
+  console.error('sleuth: uncaught exception in main', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('sleuth: unhandled rejection in main', reason);
+});
+
 let mainWindow = null;
 const sessions = createSessionManager();
 
@@ -89,6 +100,19 @@ if (!app.requestSingleInstanceLock()) {
 
     mainWindow = createWindow({ windowState });
     forwardWindowState(mainWindow);
+
+    // The renderer can be killed by an OOM or a GPU fault. Without this the
+    // window goes blank with no explanation and no way back.
+    mainWindow.webContents.on('render-process-gone', (_event, details) => {
+      console.error(`sleuth: renderer gone (${details.reason})`);
+      if (details.reason !== 'clean-exit' && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.reload();
+      }
+    });
+
+    mainWindow.webContents.on('unresponsive', () => {
+      console.warn('sleuth: renderer unresponsive');
+    });
     attachWindowState(mainWindow, windowState);
 
     const devUrl = process.env.MCP_SLEUTH_DEV_URL;

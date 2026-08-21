@@ -13,8 +13,6 @@
  *   - §3.22 (Permission Surface) needs tools that infer filesystem, network,
  *     and shell risk.
  *
- * Stateless mode (`sessionIdGenerator: undefined`): a fresh server+transport per
- * request, so there is no session state to leak between specs.
  *
  * IMPORTANT: no tool, resource, or prompt name/description may contain the word
  * "fixture". `helpers.ts` locates the server row with
@@ -22,13 +20,11 @@
  * is a case-insensitive substring match — so any list entry containing it causes
  * a strict-mode violation against the server row. Use "sample" instead.
  */
-import { createServer } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import * as z from 'zod';
+import { serveMcp } from './serve-mcp.mjs';
 
 const PORT = Number(process.argv[2] ?? process.env.PORT ?? 3001);
-const HOST = process.env.HOST ?? '127.0.0.1';
 
 const HTML_DOC = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Sample page</title></head>
@@ -233,60 +229,4 @@ function buildServer() {
   return server;
 }
 
-async function readJsonBody(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  if (chunks.length === 0) return undefined;
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  } catch {
-    return undefined;
-  }
-}
-
-const httpServer = createServer(async (req, res) => {
-  // Permissive CORS so the explorer works with its local proxy either on or off.
-  res.setHeader('Access-Control-Allow-Origin', req.headers.origin ?? '*');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Expose-Headers', 'mcp-session-id, mcp-protocol-version');
-
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
-
-  const path = (req.url ?? '/').split('?')[0];
-  if (path !== '/mcp') {
-    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Not Found');
-    return;
-  }
-
-  const body = req.method === 'POST' ? await readJsonBody(req) : undefined;
-  const server = buildServer();
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-    enableJsonResponse: true,
-  });
-
-  res.on('close', () => {
-    void transport.close();
-    void server.close();
-  });
-
-  try {
-    await server.connect(transport);
-    await transport.handleRequest(req, res, body);
-  } catch (err) {
-    if (!res.headersSent) {
-      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-    }
-    res.end(err instanceof Error ? err.message : String(err));
-  }
-});
-
-httpServer.listen(PORT, HOST, () => {
-  console.log(`http-mcp-fixture listening on http://${HOST}:${PORT}/mcp`);
-});
+serveMcp(buildServer, { port: PORT, label: 'http-mcp-fixture' });

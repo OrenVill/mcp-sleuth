@@ -1,7 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 import { setupVault, addFixtureServer, openDevTools } from './helpers';
 
-test.describe.serial('§3.22 — Trust evaluators (permission, injection, journal)', () => {
+test.describe.serial('§3.23 — Trust evaluators (permission, injection, journal)', () => {
   let ctx: BrowserContext;
   let page: Page;
 

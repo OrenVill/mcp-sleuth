@@ -45,5 +45,12 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      // Meta-tool fixture for §3.6 (boolean parameter) and §3.12 (discovery).
+      command: 'node tests/fixtures/meta-mcp-server.mjs',
+      port: 3002,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });

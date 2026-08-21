@@ -89,12 +89,12 @@ In particular no name or description may contain the word "fixture", because
 
 **§3.22 — Stdio transport (manual pass):** Add a stdio server with command `node` (or `process.execPath`) and args pointing at `tests/fixtures/stdio-mcp-server.mjs`; confirm the sidebar shows connected (green dot), the `echo` tool appears, invoking with a message returns that text in the result pane, and disconnect/reconnect still works. Automated: `tests/release/22-stdio-transport.spec.ts` (no HTTP fixture server required).
 
-**§3.22 — Trust evaluators (manual pass):** With the fixture server connected, open Dev Tools and
+**§3.23 — Trust evaluators (manual pass):** With the fixture server connected, open Dev Tools and
 check each of the three tabs renders for that server: **Permission Surface** (a per-category risk
 summary, not a pass/fail score), **Prompt Injection** (findings with the matched text highlighted),
 **Observation Journal** (add a note, set an approve/reject decision, export Markdown). A tab that
 renders empty or throws for a connected server blocks release. Automated:
-`tests/release/22-trust-evaluators.spec.ts`.
+`tests/release/23-trust-evaluators.spec.ts`.
 
 > Both spec files are numbered `22` and both declare `§3.22`. That is a known collision, not a
 > mistake in this list. The next spec added should be `23`.
