@@ -42,19 +42,20 @@ afterEach(() => {
 
 describe('llmBrowser.chat', () => {
   it('posts through the same-origin proxy with the provider and target', async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-      streamingResponse(['data: [DONE]\n']),
-    );
+    const fetchMock = vi.fn(async () => streamingResponse(['data: [DONE]\n']));
     vi.stubGlobal('fetch', fetchMock);
 
     await drain(llmBrowser.chat(request, new AbortController().signal));
 
-    const url = String(fetchMock.mock.calls[0][0]);
+    // The mock is declared zero-arg, so its recorded calls are typed as an empty
+    // tuple. Widen them to what fetch was actually invoked with.
+    const calls = fetchMock.mock.calls as unknown as [string, RequestInit][];
+    const url = String(calls[0][0]);
     expect(url).toContain('/__llm_proxy?provider=openai');
     expect(url).toContain(
       `target=${encodeURIComponent('http://127.0.0.1:11434/v1/chat/completions')}`,
     );
-    expect(fetchMock.mock.calls[0][1]).toMatchObject({ method: 'POST' });
+    expect(calls[0][1]).toMatchObject({ method: 'POST' });
   });
 
   it('parses the provider stream into events', async () => {
