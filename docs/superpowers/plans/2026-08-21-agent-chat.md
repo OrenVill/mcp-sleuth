@@ -4010,6 +4010,14 @@ git commit -m "feat(agent): transcript rendering"
 
 ### Task 17: Model picker component
 
+> **SUPERSEDED — already implemented, then rewritten.** The component below was
+> built as written, then replaced: a config is now an LLM *server* (Name, Type,
+> Base URL, API key) and the model is **discovered** via `GET {baseUrl}/models`
+> rather than typed. `LlmHost.listModels()` and the adapter's
+> `modelsRequest`/`parseModels` already existed from Wave 2 but nothing called
+> them. See `src/components/AgentModelPicker.tsx` for the shipped version; the
+> code below is kept only as the record of the original step.
+
 **Files:**
 - Create: `src/components/AgentModelPicker.tsx`
 
@@ -4871,14 +4879,18 @@ async function openChatWithModel(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Agent Chat' }).click();
   await expect(page.getByTestId('agent-chat-panel')).toBeVisible();
 
+  // A config is an LLM *server*, not a model: there is no model field. Saving
+  // the server triggers GET {baseUrl}/models and populates the model dropdown.
   const form = page.getByTestId('llm-config-form');
   if (await form.isVisible()) {
-    await form.getByPlaceholder('Local Qwen').fill('Fixture');
+    await form.getByPlaceholder('Local Ollama').fill('Fixture');
     await page.getByRole('textbox', { name: /base url/i }).fill(FIXTURE_MODEL_BASE);
-    await form.getByPlaceholder('qwen3').fill('fixture-model');
-    await form.getByRole('button', { name: 'Save model' }).click();
+    await form.getByRole('button', { name: 'Add server' }).click();
   }
   await expect(page.getByTestId('llm-config-select')).toBeVisible();
+  // Discovery must have adopted a model, or the first message goes out with an
+  // empty model name.
+  await expect(page.getByTestId('llm-model-select')).toHaveValue('fixture-model');
 }
 
 test.describe('§3.26 Agent Chat', () => {
@@ -4943,6 +4955,18 @@ test.describe('§3.26 Agent Chat', () => {
     await expect(page.getByTestId('agent-chat-panel')).toContainText('tools/call');
   });
 
+  test('a server with no /v1/models falls back to a manual model input', async ({ page }) => {
+    await page.getByRole('button', { name: 'Agent Chat' }).click();
+    const form = page.getByTestId('llm-config-form');
+    await form.getByPlaceholder('Local Ollama').fill('No discovery');
+    // The MCP fixture answers on 3001 but exposes no /v1/models.
+    await page.getByRole('textbox', { name: /base url/i }).fill('http://127.0.0.1:3001/v1');
+    await form.getByRole('button', { name: 'Add server' }).click();
+
+    await expect(page.getByTestId('llm-models-error')).toBeVisible();
+    await expect(page.getByTestId('llm-model-manual')).toBeVisible();
+  });
+
   test('sending is disabled until a model exists', async ({ page }) => {
     await page.getByRole('button', { name: 'Agent Chat' }).click();
     await expect(page.getByTestId('llm-config-form')).toBeVisible();
@@ -4998,10 +5022,9 @@ test.describe('Agent Chat (desktop)', () => {
       await expect(page.getByTestId('agent-chat-panel')).toBeVisible();
 
       const form = page.getByTestId('llm-config-form');
-      await form.getByPlaceholder('Local Qwen').fill('Fixture');
+      await form.getByPlaceholder('Local Ollama').fill('Fixture');
       await page.getByRole('textbox', { name: /base url/i }).fill('http://127.0.0.1:3003/v1');
-      await form.getByPlaceholder('qwen3').fill('fixture-model');
-      await form.getByRole('button', { name: 'Save model' }).click();
+      await form.getByRole('button', { name: 'Add server' }).click();
 
       await expect(page.getByTestId('llm-config-select')).toBeVisible();
       expect(proxyRequests).toEqual([]);
