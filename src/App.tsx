@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ServerList } from './components/ServerList';
 import { ServerBrowser } from './components/ServerBrowser';
 import { ToolDetail } from './components/ToolDetail';
@@ -7,8 +7,8 @@ import { PromptDetail } from './components/PromptDetail';
 import { VaultLockButton } from './components/VaultLockButton';
 import { VaultSetup } from './components/VaultSetup';
 import { VaultUnlock } from './components/VaultUnlock';
-import { DevToolsModal, type DevToolsTab } from './components/DevToolsModal';
-import { ScenarioRunnerPanel } from './components/ScenarioRunnerPanel';
+import type { DevToolsTab } from './components/DevToolsModal';
+
 import {
   ServerFormDialog,
   type ServerFormValues,
@@ -34,6 +34,16 @@ import { TitleBar } from './components/TitleBar';
 import { WindowControls } from './components/WindowControls';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
+
+// Both live behind a toggle and together account for ~2,600 lines that used to
+// sit in the initial bundle. Loading them on demand keeps first paint lean for
+// the browser and CLI builds.
+const DevToolsModal = lazy(() =>
+  import('./components/DevToolsModal').then((m) => ({ default: m.DevToolsModal })),
+);
+const ScenarioRunnerPanel = lazy(() =>
+  import('./components/ScenarioRunnerPanel').then((m) => ({ default: m.ScenarioRunnerPanel })),
+);
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
@@ -776,7 +786,7 @@ export default function App() {
       </header>
       <div className="flex-1 flex min-h-0">
         <ServerList
-          servers={servers}
+              servers={servers}
           selectedId={selectedId}
           onSelect={handleSelect}
           onConnect={handleConnect}
@@ -794,7 +804,7 @@ export default function App() {
             setSelectedResourceUri(null);
             setSelectedPromptName(null);
           }}
-          selectedToolName={selectedToolName}
+              selectedToolName={selectedToolName}
           onSelectTool={setSelectedToolName}
           selectedResourceUri={selectedResourceUri}
           onSelectResource={setSelectedResourceUri}
@@ -854,21 +864,27 @@ export default function App() {
         onSelectResource={handleGlobalSelectResource}
         onSelectPrompt={handleGlobalSelectPrompt}
       />
-      <DevToolsModal
-        open={devToolsOpen}
-        initialTab={devToolsInitialTab}
+      {devToolsOpen && (
+        <Suspense fallback={null}>
+          <DevToolsModal
+            open={devToolsOpen}
+            initialTab={devToolsInitialTab}
         servers={servers}
-        selectedServerId={selectedServer?.id ?? null}
+            selectedServerId={selectedServer?.id ?? null}
         selectedToolName={selectedToolName}
-        onReplayToolCall={(serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
-        onClose={() => setDevToolsOpen(false)}
-      />
+            onReplayToolCall={(serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
+            onClose={() => setDevToolsOpen(false)}
+          />
+        </Suspense>
+      )}
       {scenarioRunnerOpen && (
-        <ScenarioRunnerPanel
-          servers={servers}
-          onClose={() => setScenarioRunnerOpen(false)}
-          onCallTool={async (serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
-        />
+        <Suspense fallback={null}>
+          <ScenarioRunnerPanel
+            servers={servers}
+            onClose={() => setScenarioRunnerOpen(false)}
+            onCallTool={async (serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
+          />
+        </Suspense>
       )}
     </div>
   );
