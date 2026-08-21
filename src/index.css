@@ -125,10 +125,14 @@ body::before {
   app-region: drag;
 }
 
+/* `label` is in this list because a checkbox pill is mostly label: without it
+   the input is clickable but the text beside it drags the window instead of
+   toggling. Same reasoning for any interactive wrapper added here later. */
 [data-host='electron'] .app-header button,
 [data-host='electron'] .app-header a,
 [data-host='electron'] .app-header input,
 [data-host='electron'] .app-header select,
+[data-host='electron'] .app-header label,
 [data-host='electron'] .app-titlebar button,
 [data-host='electron'] .app-titlebar a,
 [data-host='electron'] .window-controls button {
