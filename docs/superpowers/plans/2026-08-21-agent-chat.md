@@ -2338,7 +2338,7 @@ Expected: shows how the fixture reads its port and starts. Match that style — 
  */
 import { createServer } from 'node:http';
 
-const PORT = Number(process.argv[2] ?? process.env.LLM_FIXTURE_PORT ?? 3002);
+const PORT = Number(process.argv[2] ?? process.env.LLM_FIXTURE_PORT ?? 3003);
 
 /**
  * Turn 0: call `echo` with a fixed argument.
@@ -2443,13 +2443,13 @@ server.listen(PORT, '127.0.0.1', () => {
 Run:
 
 ```bash
-node tests/fixtures/llm-server.mjs 3002 &
+node tests/fixtures/llm-server.mjs 3003 &
 sleep 1
-curl -sS -X POST http://127.0.0.1:3002/v1/chat/completions \
+curl -sS -X POST http://127.0.0.1:3003/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"fixture-model","messages":[{"role":"user","content":"hi"}]}'
 echo
-curl -sS http://127.0.0.1:3002/v1/models
+curl -sS http://127.0.0.1:3003/v1/models
 kill %1
 ```
 
@@ -2460,9 +2460,9 @@ Expected: the first curl prints SSE lines including a `tool_calls` delta naming 
 Run:
 
 ```bash
-node tests/fixtures/llm-server.mjs 3002 &
+node tests/fixtures/llm-server.mjs 3003 &
 sleep 1
-curl -sS -X POST http://127.0.0.1:3002/v1/chat/completions \
+curl -sS -X POST http://127.0.0.1:3003/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"fixture-model","messages":[{"role":"user","content":"hi"},{"role":"tool","tool_call_id":"call_1","content":"echoed"}]}'
 kill %1
@@ -4812,11 +4812,11 @@ Run, in three terminals:
 
 ```bash
 node tests/fixtures/http-mcp-server.mjs 3001
-node tests/fixtures/llm-server.mjs 3002
+node tests/fixtures/llm-server.mjs 3003
 npm run dev
 ```
 
-Then: add the fixture MCP server, connect it, open Chat, add a model with base URL `http://127.0.0.1:3002/v1` and model `fixture-model`, and send "say hello".
+Then: add the fixture MCP server, connect it, open Chat, add a model with base URL `http://127.0.0.1:3003/v1` and model `fixture-model`, and send "say hello".
 
 Expected: the model requests `echo`, an approval card appears, Allow runs it, the tool result renders, and the model answers. The right-hand trace column shows the `tools/call`.
 
@@ -4845,8 +4845,8 @@ Three agents, fully parallel.
 
 ```ts
     {
-      command: 'node tests/fixtures/llm-server.mjs 3002',
-      url: 'http://127.0.0.1:3002/v1/models',
+      command: 'node tests/fixtures/llm-server.mjs 3003',
+      url: 'http://127.0.0.1:3003/v1/models',
       reuseExistingServer: !process.env.CI,
     },
 ```
@@ -4865,7 +4865,7 @@ import { addFixtureServer, openApp } from './helpers';
 // model. Turn 1 always requests the `echo` tool; turn 2 always answers. A real
 // model would make these assertions non-deterministic.
 
-const FIXTURE_MODEL_BASE = 'http://127.0.0.1:3002/v1';
+const FIXTURE_MODEL_BASE = 'http://127.0.0.1:3003/v1';
 
 async function openChatWithModel(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Agent Chat' }).click();
@@ -4999,7 +4999,7 @@ test.describe('Agent Chat (desktop)', () => {
 
       const form = page.getByTestId('llm-config-form');
       await form.getByPlaceholder('Local Qwen').fill('Fixture');
-      await page.getByRole('textbox', { name: /base url/i }).fill('http://127.0.0.1:3002/v1');
+      await page.getByRole('textbox', { name: /base url/i }).fill('http://127.0.0.1:3003/v1');
       await form.getByPlaceholder('qwen3').fill('fixture-model');
       await form.getByRole('button', { name: 'Save model' }).click();
 

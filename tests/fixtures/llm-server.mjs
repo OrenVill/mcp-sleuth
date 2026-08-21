@@ -9,7 +9,10 @@
  */
 import { createServer } from 'node:http';
 
-const PORT = Number(process.argv[2] ?? process.env.LLM_FIXTURE_PORT ?? 3002);
+// 3003, not 3002: playwright.config.ts already runs meta-mcp-server.mjs on
+// 3002 for §3.6 and §3.12, and its `reuseExistingServer` means a stray LLM
+// fixture on that port silently hijacks those specs instead of failing loudly.
+const PORT = Number(process.argv[2] ?? process.env.LLM_FIXTURE_PORT ?? 3003);
 
 /**
  * Turn 0: call `echo_markdown` (a real tool on the MCP fixture) with a fixed argument.
