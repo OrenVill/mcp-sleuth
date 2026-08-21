@@ -190,7 +190,6 @@ describe('runAgentTurn', () => {
         deps({
           sendToModel: async function* (): AsyncIterable<LlmStreamEvent> {
             throw new Error('401 Unauthorized');
-            // eslint-disable-next-line no-unreachable
             yield { type: 'final', response: { text: '', toolCalls: [] } };
           },
         }),
