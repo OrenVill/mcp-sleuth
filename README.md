@@ -55,7 +55,7 @@ Sleuth also ships as an Electron desktop app. Download the installer for your pl
 |----------|------|
 | macOS | `Sleuth-<version>-arm64.dmg` (Apple silicon) or `Sleuth-<version>-x64.dmg` (Intel) |
 | Windows | `Sleuth-<version>-x64.exe` |
-| Linux | `Sleuth-<version>-x64.AppImage` or `Sleuth-<version>-x64.deb` |
+| Linux | `Sleuth-<version>-x86_64.AppImage` or `Sleuth-<version>-amd64.deb` |
 
 What the desktop app adds over the browser build:
 
@@ -78,8 +78,35 @@ OS warns on first launch. That is expected, not a broken download:
   current macOS; use Privacy & Security.
 - **Windows** — SmartScreen shows "Windows protected your PC". Click **More info** →
   **Run anyway**.
-- **Linux** — `chmod +x Sleuth-*.AppImage` and run it, or install the deb with
-  `sudo dpkg -i Sleuth-*.deb`.
+- **Linux** — no warning; see the next section for how to launch it.
+
+### Launching it on Linux
+
+The deb installs to `/opt/Sleuth` and does not print anything when it finishes, so it is easy
+to think nothing happened. It gives you two ways in:
+
+```bash
+sudo apt install ./Sleuth-<version>-amd64.deb
+mcp-sleuth
+```
+
+The `mcp-sleuth` command comes from a symlink the package creates at `/usr/bin/mcp-sleuth`.
+The app also appears in your application menu as **Sleuth**.
+
+The AppImage needs no install — just make it executable:
+
+```bash
+chmod +x Sleuth-<version>-x86_64.AppImage
+./Sleuth-<version>-x86_64.AppImage
+```
+
+**On WSL** there is no application menu, so the terminal command is the only way in. WSLg
+supplies the window. Two quirks specific to WSL:
+
+- If it exits complaining about the sandbox, add `--no-sandbox`.
+- You get a passphrase prompt rather than automatic unlock: WSL has no keyring, so
+  `safeStorage` reports the `basic_text` backend, and Sleuth refuses to seal a passphrase
+  with a hardcoded key.
 
 ### There is no auto-update
 

@@ -1,4 +1,4 @@
-import { BrowserWindow, screen } from 'electron';
+import { BrowserWindow, nativeImage, screen } from 'electron';
 import { openExternalUrl } from './externalLinks.js';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -19,6 +19,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 export const TITLE_BAR_HEIGHT = 55;
 
 /**
+ * Window icon for the taskbar.
+ *
+ * macOS takes its icon from the .app bundle and Windows from the .exe, but on
+ * Linux the taskbar reads _NET_WM_ICON off the window itself — without this it
+ * shows the generic X11 penguin, even though the .desktop entry has an icon.
+ */
+function windowIcon() {
+  if (process.platform === 'darwin') return undefined;
+  const image = nativeImage.createFromPath(join(here, 'assets', 'icon.png'));
+  return image.isEmpty() ? undefined : image;
+}
+
+/**
  * `windowState` is the store from windowState.js. It is optional so the window can
  * still be created (at default size) if state persistence is unavailable.
  */
@@ -36,6 +49,7 @@ export function createWindow({ windowState = null } = {}) {
     height: restored.height,
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
+    icon: windowIcon(),
     // Transparent windows must not paint an opaque colour underneath; the page's
     // own background provides it.
     ...(process.platform === 'darwin' ? { backgroundColor: '#09090b' } : {}),
