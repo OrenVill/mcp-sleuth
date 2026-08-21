@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { resolve } from 'node:path';
 import { closeApp, launchApp, type LaunchedApp } from './helpers';
 
 test.describe.serial('Electron — launch and security posture', () => {
@@ -152,6 +153,24 @@ test.describe.serial('Electron — launch and security posture', () => {
         { timeout: 5_000 },
       )
       .toBe('120,90,900,600');
+  });
+
+  test('the window carries a real icon', async () => {
+    // Linux taskbars read _NET_WM_ICON off the window itself. Without an icon
+    // option the app shows the generic X11 penguin even though the .desktop
+    // entry has one, because that entry only labels the launcher.
+    // The path is resolved here rather than inside evaluate(): dynamic import is
+    // unavailable in that context, and `require` is not defined there either.
+    const icon = await launched.app.evaluate(
+      async ({ nativeImage }, iconPath) => {
+        const image = nativeImage.createFromPath(iconPath);
+        return { loads: !image.isEmpty(), size: image.isEmpty() ? null : image.getSize() };
+      },
+      resolve('electron/assets/icon.png'),
+    );
+
+    expect(icon.loads).toBe(true);
+    expect(icon.size?.width).toBeGreaterThanOrEqual(128);
   });
 
   test('no console errors during startup', () => {
