@@ -11,6 +11,7 @@ const REQUIRED_PUBLISH_FILES = [
   'vault-file-handler.js',
   'app-data-handler.js',
   'daemon-lock.js',
+  'llm-proxy.js',
 ];
 
 describe('npm package files', () => {
