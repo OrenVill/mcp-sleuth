@@ -20,7 +20,9 @@ export interface LaunchedApp {
  * Launch against a throwaway userData dir so every spec starts with an empty
  * vault and no leftover IndexedDB state.
  */
-export async function launchApp(options: { dataDir?: string } = {}): Promise<LaunchedApp> {
+export async function launchApp(
+  options: { dataDir?: string; env?: Record<string, string> } = {},
+): Promise<LaunchedApp> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'mcp-sleuth-e2e-'));
   // Both must exist before launch: nativeHandlers writes into saveDir without mkdir.
   // Passing an existing dataDir relaunches against a vault created earlier, which
@@ -35,6 +37,7 @@ export async function launchApp(options: { dataDir?: string } = {}): Promise<Lau
       MCP_SLEUTH_E2E: '1',
       MCP_SLEUTH_DATA_DIR: dataDir,
       MCP_SLEUTH_E2E_SAVE_DIR: saveDir,
+      ...options.env,
     },
   });
   const page = await app.firstWindow();

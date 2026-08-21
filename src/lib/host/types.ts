@@ -79,9 +79,50 @@ export interface FilesHost {
   writeAppData(data: unknown): Promise<void>;
 }
 
+/** What the renderer is allowed to know about updates. Decided in main. */
+export interface UpdateStatus {
+  currentVersion: string;
+  latestVersion: string | null;
+  /** A newer release exists and was not skipped — the header badge shows. */
+  updateAvailable: boolean;
+  /** …and was not dismissed either — the banner shows. */
+  showBanner: boolean;
+  releaseName: string | null;
+  releaseNotes: string | null;
+  releaseUrl: string | null;
+  autoCheck: boolean;
+  lastCheckedAt: number | null;
+  /** Set only by a check the user asked for; background failures stay quiet. */
+  lastError: string | null;
+}
+
+/**
+ * Update notification. Deliberately notify-only: the builds are unsigned, so the
+ * app can point at the release page but cannot install anything.
+ *
+ * The browser build has no update channel — every read resolves null and the
+ * renderer draws neither the banner nor the version pill, with no platform check
+ * in the UI.
+ */
+export interface UpdateHost {
+  getStatus(): Promise<UpdateStatus | null>;
+  /** A user-initiated check. Reports its own failure through `lastError`. */
+  check(): Promise<UpdateStatus | null>;
+  setAutoCheck(enabled: boolean): Promise<UpdateStatus | null>;
+  /** Silence this version entirely, banner and badge. */
+  skip(version: string): Promise<UpdateStatus | null>;
+  /** Collapse the banner to the badge for this version. */
+  dismiss(version: string): Promise<UpdateStatus | null>;
+  /** Open the release page in the user's browser. */
+  openRelease(): Promise<void>;
+  /** Fires when a scheduled check finds a release. Returns an unsubscribe fn. */
+  onUpdateAvailable(handler: (status: UpdateStatus) => void): () => void;
+}
+
 export interface Host {
   readonly kind: 'browser' | 'electron';
   readonly mcp: McpHost;
   readonly files: FilesHost;
   readonly secrets: SecretsHost;
+  readonly updates: UpdateHost;
 }

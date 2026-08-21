@@ -3,7 +3,7 @@ import { createElectronHost } from './electron';
 import type { ElectronBridge } from './electron/mcpElectron';
 import type { Host } from './types';
 
-export type { FilesHost, Host, McpHost } from './types';
+export type { FilesHost, Host, McpHost, UpdateHost, UpdateStatus } from './types';
 
 let current: Host | null = null;
 let detected: Host | null = null;

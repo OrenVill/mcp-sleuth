@@ -108,11 +108,33 @@ supplies the window. Two quirks specific to WSL:
   `safeStorage` reports the `basic_text` backend, and Sleuth refuses to seal a passphrase
   with a hardcoded key.
 
-### There is no auto-update
+### Update notifications
 
-The desktop app never updates itself. `electron-updater` on macOS requires a signed and notarized
-app, which this project does not have. Updates are manual: download the newer installer from the
-releases page and install it over the old one.
+The desktop app tells you when a newer version is out, and installing it stays a manual step.
+
+Five seconds after launch, and every six hours after that, Sleuth asks GitHub for the latest
+release of this repository. If it is newer than the version you are running, a banner appears
+under the header:
+
+- **Download** opens that release's page in your browser. It does not download anything itself —
+  Linux ships both a `.deb` and an AppImage, and only you know which one you installed.
+- **Later** collapses the banner to a violet `↑1.2.0` badge in the header, which stays as the
+  reminder. That version never shows the banner again.
+- **Skip** silences that version completely, banner and badge, until something newer ships.
+
+The `v1.0.1` pill next to the app name is always there. Click it for the current version, a
+**Check now** button, and the **Check for updates automatically** switch.
+
+The check sends one unauthenticated request to `api.github.com` with a User-Agent and nothing
+else — no identifiers, no app state, no telemetry. Turning the switch off stops it entirely; the
+manual check still works. The preference lives in `<data dir>/update-state.json`.
+
+The app still cannot update *itself*. `electron-updater` on macOS requires a signed and notarized
+app, which this project does not have, so the last step is always: download the newer installer
+and install it over the old one.
+
+The browser and CLI builds have no update notice at all — they update with
+`npm i -g @orenvill/mcp-sleuth@latest`.
 
 ### Running the desktop app from source
 
@@ -137,6 +159,7 @@ The desktop app and the CLI read and write the same directory, `~/.mcp-sleuth/`:
 | `data.gz` | Bookmarks, call history, observation journals |
 | `device-key.bin` | Auto-unlock passphrase, sealed with the OS keychain (desktop only) |
 | `window-state.json` | Desktop window size, position, maximised flag (desktop only) |
+| `update-state.json` | Update-check preference and dismissed/skipped versions (desktop only) |
 | `daemon.json` | CLI daemon lock file (CLI only) |
 
 Override the directory with `MCP_SLEUTH_DATA_DIR=/path/to/dir`. `MCP_EXPLORER_DATA_DIR` is still

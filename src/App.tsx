@@ -32,6 +32,9 @@ import { loadLegacyServers } from './lib/storage';
 import { getHost } from './lib/host';
 import { TitleBar } from './components/TitleBar';
 import { WindowControls } from './components/WindowControls';
+import { UpdateBanner } from './components/UpdateBanner';
+import { VersionPill } from './components/VersionPill';
+import { useUpdateStatus } from './components/useUpdateStatus';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useVault } from './hooks/useVault';
@@ -94,6 +97,9 @@ export default function App() {
   }, []);
 
   const vault = useVault({ servers, setServers, onCleared: clearSelection });
+  // Desktop only: the browser host reports no update channel, so both the pill
+  // and the banner render nothing there.
+  const update = useUpdateStatus();
 
 
   const selectedServer = useMemo(
@@ -563,6 +569,7 @@ export default function App() {
               </span>
             )}
           </div>
+          <VersionPill update={update} />
           {servers.length > 0 && (
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400">
               {connectedCount}/{servers.length} connected
@@ -626,6 +633,7 @@ export default function App() {
           <WindowControls />
         </div>
       </header>
+      <UpdateBanner update={update} />
       <div className="flex-1 flex min-h-0">
         <ServerList
               servers={servers}

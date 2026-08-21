@@ -67,20 +67,20 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 99 tests across 23 spec files must pass. Any failure blocks the release.
+All 105 tests across 25 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.22 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.25 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
 Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + echo
-tool), and Trust evaluators (Permission Surface, Prompt Injection scan, Observation
-Journal).
+tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
+Journal), error handling, and the absence of the desktop update notice.
 
 **Fixture content is load-bearing.** `http-mcp-server.mjs` documents which spec depends
 on each tool, resource, and prompt it registers — read that header before changing it.
@@ -96,8 +96,13 @@ summary, not a pass/fail score), **Prompt Injection** (findings with the matched
 renders empty or throws for a connected server blocks release. Automated:
 `tests/release/23-trust-evaluators.spec.ts`.
 
-> Both spec files are numbered `22` and both declare `§3.22`. That is a known collision, not a
-> mistake in this list. The next spec added should be `23`.
+**§3.25 — Update notifier, browser build (manual pass):** Load the browser build and confirm there
+is no version pill beside the app name and no update banner under the header, and that no request
+to `api.github.com` appears in the network tab. The browser and CLI builds update through npm and
+must not acquire a desktop-only surface. Automated:
+`tests/release/25-update-notifier.spec.ts`.
+
+> Spec numbers map to the `§3.N` sections above. The next spec added should be `26`.
 
 ---
 
@@ -111,7 +116,7 @@ npm run test:e2e:electron          # needs a display
 xvfb-run -a npm run test:e2e:electron   # headless machine / CI
 ```
 
-All 34 tests across 6 spec files must pass:
+All 43 tests across 7 spec files must pass:
 
 | Spec | Area |
 |------|------|
@@ -121,6 +126,25 @@ All 34 tests across 6 spec files must pass:
 | `04-native-persistence.spec.ts` | Vault and app-data files land in the data directory |
 | `05-app-chrome.spec.ts` | Frameless window, title bar, window controls, menu |
 | `06-dialogs.spec.ts` | In-app dialogs — vault reset confirm/cancel/Escape, no browser chrome |
+| `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failed check |
+
+**Update notifier (manual pass).** The automated spec drives a local fake feed; do this once by
+hand before a release, because it is the path real users take:
+
+```bash
+node scripts/fake-release-feed.mjs &
+MCP_SLEUTH_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
+```
+
+Confirm, in order: the banner appears within ~10s of unlocking the vault and names the announced
+version and the installed one; **What's new** expands the release notes; **Later** collapses it to
+a violet `↑` badge in the header that survives a restart while the banner does not; **Skip** hides
+both; the version pill's popover offers **Check now** and the auto-check switch, and unchecking it
+writes `autoCheck: false` to `<data dir>/update-state.json`. Then run it with `--fail 403` and
+confirm a background check stays silent while **Check now** reports the rate limit.
+
+**Download must open the browser, not install anything.** The builds are unsigned; if a release
+ever adds an in-app download or `electron-updater`, that is a signing decision, not a UI one.
 
 The suite launches Electron against the built `dist/`, so run `npm run build` first (§1 covers it).
 

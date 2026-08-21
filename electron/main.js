@@ -8,6 +8,11 @@ import { createSessionManager } from './mcp/sessions.js';
 import { registerMcpHandlers } from './ipc/mcpHandlers.js';
 import { registerNativeHandlers } from './ipc/nativeHandlers.js';
 import { forwardWindowState, registerWindowHandlers } from './ipc/windowHandlers.js';
+import { registerUpdateHandlers } from './ipc/updateHandlers.js';
+import { createUpdateService } from './update/service.js';
+import { createUpdateStateStore, getUpdateStateFilePath } from './update/store.js';
+import { fetchLatestRelease, resolveFeedUrl } from './update/feed.js';
+import { resolveCurrentVersion } from './update/appVersion.js';
 import { createSecretsStore } from './secrets/store.js';
 import { createAppDataStore } from './appdata/store.js';
 import { createWindow } from './window.js';
@@ -45,6 +50,7 @@ process.on('unhandledRejection', (reason) => {
 });
 
 let mainWindow = null;
+let updateService = null;
 const sessions = createSessionManager();
 
 if (!app.requestSingleInstanceLock()) {
@@ -87,6 +93,19 @@ if (!app.requestSingleInstanceLock()) {
     registerNativeHandlers({ secrets, appData, getWindow: () => mainWindow });
     registerWindowHandlers(() => mainWindow);
 
+    // The notifier only ever opens the release page: the builds are unsigned, so
+    // nothing here downloads or installs. See docs/superpowers/specs.
+    updateService = createUpdateService({
+      // Not app.getVersion() alone: unpackaged it reports Electron's version,
+      // because package.json deliberately has no `main` field.
+      currentVersion: resolveCurrentVersion({ fallback: app.getVersion() }),
+      store: createUpdateStateStore({ fs: nodeFs, filePath: getUpdateStateFilePath() }),
+      // Electron's net.fetch, not Node's: it uses Chromium's stack and therefore
+      // the system proxy settings.
+      fetchRelease: () => fetchLatestRelease({ fetch: net.fetch, url: resolveFeedUrl() }),
+    });
+    registerUpdateHandlers(updateService, () => mainWindow);
+
     // Replaces Electron's default menu, which carries Reload / Force Reload.
     applyApplicationMenu(process.platform, {
       devMode: Boolean(process.env.MCP_SLEUTH_DEV_URL),
@@ -118,6 +137,10 @@ if (!app.requestSingleInstanceLock()) {
     const devUrl = process.env.MCP_SLEUTH_DEV_URL;
     void mainWindow.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);
 
+    // Schedules its own first check; nothing happens if the user switched
+    // checking off, and a failure is logged rather than surfaced.
+    void updateService.start();
+
     // The CLI daemon shares ~/.mcp-sleuth/ and last write wins. Running both is
     // legitimate, just lossy, so warn rather than block.
     const lock = await readLock();
@@ -143,6 +166,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('before-quit', () => {
+    updateService?.stop();
     void sessions.closeAll();
   });
 }

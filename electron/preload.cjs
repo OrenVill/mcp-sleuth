@@ -24,6 +24,12 @@ const INVOKE = [
   'mcp:saveFile',
   'mcp:readAppData',
   'mcp:writeAppData',
+  'mcp:updateGetStatus',
+  'mcp:updateCheck',
+  'mcp:updateSetAutoCheck',
+  'mcp:updateSkip',
+  'mcp:updateDismiss',
+  'mcp:updateOpenRelease',
 ];
 
 const api = {
@@ -46,6 +52,11 @@ const api = {
     const listener = (_event, maximized) => handler(maximized);
     ipcRenderer.on('mcp:windowMaximizedChanged', listener);
     return () => ipcRenderer.removeListener('mcp:windowMaximizedChanged', listener);
+  },
+  onUpdateAvailable(handler) {
+    const listener = (_event, status) => handler(status);
+    ipcRenderer.on('mcp:updateAvailable', listener);
+    return () => ipcRenderer.removeListener('mcp:updateAvailable', listener);
   },
   onClosed(handler) {
     const listener = (_event, serverId) => handler(serverId);

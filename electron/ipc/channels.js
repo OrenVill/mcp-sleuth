@@ -29,6 +29,13 @@ export const CHANNELS = {
   windowClose: 'mcp:windowClose',
   windowIsMaximized: 'mcp:windowIsMaximized',
   windowMaximizedChanged: 'mcp:windowMaximizedChanged',
+  // updates
+  updateGetStatus: 'mcp:updateGetStatus',
+  updateCheck: 'mcp:updateCheck',
+  updateSetAutoCheck: 'mcp:updateSetAutoCheck',
+  updateSkip: 'mcp:updateSkip',
+  updateDismiss: 'mcp:updateDismiss',
+  updateOpenRelease: 'mcp:updateOpenRelease',
   // files + app data
   saveFile: 'mcp:saveFile',
   readAppData: 'mcp:readAppData',
@@ -36,6 +43,7 @@ export const CHANNELS = {
   // main → renderer pushes
   toolsChanged: 'mcp:toolsChanged',
   closed: 'mcp:closed',
+  updateAvailable: 'mcp:updateAvailable',
 };
 
 export function ok(value) {
