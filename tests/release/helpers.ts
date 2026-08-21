@@ -3,7 +3,14 @@ import { type Page } from '@playwright/test';
 export const VAULT_PASS = 'test-release-pass-123';
 export const FIXTURE_URL = 'http://localhost:3001/mcp';
 export const UNREACHABLE_URL = 'http://localhost:9999/mcp';
-export const AWESOME_URL = 'http://10.100.100.44:8000/mcp';
+/**
+ * The meta-tool fixture (tests/fixtures/meta-mcp-server.mjs), started by
+ * playwright.config.ts. This used to be a hardcoded LAN address for the
+ * unified-mcp server from OrenVill/awesome-mcp-servers, which made the release
+ * suite unrunnable by anyone else and impossible in CI. To test against the real
+ * server instead, run its `start:http` script and change this URL.
+ */
+export const AWESOME_URL = 'http://localhost:3002/mcp';
 
 /** Delete the server-side vault file so the next page load shows the Create vault screen. */
 export async function resetVaultStorage(): Promise<void> {
