@@ -1,4 +1,4 @@
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import type { ServerEntry } from '../types';
 import { addInvocationObservation } from '../lib/observationJournal';
 import { updateObservationJournal } from '../lib/observationJournalStore';
@@ -63,6 +63,10 @@ export function AgentChatPanel({
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  /** Whether the reader is parked at the bottom, sampled before each update. */
+  const atBottomRef = useRef(true);
+
   const traces = useProtocolTraces();
   /**
    * Derived rather than synced in an effect: with no explicit choice — at first
@@ -74,6 +78,23 @@ export function AgentChatPanel({
   const run = useAgentRun(servers, config, selectedServerIds);
 
   const ready = Boolean(config) && selectedServerIds.length > 0;
+
+  /*
+   * Follow the conversation as it grows, but only when the reader is already at
+   * the bottom — yanking the viewport while they are scrolled up reading an
+   * earlier tool result would be worse than not following at all.
+   */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el && atBottomRef.current) el.scrollTop = el.scrollHeight;
+  }, [run.messages, run.streamingText, run.pending]);
+
+  /* A confirmation that never leaves is just clutter. */
+  useEffect(() => {
+    if (!notice) return;
+    const timer = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const recordObservation = useCallback(
     (toolName: string, note: string) => {
@@ -161,8 +182,14 @@ export function AgentChatPanel({
             selectedServerIds={selectedServerIds}
             onSelectConfig={setActiveConfigId}
             onSaveConfig={(next) => {
-              const rest = llmConfigs.filter((c) => c.id !== next.id);
-              onSaveLlmConfigs([...rest, next]);
+              // Replace in place. Appending moved an edited server to the end,
+              // which silently changed which one `llmConfigs[0]` makes default.
+              const exists = llmConfigs.some((c) => c.id === next.id);
+              onSaveLlmConfigs(
+                exists
+                  ? llmConfigs.map((c) => (c.id === next.id ? next : c))
+                  : [...llmConfigs, next],
+              );
               setActiveConfigId(next.id);
             }}
             onDeleteConfig={(id) => {
@@ -181,9 +208,28 @@ export function AgentChatPanel({
         </div>
       </header>
 
+      {notice && (
+        <div
+          data-testid="agent-notice"
+          role="status"
+          className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2"
+        >
+          <p className="rounded-full border border-violet-800/60 bg-violet-950/90 px-3.5 py-1.5 text-[11px] text-violet-200 shadow-lg backdrop-blur">
+            {notice}
+          </p>
+        </div>
+      )}
+
       <div className="flex-1 flex min-h-0">
         <section className="flex-1 flex flex-col min-w-0">
-          <div className="flex-1 overflow-y-auto flex flex-col">
+          <div
+            ref={scrollRef}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+            }}
+            className="flex-1 overflow-y-auto flex flex-col"
+          >
             <div className={`${COLUMN} py-6 space-y-4 flex-1 flex flex-col`}>
               {run.collisions.map((collision) => (
                 <p
@@ -227,11 +273,6 @@ export function AgentChatPanel({
                   className="text-xs text-red-300 bg-red-950/30 border border-red-900/50 rounded-lg px-3 py-2"
                 >
                   {run.error}
-                </p>
-              )}
-              {notice && (
-                <p className="text-[11px] text-violet-300/90 bg-violet-950/30 border border-violet-900/50 rounded-lg px-3 py-2">
-                  {notice}
                 </p>
               )}
             </div>
