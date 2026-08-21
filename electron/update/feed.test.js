@@ -3,6 +3,7 @@ import {
   DEFAULT_FEED_URL,
   MAX_NOTES_LENGTH,
   fetchLatestRelease,
+  hasInstallerAsset,
   parseRelease,
   resolveFeedUrl,
 } from './feed.js';
@@ -16,6 +17,11 @@ const PAYLOAD = {
   published_at: '2026-08-21T10:00:00Z',
   draft: false,
   prerelease: false,
+  assets: [
+    { name: 'Sleuth-1.2.0-arm64.dmg', state: 'uploaded' },
+    { name: 'Sleuth-1.2.0-x64.exe', state: 'uploaded' },
+    { name: 'Sleuth-1.2.0-amd64.deb', state: 'uploaded' },
+  ],
 };
 
 function jsonResponse(body, { ok = true, status = 200 } = {}) {
@@ -60,6 +66,10 @@ describe('parseRelease', () => {
     expect(parseRelease(payload)).toBeNull();
   });
 
+  it('refuses a release that has no installers attached yet', () => {
+    expect(parseRelease({ ...PAYLOAD, assets: [] })).toBeNull();
+  });
+
   it('refuses a draft or a prerelease', () => {
     expect(parseRelease({ ...PAYLOAD, draft: true })).toBeNull();
     expect(parseRelease({ ...PAYLOAD, prerelease: true })).toBeNull();
@@ -67,6 +77,49 @@ describe('parseRelease', () => {
 
   it('rejects a release url that is not http(s), which would reach the shell', () => {
     expect(parseRelease({ ...PAYLOAD, html_url: 'file:///etc/passwd' })).toBeNull();
+  });
+});
+
+/**
+ * The window this closes: release-please publishes the GitHub Release, and only
+ * then does a three-OS matrix spend ~10 minutes building installers and
+ * uploading them. A check landing in between would send the user to a release
+ * page with nothing on it to download.
+ */
+describe('hasInstallerAsset', () => {
+  it.each([
+    ['a dmg', 'Sleuth-1.2.0-arm64.dmg'],
+    ['an exe', 'Sleuth-1.2.0-x64.exe'],
+    ['an AppImage', 'Sleuth-1.2.0-x86_64.AppImage'],
+    ['a deb', 'Sleuth-1.2.0-amd64.deb'],
+    ['a zip', 'Sleuth-1.2.0-arm64-mac.zip'],
+  ])('accepts %s', (_label, name) => {
+    expect(hasInstallerAsset({ assets: [{ name, state: 'uploaded' }] })).toBe(true);
+  });
+
+  it('rejects a release whose installers have not been uploaded yet', () => {
+    expect(hasInstallerAsset({ assets: [] })).toBe(false);
+    expect(hasInstallerAsset({})).toBe(false);
+  });
+
+  it('ignores the source archives GitHub attaches to every release', () => {
+    expect(hasInstallerAsset({ assets: [{ name: 'Source code (zip)' }] })).toBe(false);
+  });
+
+  it('ignores dist.tgz, which is for the npm package rather than the desktop app', () => {
+    expect(hasInstallerAsset({ assets: [{ name: 'dist.tgz', state: 'uploaded' }] })).toBe(false);
+  });
+
+  it('ignores an asset still uploading', () => {
+    expect(
+      hasInstallerAsset({ assets: [{ name: 'Sleuth-1.2.0-x64.exe', state: 'starter' }] }),
+    ).toBe(false);
+  });
+
+  it('accepts a partial matrix — one platform failing still helps the others', () => {
+    expect(
+      hasInstallerAsset({ assets: [{ name: 'Sleuth-1.2.0-amd64.deb', state: 'uploaded' }] }),
+    ).toBe(true);
   });
 });
 
@@ -119,6 +172,11 @@ describe('fetchLatestRelease', () => {
   it('rejects when the payload is not a usable release', async () => {
     const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ tag_name: 'nightly' }));
     await expect(fetchLatestRelease({ fetch: fetchFn })).rejects.toThrow(/release/i);
+  });
+
+  it('says so plainly while a release is still being built', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ ...PAYLOAD, assets: [] }));
+    await expect(fetchLatestRelease({ fetch: fetchFn })).rejects.toThrow(/still being built/i);
   });
 
   it('aborts the request once the timeout elapses', async () => {
