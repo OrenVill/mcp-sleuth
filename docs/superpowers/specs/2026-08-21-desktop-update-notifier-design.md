@@ -157,9 +157,16 @@ app ready -> window loaded -> 5s -> service.check()
                  then every 6h while autoCheck is true
 ```
 
-`/releases/latest` excludes drafts and prereleases by default. That matters: it means a version
-is only ever announced once its GitHub Release exists, which in `release.yml` is after
-`release-please` has cut the tag — the installers upload to that same release moments later.
+`/releases/latest` excludes drafts and prereleases by default.
+
+That is not sufficient on its own. In `release.yml`, `release-please` publishes the GitHub Release
+first — making it `/releases/latest` immediately — and only then does a three-OS matrix spend
+about ten minutes building installers and uploading them to it. A check landing in that window
+would send the user to a release page with nothing on it to download. So a release is announced
+only once at least one installer asset is attached (`hasInstallerAsset`). Any one is enough rather
+than one matching the user's platform: the matrix runs `fail-fast: false` so that one platform
+failing still ships the others, and matching asset names to a platform is the same brittleness
+this design already refused for the Download link.
 
 **Failure is silent on automatic checks.** Log to the main console, leave the pill alone. A
 *manual* check surfaces the failure inline in the popover ("Couldn't reach GitHub"), because the

@@ -21,6 +21,38 @@ export const MAX_NOTES_LENGTH = 2000;
 export const DEFAULT_TIMEOUT_MS = 10_000;
 
 /**
+ * The installer extensions electron-builder produces, per electron-builder.yml.
+ * `dist.tgz` and GitHub's own source archives are deliberately not here: they
+ * are not something a desktop user can install.
+ */
+const INSTALLER_RE = /\.(dmg|exe|AppImage|deb|zip)$/i;
+
+/**
+ * True once at least one installer is actually attached to the release.
+ *
+ * This closes a real window. In .github/workflows/release.yml, release-please
+ * publishes the GitHub Release first — making it `/releases/latest` at once —
+ * and only then does a three-OS matrix spend about ten minutes building the
+ * installers and uploading them. Announcing during that gap would send the user
+ * to a release page with nothing on it to download.
+ *
+ * Any one installer is enough rather than one for the current platform: the
+ * matrix runs `fail-fast: false` precisely so one platform failing still ships
+ * the others, and matching asset names to a platform is the brittleness this
+ * feature already refused once for the Download link.
+ */
+export function hasInstallerAsset(payload) {
+  const assets = Array.isArray(payload?.assets) ? payload.assets : [];
+  return assets.some(
+    (asset) =>
+      typeof asset?.name === 'string' &&
+      INSTALLER_RE.test(asset.name) &&
+      // GitHub reports 'uploaded' once the upload finished; older payloads omit it.
+      (asset.state === undefined || asset.state === 'uploaded'),
+  );
+}
+
+/**
  * The feed URL, overridable for the e2e fixture, the manual demo, and forks.
  */
 export function resolveFeedUrl(env = process.env) {
@@ -54,6 +86,9 @@ export function parseRelease(payload) {
   // The url is handed to the OS by openRelease; anything but http(s) is refused
   // here as well as in externalLinks.js.
   if (!isHttpUrl(payload.html_url)) return null;
+
+  // Nothing to send the user to yet — see hasInstallerAsset.
+  if (!hasInstallerAsset(payload)) return null;
 
   const body = typeof payload.body === 'string' ? payload.body : '';
   const notes =
@@ -130,7 +165,16 @@ export async function fetchLatestRelease({
     throw new Error(describeHttpFailure(response?.status ?? 0, body));
   }
 
-  const release = parseRelease(await response.json());
-  if (!release) throw new Error('The feed returned no usable release');
+  const payload = await response.json();
+  const release = parseRelease(payload);
+  if (!release) {
+    // Distinguish "the release exists but its installers are still uploading"
+    // from "this is not a release at all": only the first is worth waiting out,
+    // and a manual check shows this message verbatim.
+    if (parseVersion(payload?.tag_name) && !hasInstallerAsset(payload)) {
+      throw new Error(`Release ${payload.tag_name} is still being built — try again shortly`);
+    }
+    throw new Error('The feed returned no usable release');
+  }
   return release;
 }

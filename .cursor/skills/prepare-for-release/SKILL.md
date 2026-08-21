@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 377 tests
+npm test             # vitest run — 518 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -116,7 +116,7 @@ npm run test:e2e:electron          # needs a display
 xvfb-run -a npm run test:e2e:electron   # headless machine / CI
 ```
 
-All 43 tests across 7 spec files must pass:
+All 44 tests across 7 spec files must pass:
 
 | Spec | Area |
 |------|------|
@@ -142,6 +142,14 @@ a violet `↑` badge in the header that survives a restart while the banner does
 both; the version pill's popover offers **Check now** and the auto-check switch, and unchecking it
 writes `autoCheck: false` to `<data dir>/update-state.json`. Then run it with `--fail 403` and
 confirm a background check stays silent while **Check now** reports the rate limit.
+
+**A release with no installers must stay silent.** `release.yml` publishes the GitHub Release
+about ten minutes before the three-OS matrix finishes uploading installers. Sleuth refuses to
+announce a release until at least one installer is attached, so nobody is sent to an empty release
+page. Check it with `node scripts/fake-release-feed.mjs --building`: no banner, and **Check now**
+says the release is still being built. **After cutting a real release, confirm the installers
+actually uploaded** — a matrix that fails on all three platforms leaves a release no one is ever
+told about, which is the correct behaviour but still a release to fix.
 
 **Download must open the browser, not install anything.** The builds are unsigned; if a release
 ever adds an in-app download or `electron-updater`, that is a signing decision, not a UI one.

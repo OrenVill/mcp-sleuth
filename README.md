@@ -122,6 +122,10 @@ under the header:
   reminder. That version never shows the banner again.
 - **Skip** silences that version completely, banner and badge, until something newer ships.
 
+A release is only announced once its installers have actually been uploaded — the GitHub Release
+is published several minutes before the build matrix finishes, and pointing you at an empty
+release page would be worse than saying nothing.
+
 The `v1.0.1` pill next to the app name is always there. Click it for the current version, a
 **Check now** button, and the **Check for updates automatically** switch.
 

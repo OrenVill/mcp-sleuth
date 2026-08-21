@@ -16,6 +16,7 @@
  *   --same            announce the installed version, to see the "Up to date" state
  *   --port 4599       listen elsewhere
  *   --fail 403        answer with an error, to see how a failed check reads
+ *   --building        announce a release whose installers have not uploaded yet
  *
  * Zero dependencies, like every other Node file outside src/ and electron/.
  */
@@ -50,6 +51,16 @@ const release = {
   prerelease: false,
   html_url: `https://github.com/OrenVill/mcp-sleuth/releases/tag/v${version}`,
   published_at: new Date().toISOString(),
+  // Sleuth refuses to announce a release with no installers attached, because
+  // release.yml publishes the release ~10 minutes before the matrix uploads
+  // them. Pass --building to see that state.
+  assets: process.argv.includes('--building')
+    ? []
+    : [
+        { name: `Sleuth-${version}-arm64.dmg`, state: 'uploaded' },
+        { name: `Sleuth-${version}-x64.exe`, state: 'uploaded' },
+        { name: `Sleuth-${version}-amd64.deb`, state: 'uploaded' },
+      ],
   body: [
     '### Features',
     '',

@@ -306,7 +306,7 @@ threading between steps) is the exception: it is a separate overlay opened from 
 
 Use TDD for all new behavior in `src/lib/` and `electron/`. Vitest covers
 `src/**/*.test.ts`, `*.test.js` at the repo root, `electron/**/*.test.js`, and
-`scripts/**/*.test.js` (506 tests). Electron
+`scripts/**/*.test.js` (518 tests). Electron
 modules inject their dependencies (`fs`, the SDK, the dialog) precisely so they are testable
 without launching Electron — keep it that way when adding to that tree.
 
@@ -407,7 +407,7 @@ change.
 
 ### Electron suite — `tests/electron/`
 
-7 spec files, 43 tests, driven by `playwright.electron.config.ts` against the packaged main
+7 spec files, 44 tests, driven by `playwright.electron.config.ts` against the packaged main
 process. Needs a display: on a headless machine use `xvfb-run -a`.
 
 ```bash
