@@ -12,7 +12,7 @@ import { createServer } from 'node:http';
 const PORT = Number(process.argv[2] ?? process.env.LLM_FIXTURE_PORT ?? 3002);
 
 /**
- * Turn 0: call `echo` with a fixed argument.
+ * Turn 0: call `echo_markdown` (a real tool on the MCP fixture) with a fixed argument.
  * Turn 1 onward: answer in prose, ending the run.
  */
 function scriptFor(toolResultCount) {
@@ -20,7 +20,9 @@ function scriptFor(toolResultCount) {
     return {
       content: '',
       toolCalls: [
-        { id: 'call_1', name: 'echo', args: { message: 'hello from the agent' } },
+        // Must name a tool the MCP fixture actually exports, or the agent loop
+        // takes the unresolvable-name path and no approval card ever appears.
+        { id: 'call_1', name: 'echo_markdown', args: { message: 'hello from the agent' } },
       ],
     };
   }
