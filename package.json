@@ -52,6 +52,7 @@
     "electron:dev": "MCP_SLEUTH_DEV_URL=http://localhost:5173 electron electron/main.js",
     "electron:watch": "nodemon --watch electron --watch data-dir.js --watch vault-file-handler.js --watch app-data-handler.js --watch daemon-lock.js --ignore \"electron/**/*.test.js\" --ext js,cjs,json --exec \"MCP_SLEUTH_DEV_URL=http://localhost:5173 electron electron/main.js\"",
     "electron:start": "npm run build && electron electron/main.js",
+    "demo:update": "node scripts/fake-release-feed.mjs & FEED=$!; trap \"kill $FEED 2>/dev/null\" EXIT; MCP_SLEUTH_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start",
     "package": "npm run build && electron-builder --publish never",
     "package:dir": "npm run build && electron-builder --dir --publish never",
     "package:linux": "npm run build && electron-builder --linux --publish never",

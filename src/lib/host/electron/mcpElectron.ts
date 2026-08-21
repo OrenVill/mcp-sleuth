@@ -26,6 +26,7 @@ export interface ElectronBridge {
   invoke(channel: string, ...args: unknown[]): Promise<IpcEnvelope<unknown>>;
   onToolsChanged(handler: (serverId: string) => void): () => void;
   onClosed(handler: (serverId: string) => void): () => void;
+  onUpdateAvailable?(handler: (status: unknown) => void): () => void;
 }
 
 /** Rethrow an IPC failure as an Error carrying `.code`. */
