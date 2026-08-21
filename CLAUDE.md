@@ -375,6 +375,7 @@ Spec numbering maps directly to release checklist sections (`§3.N`):
 | `21-scenario-runner.spec.ts` | Scenario Runner |
 | `22-stdio-transport.spec.ts` | Stdio transport (local bridge + echo tool) |
 | `23-trust-evaluators.spec.ts` | Permission Surface, Prompt Injection scan, Observation Journal |
+| `24-error-handling.spec.ts` | Unhandled rejections and uncaught errors are reported, app stays usable |
 
 Note the two files numbered `22`: both declare `§3.22`. The numbers are a naming convention, not
 a mechanism — nothing breaks — but the next spec added should be `23`, and if you renumber one of

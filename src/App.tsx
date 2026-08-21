@@ -33,6 +33,7 @@ import { getHost } from './lib/host';
 import { TitleBar } from './components/TitleBar';
 import { WindowControls } from './components/WindowControls';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
 import {
@@ -801,6 +802,14 @@ export default function App() {
           onSelectPrompt={setSelectedPromptName}
           history={loadHistory()}
         />
+        {/* Detail panes render server-supplied markdown, images, and JSON. A
+            boundary here keeps one malformed payload from taking the whole
+            window — and every live connection — down with it. */}
+        <ErrorBoundary
+          context="The detail pane"
+          inline
+          key={`${selectedServer?.id ?? 'none'}:${activeTab}:${selectedTool?.name ?? selectedResourceUri ?? selectedPromptName ?? ''}`}
+        >
         {activeTab === 'resources' && selectedServer && selectedResource ? (
           <ResourceDetail
             key={selectedResource.uri}
@@ -828,6 +837,7 @@ export default function App() {
             onOpenSchemaLab={() => openDevTools('schema')}
           />
         )}
+        </ErrorBoundary>
       </div>
       <ServerFormDialog
         key={dialogFormKey}
