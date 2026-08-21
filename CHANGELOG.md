@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.0.1...v1.1.0) (2026-08-21)
+
+
+### Features
+
+* **desktop:** notify when a new version is released ([#56](https://github.com/OrenVill/mcp-sleuth/issues/56)) ([dd3cc8c](https://github.com/OrenVill/mcp-sleuth/commit/dd3cc8c71725c993b5056bb280426d8c574ff55c))
+
+
+### Bug Fixes
+
+* **linux:** set the window icon and document how to launch the app ([#53](https://github.com/OrenVill/mcp-sleuth/issues/53)) ([4e0fd05](https://github.com/OrenVill/mcp-sleuth/commit/4e0fd052c86dac4eba9f909ce178bd245d1c5eae))
+* **updates:** do not announce a release before its installers exist ([#57](https://github.com/OrenVill/mcp-sleuth/issues/57)) ([0f16f27](https://github.com/OrenVill/mcp-sleuth/commit/0f16f27a56f97cd1308b0165dedf2dcb0e5770e9))
+
 ## [1.0.1](https://github.com/OrenVill/mcp-sleuth/compare/v1.0.0...v1.0.1) (2026-08-20)
 
 
