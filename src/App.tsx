@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ServerList } from './components/ServerList';
 import { ServerBrowser } from './components/ServerBrowser';
 import { ToolDetail } from './components/ToolDetail';
@@ -28,12 +28,14 @@ import {
 } from './lib/mcpClient';
 import { detectMetaTools } from './lib/discovery/detect';
 import { runDiscovery } from './lib/discovery/orchestrator';
-import { loadLegacyServers, type StoredServer } from './lib/storage';
+import { loadLegacyServers } from './lib/storage';
 import { getHost } from './lib/host';
 import { TitleBar } from './components/TitleBar';
 import { WindowControls } from './components/WindowControls';
 import { ConfirmDialog } from './components/ConfirmDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useVault } from './hooks/useVault';
+import { makeId } from './lib/serverRecord';
 
 // Both live behind a toggle and together account for ~2,600 lines that used to
 // sit in the initial bundle. Loading them on demand keeps first paint lean for
@@ -44,15 +46,7 @@ const DevToolsModal = lazy(() =>
 const ScenarioRunnerPanel = lazy(() =>
   import('./components/ScenarioRunnerPanel').then((m) => ({ default: m.ScenarioRunnerPanel })),
 );
-import { initAppData } from './lib/appData';
 import { loadHistory } from './lib/history';
-import {
-  bootstrapVault,
-  createVault,
-  resetVault,
-  saveVault,
-  unlockVault,
-} from './lib/vault/service';
 import type {
   DiscoveryRun,
   MetaToolBinding,
@@ -61,8 +55,6 @@ import type {
   ServerStdioConfig,
   ServerTransport,
 } from './types';
-
-type VaultPhase = 'loading' | 'needs-setup' | 'needs-unlock' | 'ready';
 
 type ConnectOptions = {
   url?: string;
@@ -73,51 +65,8 @@ type ConnectOptions = {
   stdioEnv?: Record<string, string>;
 };
 
-function fromStoredServers(stored: StoredServer[]): ServerEntry[] {
-  return stored.map((s) => ({
-    id: s.id,
-    name: s.name,
-    url: s.url ?? '',
-    description: s.description,
-    auth: s.auth,
-    proxyThroughLocal: s.proxyThroughLocal ?? true,
-    transport: s.transport ?? 'http',
-    stdio: s.stdio,
-    stdioEnv: s.stdioEnv,
-    custom: s.custom ?? true,
-    status: 'disconnected',
-  }));
-}
-
-function toStoredServers(servers: ServerEntry[]): StoredServer[] {
-  return servers.map((server) => ({
-    id: server.id,
-    name: server.name,
-    url: server.url,
-    description: server.description,
-    custom: server.custom,
-    auth: server.auth,
-    proxyThroughLocal: server.proxyThroughLocal ?? true,
-    transport: server.transport,
-    stdio: server.stdio,
-    stdioEnv: server.stdioEnv,
-  }));
-}
-
-function makeId(name: string, existing: Set<string>): string {
-  const base =
-    name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') ||
-    'server';
-  if (!existing.has(base)) return base;
-  let n = 2;
-  while (existing.has(`${base}-${n}`)) n++;
-  return `${base}-${n}`;
-}
 
 export default function App() {
-  const [vaultPhase, setVaultPhase] = useState<VaultPhase>('loading');
-  const [vaultError, setVaultError] = useState<string | null>(null);
-  const [vaultBusy, setVaultBusy] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [servers, setServers] = useState<ServerEntry[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -130,67 +79,22 @@ export default function App() {
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const [devToolsInitialTab, setDevToolsInitialTab] = useState<DevToolsTab>('protocol');
   const [scenarioRunnerOpen, setScenarioRunnerOpen] = useState(false);
-  const aesKeyRef = useRef<CryptoKey | null>(null);
-  const serversRef = useRef<ServerEntry[]>(servers);
-  const vaultPhaseRef = useRef<VaultPhase>(vaultPhase);
   const discoveryControllersRef = useRef<Map<string, AbortController>>(new Map());
+  /** Discovery runs for up to 30s; it reads current servers rather than a stale closure. */
+  const serversRef = useRef<ServerEntry[]>(servers);
+  useLayoutEffect(() => {
+    serversRef.current = servers;
+  }, [servers]);
   /** Bumps when the add/edit modal opens so the form remounts with fresh initial state (no reset-in-effect). */
   const [dialogFormKey, setDialogFormKey] = useState(0);
 
-  useLayoutEffect(() => {
-    serversRef.current = servers;
-    vaultPhaseRef.current = vaultPhase;
-  }, [servers, vaultPhase]);
-
-  useEffect(() => {
-    void (async () => {
-      await initAppData().catch(() => { /* silent — falls back to in-memory defaults */ });
-      try {
-        const result = await bootstrapVault();
-        if (result.phase === 'ready') {
-          aesKeyRef.current = result.aesKey;
-          setServers(fromStoredServers(result.servers));
-          setVaultPhase('ready');
-        } else {
-          setVaultPhase(result.phase);
-        }
-      } catch {
-        setVaultError('Could not initialize vault.');
-        setVaultPhase('needs-setup');
-      }
-    })();
+  const clearSelection = useCallback(() => {
+    setSelectedId(null);
+    setSelectedToolName(null);
   }, []);
 
-  useEffect(() => {
-    if (vaultPhase !== 'ready' || !aesKeyRef.current) return;
-    void saveVault(aesKeyRef.current, toStoredServers(servers)).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      setVaultError(`Vault save failed: ${message}`);
-    });
-  }, [servers, vaultPhase]);
+  const vault = useVault({ servers, setServers, onCleared: clearSelection });
 
-  /** Best-effort flush before tab close / crash so IndexedDB has the latest ciphertext (see Page Lifecycle). */
-  useEffect(() => {
-    function flushVaultToDisk() {
-      const phase = vaultPhaseRef.current;
-      const key = aesKeyRef.current;
-      if (phase !== 'ready' || !key) return;
-      void saveVault(key, toStoredServers(serversRef.current)).catch((err: unknown) => {
-        console.error('mcp-sleuth: vault background save failed', err);
-      });
-    }
-
-    function onVisibilityChange() {
-      if (document.visibilityState === 'hidden') flushVaultToDisk();
-    }
-
-    window.addEventListener('pagehide', flushVaultToDisk);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => {
-      window.removeEventListener('pagehide', flushVaultToDisk);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-  }, []);
 
   const selectedServer = useMemo(
     () => servers.find((s) => s.id === selectedId) ?? null,
@@ -556,71 +460,6 @@ export default function App() {
     setDevToolsOpen(true);
   }
 
-  async function handleVaultCreate(passphrase: string) {
-    setVaultBusy(true);
-    setVaultError(null);
-    try {
-      const legacyServers = loadLegacyServers() ?? [];
-      const aesKey = await createVault(passphrase, legacyServers);
-      aesKeyRef.current = aesKey;
-      setServers(fromStoredServers(legacyServers));
-      setVaultPhase('ready');
-    } catch (err) {
-      setVaultError(err instanceof Error ? err.message : 'Could not create vault.');
-    } finally {
-      setVaultBusy(false);
-    }
-  }
-
-  async function handleVaultUnlock(passphrase: string) {
-    setVaultBusy(true);
-    setVaultError(null);
-    try {
-      const { aesKey, servers: storedServers } = await unlockVault(passphrase);
-      aesKeyRef.current = aesKey;
-      setServers(fromStoredServers(storedServers));
-      setVaultPhase('ready');
-    } catch (err) {
-      setVaultError(err instanceof Error ? err.message : 'Could not unlock vault.');
-    } finally {
-      setVaultBusy(false);
-    }
-  }
-
-  function handleVaultLock() {
-    const snapshot = servers;
-    setVaultPhase('needs-unlock');
-    setVaultError(null);
-    setSelectedId(null);
-    setSelectedToolName(null);
-    void Promise.allSettled(
-      snapshot
-        .filter((server) => server.status === 'connected')
-        .map((server) => disconnect(server.id)),
-    ).finally(() => {
-      aesKeyRef.current = null;
-      setServers([]);
-    });
-  }
-
-  async function handleVaultReset() {
-    setResetConfirmOpen(false);
-    setVaultBusy(true);
-    try {
-      await resetVault();
-      aesKeyRef.current = null;
-      setServers([]);
-      setSelectedId(null);
-      setSelectedToolName(null);
-      setVaultError(null);
-      setVaultPhase('needs-setup');
-    } catch (err) {
-      setVaultError(err instanceof Error ? err.message : 'Could not reset vault.');
-    } finally {
-      setVaultBusy(false);
-    }
-  }
-
   function handleGlobalSelectTool(serverId: string, toolName: string) {
     setSelectedId(serverId);
     setActiveTab('tools');
@@ -653,7 +492,7 @@ export default function App() {
   // so they get a slim one — otherwise there is no app identity and no drag handle.
   const titleBar = getHost().kind === 'electron' ? <TitleBar /> : null;
 
-  if (vaultPhase === 'loading') {
+  if (vault.phase === 'loading') {
     return (
       <div className="h-full flex flex-col bg-zinc-950">
         {titleBar}
@@ -662,32 +501,32 @@ export default function App() {
     );
   }
 
-  if (vaultPhase === 'needs-setup') {
+  if (vault.phase === 'needs-setup') {
     return (
       <div className="h-full flex flex-col bg-zinc-950">
         {titleBar}
         <div className="flex-1 min-h-0">
           <VaultSetup
-            onCreate={handleVaultCreate}
+            onCreate={vault.create}
             migrationHint={Boolean(loadLegacyServers()?.length)}
-            error={vaultError}
-            busy={vaultBusy}
+            error={vault.error}
+            busy={vault.busy}
           />
         </div>
       </div>
     );
   }
 
-  if (vaultPhase === 'needs-unlock') {
+  if (vault.phase === 'needs-unlock') {
     return (
       <div className="h-full flex flex-col bg-zinc-950">
         {titleBar}
         <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <VaultUnlock onUnlock={handleVaultUnlock} error={vaultError} busy={vaultBusy} />
+          <VaultUnlock onUnlock={vault.unlock} error={vault.error} busy={vault.busy} />
           <button
             type="button"
             onClick={() => setResetConfirmOpen(true)}
-            disabled={vaultBusy}
+            disabled={vault.busy}
             className="mt-4 text-xs px-3 py-1.5 rounded-md border border-zinc-700 text-zinc-300 hover:text-red-300 hover:border-red-800 hover:bg-red-950/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Reset vault
@@ -699,7 +538,10 @@ export default function App() {
           message="This permanently removes all stored servers and credentials. It cannot be undone."
           confirmLabel="Reset vault"
           danger
-          onConfirm={() => void handleVaultReset()}
+          onConfirm={() => {
+            setResetConfirmOpen(false);
+            void vault.reset();
+          }}
           onCancel={() => setResetConfirmOpen(false)}
         />
       </div>
@@ -726,14 +568,14 @@ export default function App() {
               {connectedCount}/{servers.length} connected
             </span>
           )}
-          {vaultError && (
+          {vault.error && (
             <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-red-950/50 border border-red-900/60 text-red-300">
-              {vaultError}
+              {vault.error}
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <VaultLockButton onLock={handleVaultLock} />
+          <VaultLockButton onLock={vault.lock} />
           <button
             type="button"
             onClick={() => openDevTools('protocol')}
