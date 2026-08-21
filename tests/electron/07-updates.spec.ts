@@ -24,6 +24,10 @@ function releasePayload(version: string) {
     html_url: `https://github.com/OrenVill/mcp-sleuth/releases/tag/v${version}`,
     published_at: new Date().toISOString(),
     body: '### Features\n\n* **updates:** notify on a new release',
+    assets: [
+      { name: `Sleuth-${version}-amd64.deb`, state: 'uploaded' },
+      { name: `Sleuth-${version}-x64.exe`, state: 'uploaded' },
+    ],
   };
 }
 
@@ -191,6 +195,30 @@ test.describe('§3.25 update notifications', () => {
           { timeout: 10_000 },
         )
         .toBe(false);
+    } finally {
+      await closeApp(launched);
+    }
+  });
+
+  test('stays quiet about a release whose installers are still uploading', async () => {
+    // release.yml publishes the release ~10 minutes before the installers land.
+    respond = (res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ...releasePayload(NEWER_VERSION), assets: [] }));
+    };
+    const launched = await launchAgainstFeed();
+    try {
+      await setupVault(launched.page);
+      await expect(launched.page.getByTestId('version-pill')).toContainText(
+        `v${INSTALLED_VERSION}`,
+      );
+      await expect(launched.page.getByTestId('update-banner')).toHaveCount(0);
+
+      // A manual check says why, rather than claiming it is up to date.
+      await launched.page.getByTestId('version-pill').click();
+      const popover = launched.page.getByTestId('version-popover');
+      await popover.getByRole('button', { name: 'Check now' }).click();
+      await expect(popover).toContainText(/still being built/i, { timeout: 15_000 });
     } finally {
       await closeApp(launched);
     }
