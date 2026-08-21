@@ -5,6 +5,7 @@ import {
   type AgentReadinessIssue,
   type AgentReadinessSeverity,
 } from '../lib/agentReadiness';
+import { getAgentRunSummaries } from '../lib/agent/agentRunStore';
 import type { ServerEntry } from '../types';
 import { AgentReadinessBadge } from './AgentReadinessBadge';
 import { useProtocolTraces } from './useProtocolTraces';
@@ -77,7 +78,12 @@ function IssueCard({ issue }: { issue: AgentReadinessIssue }) {
 
 export function AgentReadinessPanel({ servers }: Props) {
   const traces = useProtocolTraces();
-  const report = useMemo(() => analyzeAgentReadiness(servers, traces), [servers, traces]);
+  // Re-read the run summaries alongside traces: a finished agent run writes both,
+  // so `traces` changing is a reliable signal that the summaries moved too.
+  const report = useMemo(
+    () => analyzeAgentReadiness(servers, traces, getAgentRunSummaries()),
+    [servers, traces],
+  );
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const scoredServers = useMemo(
