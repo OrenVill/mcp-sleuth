@@ -40,3 +40,6 @@ _README.github.md
 
 # electron-builder output
 /release/
+
+# Browser-automation scratch (Playwright MCP snapshots, console logs, screenshots)
+.playwright-mcp/
