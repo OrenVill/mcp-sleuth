@@ -18,7 +18,7 @@ function makeRecord(id: string, overrides: Partial<CallRecord> = {}): CallRecord
 describe('history', () => {
   beforeEach(() => {
     _resetCache();
-    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {} });
+    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {}, agentRuns: {} });
   });
 
   it('loadHistory returns [] when empty', () => {
