@@ -73,6 +73,9 @@ src/
 │   ├── PromptInjectionPanel.tsx  # Prompt Injection scan tab
 │   ├── ObservationJournalPanel.tsx # Observation Journal tab
 │   ├── AgentReadinessBadge.tsx   # score badge shown in server header
+│   ├── UpdateBanner.tsx          # desktop-only "a new version is out" strip under the header
+│   ├── VersionPill.tsx           # header version label + update popover (check now, auto-check)
+│   ├── useUpdateStatus.ts        # React hook over the host's updates group
 │   ├── VaultSetup.tsx            # first-time vault password setup
 │   ├── VaultUnlock.tsx           # vault unlock prompt
 │   ├── VaultLockButton.tsx       # toolbar lock/unlock toggle
@@ -123,7 +126,7 @@ src/
     │
     ├── host/                     # the browser/desktop seam — see "Host Seam" below
     │   ├── index.ts              # getHost(): detects the preload bridge, picks an impl
-    │   ├── types.ts              # Host = { mcp, secrets, files } interfaces
+    │   ├── types.ts              # Host = { mcp, secrets, files, updates } interfaces
     │   ├── browser/              # MCP SDK in the renderer; /__vault_storage + /__app_data;
     │   │                         #   blob download for saveFile
     │   └── electron/             # every call forwarded over the preload bridge to main
@@ -167,10 +170,16 @@ electron/
 ├── externalLinks.js              # only http(s) may reach the OS — link targets can come from an
 │                                 #   untrusted MCP server's descriptions or resources
 ├── ipc/                          # channels.js (contract, Electron-free), mcpHandlers.js,
-│                                 #   nativeHandlers.js, windowHandlers.js. Handlers return
-│                                 #   envelopes, never throw: errors do not survive IPC intact
+│                                 #   nativeHandlers.js, windowHandlers.js, updateHandlers.js.
+│                                 #   Handlers return envelopes, never throw: errors do not
+│                                 #   survive IPC intact
 ├── mcp/sessions.js               # the live MCP client sessions; SDK wiring is injected so this
 │                                 #   is testable without sockets or subprocesses
+├── update/                       # update notifier: version.js (semver compare), feed.js (the
+│                                 #   GitHub /releases/latest fetch), store.js (update-state.json),
+│                                 #   service.js (the schedule and every skip/dismiss rule),
+│                                 #   appVersion.js (see below). Notify-only: the builds are
+│                                 #   unsigned, so nothing here downloads or installs
 ├── secrets/store.js              # vault envelope at the CLI's vault.json + the auto-unlock
 │                                 #   passphrase sealed with safeStorage
 └── appdata/store.js              # bookmarks/history/journals, gzipped, at the CLI's data.gz
@@ -187,6 +196,17 @@ Consequences for new code: put transport-level behavior behind `McpHost` so both
 never put tracing inside a host implementation, and remember that a host method must be
 implementable on both sides. `windowControls.ts` is the deliberate exception — window chrome has
 no browser equivalent, so it sits outside `Host` and no-ops in the browser.
+
+The `updates` group shows the pattern for a desktop-only capability that still respects the rule:
+the Electron host talks to `electron/update/`, and the browser host implements the same interface
+by resolving `null` from every read. The banner and the version pill therefore disappear from the
+browser build without a single `isDesktop` branch in a component.
+
+**`app.getVersion()` is not the app's version.** Electron reads it from the app's `package.json`
+only when that file has a `main` field, and this one deliberately has none — `extraMetadata`
+injects `main` into the packaged copy only. Unpackaged, `app.getVersion()` returns *Electron's*
+version (43.4.1), which would announce a downgrade as an update in dev and in the e2e suite. Use
+`resolveCurrentVersion()` from `electron/update/appVersion.js`.
 
 ---
 
@@ -229,6 +249,7 @@ CLI and the desktop app at once is last-write-wins.
 | Observation journals | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Trust notes, tool annotations, approve/reject decisions |
 | Vault auto-unlock passphrase | Sealed with the OS keychain via Electron `safeStorage` → `<data dir>/device-key.bin` (desktop only) | Generated passphrase; not written at all when the only backend is the insecure `basic_text` |
 | Window state | `<data dir>/window-state.json` (desktop only) | Size, position, maximised flag |
+| Update preferences | `<data dir>/update-state.json` (desktop only) | Auto-check flag, skipped and dismissed versions, last check time |
 | CLI daemon lock | `<data dir>/daemon.json` (CLI only) | Daemon PID + port |
 | Protocol traces | In-memory only (never persisted) | MCP call timeline for the current session |
 | Replay suites | In-memory + optional JSON export | Captured call sets for replay |
@@ -284,7 +305,8 @@ threading between steps) is the exception: it is a separate overlay opened from 
 ### Test-Driven Development
 
 Use TDD for all new behavior in `src/lib/` and `electron/`. Vitest covers
-`src/**/*.test.ts`, `*.test.js` at the repo root, and `electron/**/*.test.js` (377 tests). Electron
+`src/**/*.test.ts`, `*.test.js` at the repo root, `electron/**/*.test.js`, and
+`scripts/**/*.test.js` (506 tests). Electron
 modules inject their dependencies (`fs`, the SDK, the dialog) precisely so they are testable
 without launching Electron — keep it that way when adding to that tree.
 
@@ -340,7 +362,7 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-23 spec files, 99 tests. Runs against the **built `dist/`** served by `server.js` at
+25 spec files, 105 tests. Runs against the **built `dist/`** served by `server.js` at
 `http://127.0.0.1:4173`. Playwright starts both that server and the MCP fixture
 (`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001` itself — no manual setup.
 
@@ -376,14 +398,16 @@ Spec numbering maps directly to release checklist sections (`§3.N`):
 | `22-stdio-transport.spec.ts` | Stdio transport (local bridge + echo tool) |
 | `23-trust-evaluators.spec.ts` | Permission Surface, Prompt Injection scan, Observation Journal |
 | `24-error-handling.spec.ts` | Unhandled rejections and uncaught errors are reported, app stays usable |
+| `25-update-notifier.spec.ts` | The desktop update notice is absent from the browser build |
 
-Note the two files numbered `22`: both declare `§3.22`. The numbers are a naming convention, not
-a mechanism — nothing breaks — but the next spec added should be `23`, and if you renumber one of
-these, update the `§` title inside it and the section list in `SKILL.md` in the same change.
+The numbers are a naming convention, not a mechanism — nothing enforces them — but they map to
+the `§3.N` sections of the release checklist, so the next spec added should be `26`. If you
+renumber one, update the `§` title inside it and the section list in `SKILL.md` in the same
+change.
 
 ### Electron suite — `tests/electron/`
 
-6 spec files, 34 tests, driven by `playwright.electron.config.ts` against the packaged main
+7 spec files, 43 tests, driven by `playwright.electron.config.ts` against the packaged main
 process. Needs a display: on a headless machine use `xvfb-run -a`.
 
 ```bash
@@ -398,6 +422,7 @@ npm run test:e2e:electron                 # or: xvfb-run -a npm run test:e2e:ele
 | `04-native-persistence.spec.ts` | Vault + app-data files written to the data directory |
 | `05-app-chrome.spec.ts` | Frameless window, title bar, window controls, menu |
 | `06-dialogs.spec.ts` | In-app dialogs — vault reset uses `ConfirmDialog`, not browser chrome |
+| `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failure |
 
 ---
 
