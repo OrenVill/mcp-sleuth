@@ -90,6 +90,20 @@ input:focus, textarea:focus, select:focus, button:focus-visible {
 .md-preview td { border-bottom: 1px solid #27272a; padding: 0.4em 0.75em; }
 .md-preview img { max-width: 100%; border-radius: 6px; }
 
+/* Markdown inside a chat turn.
+   `.md-preview` is styled for a document pane: it carries page padding and
+   large headings that break a conversation's rhythm. This resets only those,
+   so every other rule above still applies. Pair as `md-preview md-chat`. */
+.md-chat { padding: 0; }
+.md-chat > :first-child { margin-top: 0; }
+.md-chat > :last-child { margin-bottom: 0; }
+.md-chat h1, .md-chat h2, .md-chat h3, .md-chat h4 { margin: 0.9em 0 0.4em; }
+.md-chat h1 { font-size: 1.15em; }
+.md-chat h2 { font-size: 1.08em; }
+.md-chat h3 { font-size: 1em; }
+.md-chat pre { margin-bottom: 0.6em; }
+.md-chat p { margin-bottom: 0.6em; }
+
 /* Compact markdown for descriptions / labels */
 .md-preview-compact { font-size: 0.75rem; line-height: 1.5; color: #a1a1aa; }
 .md-preview-compact p { margin: 0 0 0.2em; }

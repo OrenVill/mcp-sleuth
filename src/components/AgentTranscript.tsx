@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AgentMessage, AgentToolCall } from '../lib/agent/types';
+import { MarkdownPreview } from './MarkdownPreview';
 
 interface Props {
   messages: AgentMessage[];
@@ -190,9 +191,9 @@ export function AgentTranscript({ messages, streamingText, onRecordObservation }
             <Avatar />
             <div className="min-w-0 flex-1 space-y-2">
               {message.text && (
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-100">
-                  {message.text}
-                </p>
+                <div data-testid="assistant-markdown">
+                  <MarkdownPreview source={message.text} className="md-preview md-chat" />
+                </div>
               )}
               {message.toolCalls?.map((call) => (
                 <ToolStep
@@ -210,15 +211,12 @@ export function AgentTranscript({ messages, streamingText, onRecordObservation }
       {streamingText && (
         <div className="flex gap-3">
           <Avatar />
-          <p
-            data-testid="streaming-text"
-            className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-zinc-100"
-          >
-            {streamingText}
-            <span aria-hidden className="ml-0.5 inline-block animate-pulse text-violet-400">
-              ▌
-            </span>
-          </p>
+          <div data-testid="streaming-text" className="min-w-0 flex-1">
+            {/* Partial markdown renders fine — an unclosed fence simply stays
+                plain until its closing token arrives. */}
+            <MarkdownPreview source={streamingText} className="md-preview md-chat" />
+            <span aria-hidden className="animate-pulse text-violet-400">▌</span>
+          </div>
         </div>
       )}
     </div>
