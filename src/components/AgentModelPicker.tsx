@@ -262,22 +262,25 @@ export function AgentModelPicker({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/*
-        `appearance-none` is load-bearing: without it the control renders with
-        the OS's own light chrome, which reads as a foreign element on a dark
-        page. The chevron replaces the one that removes.
+        Two clusters, not one run-on row: which model is driving the chat, and
+        which servers it may reach, are separate decisions and are framed
+        separately. `appearance-none` on the selects is load-bearing — without
+        it they render in the OS's own light chrome on a dark page.
       */}
-      <Dropdown
-        testId="llm-config-select"
-        value={activeConfigId ?? ''}
-        onChange={onSelectConfig}
-        title="LLM server"
-      >
-        {configs.map((config) => (
-          <option key={config.id} value={config.id}>
-            {config.label}
-          </option>
-        ))}
-      </Dropdown>
+      <div className="flex items-center rounded-lg border border-zinc-800 bg-zinc-900/70 divide-x divide-zinc-800">
+        <Dropdown
+          testId="llm-config-select"
+          value={activeConfigId ?? ''}
+          onChange={onSelectConfig}
+          title="LLM server"
+          bare
+        >
+          {configs.map((config) => (
+            <option key={config.id} value={config.id}>
+              {config.label}
+            </option>
+          ))}
+        </Dropdown>
 
       {active && (
         <>
@@ -310,6 +313,7 @@ export function AgentModelPicker({
               value={active.model}
               onChange={(model) => onSaveConfig({ ...active, model })}
               title="Model"
+              bare
             >
               {found?.models.length ? (
                 found.models.map((model) => (
@@ -327,58 +331,148 @@ export function AgentModelPicker({
             type="button"
             onClick={rediscover}
             title="Re-check which models this server has"
-            className="text-xs px-2 py-1 rounded-md text-zinc-600 hover:text-zinc-300 hover:bg-zinc-800/70 transition-colors"
+            aria-label="Refresh model list"
+            className="px-2 py-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/70 transition-colors"
           >
-            Refresh
+            <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5" aria-hidden>
+              <path
+                d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
         </>
       )}
+      </div>
 
+      {/*
+        Add/Edit/Remove live behind one control. Remove is destructive and was
+        sitting exposed in the toolbar, a mis-click away from deleting the
+        server whose model is driving the conversation.
+      */}
+      <ServerMenu
+        hasActive={Boolean(active)}
+        onAdd={() => setDraft(blankConfig())}
+        onEdit={() => active && setDraft(active)}
+        onRemove={() => active && onDeleteConfig(active.id)}
+      />
+
+      <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/70 pl-2 pr-1.5 py-1">
+        <span className="text-[10px] uppercase tracking-wide text-zinc-600">MCP</span>
+        {/* A bare label with nothing after it reads as broken chrome rather than
+            as "you have not connected anything yet". */}
+        {connected.length === 0 && (
+          <span data-testid="no-connected-servers" className="text-[11px] text-zinc-600 pr-1">
+            none connected
+          </span>
+        )}
+        {connected.map((server) => {
+          const on = selectedServerIds.includes(server.id);
+          return (
+            <label
+              key={server.id}
+              title={on ? 'Exposed to the model' : 'Not exposed to the model'}
+              className={[
+                'flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border cursor-pointer transition-colors',
+                on
+                  ? 'border-violet-800/70 bg-violet-950/40 text-violet-200'
+                  : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700',
+              ].join(' ')}
+            >
+              <input
+                type="checkbox"
+                checked={on}
+                onChange={() => onToggleServer(server.id)}
+                className="accent-violet-500 w-3 h-3"
+              />
+              {server.name}
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Add / Edit / Remove behind one button, so the destructive one is not exposed. */
+function ServerMenu({
+  hasActive,
+  onAdd,
+  onEdit,
+  onRemove,
+}: {
+  hasActive: boolean;
+  onAdd: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const item =
+    'w-full text-left text-xs px-3 py-1.5 text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:hover:bg-transparent';
+
+  return (
+    <div className="relative" ref={ref}>
       <button
         type="button"
-        onClick={() => setDraft(blankConfig())}
-        className="text-xs px-2 py-1 rounded-md text-zinc-500 hover:text-violet-300 hover:bg-zinc-800/70 transition-colors"
+        data-testid="llm-server-menu"
+        aria-label="LLM server actions"
+        aria-expanded={open}
+        title="LLM server actions"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-center w-7 h-7 rounded-lg border border-zinc-800 bg-zinc-900/70 text-zinc-500 hover:text-zinc-200 hover:border-zinc-700 transition-colors"
       >
-        Add server
+        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
+          <circle cx="3.5" cy="8" r="1.2" />
+          <circle cx="8" cy="8" r="1.2" />
+          <circle cx="12.5" cy="8" r="1.2" />
+        </svg>
       </button>
-      {active && (
-        <>
-          <button
-            type="button"
-            onClick={() => setDraft(active)}
-            className="text-xs px-2 py-1 rounded-md text-zinc-600 hover:text-zinc-200 hover:bg-zinc-800/70 transition-colors"
-          >
-            Edit
+
+      {open && (
+        <div className="absolute right-0 top-9 z-10 w-40 py-1 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl">
+          <button type="button" className={item} onClick={() => { setOpen(false); onAdd(); }}>
+            Add server
           </button>
           <button
             type="button"
-            onClick={() => onDeleteConfig(active.id)}
-            className="text-xs px-2 py-1 rounded-md text-zinc-600 hover:text-red-300 hover:bg-red-950/40 transition-colors"
+            disabled={!hasActive}
+            className={item}
+            onClick={() => { setOpen(false); onEdit(); }}
           >
-            Remove
+            Edit server
           </button>
-        </>
+          <div className="my-1 h-px bg-zinc-800" />
+          <button
+            type="button"
+            disabled={!hasActive}
+            className={`${item} text-red-300 hover:bg-red-950/50`}
+            onClick={() => { setOpen(false); onRemove(); }}
+          >
+            Remove server
+          </button>
+        </div>
       )}
-
-      <div className="h-4 w-px bg-zinc-800" aria-hidden />
-
-      <span className="text-[10px] uppercase tracking-wide text-zinc-600">MCP</span>
-      <div className="flex flex-wrap items-center gap-1">
-        {connected.map((server) => (
-          <label
-            key={server.id}
-            className="flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700 cursor-pointer transition-colors"
-          >
-            <input
-              type="checkbox"
-              checked={selectedServerIds.includes(server.id)}
-              onChange={() => onToggleServer(server.id)}
-              className="accent-violet-500"
-            />
-            {server.name}
-          </label>
-        ))}
-      </div>
     </div>
   );
 }
@@ -389,12 +483,15 @@ function Dropdown({
   onChange,
   title,
   children,
+  bare = false,
 }: {
   testId: string;
   value: string;
   onChange: (value: string) => void;
   title: string;
   children: ReactNode;
+  /** Drop the frame so several can sit inside one segmented group. */
+  bare?: boolean;
 }) {
   return (
     <div className="relative">
@@ -403,7 +500,12 @@ function Dropdown({
         title={title}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none bg-zinc-900 border border-zinc-700 rounded-md pl-2.5 pr-7 py-1.5 text-xs text-zinc-200 hover:border-zinc-600 focus:outline-none focus:border-violet-500 transition-colors max-w-[13rem] truncate"
+        className={[
+          'appearance-none pl-2.5 pr-7 py-1.5 text-xs text-zinc-200 focus:outline-none transition-colors max-w-[13rem] truncate',
+          bare
+            ? 'bg-transparent border-0 hover:text-white focus:text-white'
+            : 'bg-zinc-900 border border-zinc-700 rounded-md hover:border-zinc-600 focus:border-violet-500',
+        ].join(' ')}
       >
         {children}
       </select>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { ServerEntry } from '../types';
 import { addInvocationObservation } from '../lib/observationJournal';
 import { updateObservationJournal } from '../lib/observationJournalStore';
@@ -22,7 +22,25 @@ interface Props {
 /** The conversation and the composer share one column so text keeps a readable measure. */
 const COLUMN = 'w-full max-w-3xl mx-auto px-6';
 
-function EmptyState({ toolCount, ready }: { toolCount: number; ready: boolean }) {
+/** The tool a `tools/call` trace targeted, when the params carry one. */
+function toolNameOf(trace: { params?: unknown }): string | null {
+  const params = trace.params;
+  if (!params || typeof params !== 'object') return null;
+  const name = (params as { name?: unknown }).name;
+  return typeof name === 'string' ? name : null;
+}
+
+function EmptyState({
+  toolCount,
+  ready,
+  hasConnectedServer,
+  onClose,
+}: {
+  toolCount: number;
+  ready: boolean;
+  hasConnectedServer: boolean;
+  onClose: () => void;
+}) {
   return (
     <div className="h-full flex flex-col items-center justify-center text-center gap-3 py-16">
       <div className="w-10 h-10 rounded-xl border border-zinc-800 bg-zinc-900/60 flex items-center justify-center">
@@ -37,14 +55,34 @@ function EmptyState({ toolCount, ready }: { toolCount: number; ready: boolean })
       </div>
       <div className="space-y-1">
         <p className="text-sm text-zinc-300">
-          {ready ? 'Ask the model to use this server' : 'Not ready yet'}
+          {ready
+            ? 'Ask the model to use this server'
+            : hasConnectedServer
+              ? 'Not ready yet'
+              : 'No connected MCP server'}
         </p>
         <p className="text-xs text-zinc-600 max-w-xs">
           {ready
             ? `${toolCount} tool${toolCount === 1 ? '' : 's'} exposed. Every call is shown to you for approval before it runs.`
-            : 'Choose a model and at least one connected server to begin.'}
+            : hasConnectedServer
+              ? 'Pick a model, and tick at least one server under MCP above.'
+              : 'The chat drives a model against a server\u2019s tools, so it needs one connected first.'}
         </p>
       </div>
+      {/*
+        Without this the chat is a dead end: the server list lives behind the
+        overlay, so there is no way to act on the message above from in here.
+      */}
+      {!hasConnectedServer && (
+        <button
+          type="button"
+          data-testid="agent-connect-a-server"
+          onClick={onClose}
+          className="text-xs px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+        >
+          Connect a server
+        </button>
+      )}
     </div>
   );
 }
@@ -57,9 +95,15 @@ export function AgentChatPanel({
   onClose,
 }: Props) {
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
-  const [selectedServerIds, setSelectedServerIds] = useState<string[]>(
-    activeServerId ? [activeServerId] : [],
-  );
+  const [selectedServerIds, setSelectedServerIds] = useState<string[]>(() => {
+    const connected = servers.filter((s) => s.status === 'connected');
+    // The server being investigated, when it is actually connected; otherwise
+    // the only connected one, since there is nothing to disambiguate.
+    if (activeServerId && connected.some((s) => s.id === activeServerId)) {
+      return [activeServerId];
+    }
+    return connected.length === 1 ? [connected[0].id] : [];
+  });
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -77,7 +121,18 @@ export function AgentChatPanel({
   const config = llmConfigs.find((c) => c.id === effectiveConfigId) ?? null;
   const run = useAgentRun(servers, config, selectedServerIds);
 
-  const ready = Boolean(config) && selectedServerIds.length > 0;
+  const connectedIds = useMemo(
+    () => servers.filter((s) => s.status === 'connected').map((s) => s.id),
+    [servers],
+  );
+  /*
+   * Connectivity is part of readiness, not just selection. buildToolCatalog
+   * only exposes tools from connected servers, so a selected-but-disconnected
+   * server would enable the composer and then send the model out with no tools
+   * at all.
+   */
+  const ready =
+    Boolean(config) && selectedServerIds.some((id) => connectedIds.includes(id));
 
   /*
    * Follow the conversation as it grows, but only when the reader is already at
@@ -253,7 +308,12 @@ export function AgentChatPanel({
               ) : (
                 run.collisions.length === 0 && (
                   <div className="flex-1 min-h-0">
-                    <EmptyState toolCount={run.toolCount} ready={ready} />
+                    <EmptyState
+                      toolCount={run.toolCount}
+                      ready={ready}
+                      hasConnectedServer={connectedIds.length > 0}
+                      onClose={onClose}
+                    />
                   </div>
                 )
               )}
@@ -289,9 +349,11 @@ export function AgentChatPanel({
                   placeholder={
                     !config
                       ? 'Add a model to start'
-                      : selectedServerIds.length === 0
-                        ? 'Select a connected server'
-                        : 'Ask something…'
+                      : connectedIds.length === 0
+                        ? 'Connect an MCP server first'
+                        : !ready
+                          ? 'Select a connected server'
+                          : 'Ask something…'
                   }
                   className="flex-1 min-w-0 bg-transparent px-2 py-1 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none disabled:cursor-not-allowed"
                   /*
@@ -329,46 +391,85 @@ export function AgentChatPanel({
           </div>
         </section>
 
-        <aside className="w-72 shrink-0 flex flex-col min-h-0 border-l border-zinc-800 bg-zinc-900/20">
-          <div className="shrink-0 px-3 h-11 border-b border-zinc-800 flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wide text-zinc-500">Live trace</span>
-            {runTraces.length > 0 && (
-              <span className="text-[10px] text-zinc-600 tabular-nums">{runTraces.length}</span>
-            )}
+        <aside className="w-80 shrink-0 flex flex-col min-h-0 border-l border-zinc-800/80 bg-zinc-900/40">
+          <div className="shrink-0 px-3 h-14 border-b border-zinc-800/80 flex items-center gap-2">
+            <span className="text-[11px] font-medium text-zinc-300">Live trace</span>
+            <span
+              className={[
+                'text-[10px] tabular-nums px-1.5 py-0.5 rounded-full border',
+                runTraces.length > 0
+                  ? 'text-violet-300 border-violet-800/60 bg-violet-950/40'
+                  : 'text-zinc-600 border-zinc-800 bg-zinc-900',
+              ].join(' ')}
+            >
+              {runTraces.length}
+            </span>
             <button
               type="button"
               data-testid="capture-replay-suite"
               onClick={capture}
               disabled={runTraces.length === 0}
-              className="ml-auto text-[11px] text-zinc-500 hover:text-violet-400 disabled:opacity-40 disabled:hover:text-zinc-500 transition-colors"
+              title="Save this run's tool calls as a replay suite"
+              className="ml-auto inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-zinc-800 text-zinc-400 hover:text-violet-300 hover:border-violet-800/70 hover:bg-violet-950/30 disabled:opacity-40 disabled:hover:text-zinc-400 disabled:hover:border-zinc-800 disabled:hover:bg-transparent transition-colors"
             >
-              Capture as suite
+              <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                <path
+                  d="M3 3.5h10v9H3zM5.5 3.5v3h5v-3"
+                  stroke="currentColor"
+                  strokeWidth="1.4"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Capture
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          <div className="flex-1 overflow-y-auto p-2 space-y-1">
             {runTraces.length === 0 ? (
-              <p className="px-1 py-2 text-[11px] text-zinc-600">No tool calls yet.</p>
+              <div className="h-full flex flex-col items-center justify-center text-center gap-2 px-6">
+                <div className="w-8 h-8 rounded-lg border border-zinc-800 bg-zinc-900 flex items-center justify-center">
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 text-zinc-700" aria-hidden>
+                    <path
+                      d="M2 8h3l2-4 2 8 2-4h3"
+                      stroke="currentColor"
+                      strokeWidth="1.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+                <p className="text-[11px] text-zinc-500">No tool calls yet</p>
+                <p className="text-[10px] text-zinc-600 leading-relaxed">
+                  Every call the model makes appears here as it happens, and in the Protocol
+                  Inspector.
+                </p>
+              </div>
             ) : (
               runTraces.map((trace) => (
                 <div
                   key={trace.id}
-                  className="flex items-center gap-2 text-[11px] rounded-md px-2 py-1.5 hover:bg-zinc-800/40 transition-colors"
+                  className="group flex items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 hover:border-zinc-800 hover:bg-zinc-900/70 transition-colors"
                 >
                   <span
-                    className={
+                    className={[
+                      'shrink-0 w-1.5 h-1.5 rounded-full ring-2',
                       trace.status === 'error'
-                        ? 'text-red-400'
+                        ? 'bg-red-400 ring-red-500/15'
                         : trace.status === 'ok'
-                          ? 'text-green-400'
-                          : 'text-zinc-600'
-                    }
+                          ? 'bg-emerald-400 ring-emerald-500/15'
+                          : 'bg-amber-400 ring-amber-500/15 animate-pulse',
+                    ].join(' ')}
                     aria-hidden
-                  >
-                    ●
-                  </span>
-                  <span className="font-mono text-zinc-400 truncate">{trace.method}</span>
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-[11px] text-zinc-300 truncate">
+                      {toolNameOf(trace) ?? trace.method}
+                    </div>
+                    {toolNameOf(trace) && (
+                      <div className="text-[10px] text-zinc-600 truncate">{trace.method}</div>
+                    )}
+                  </div>
                   {typeof trace.durationMs === 'number' && (
-                    <span className="ml-auto shrink-0 text-zinc-600 tabular-nums">
+                    <span className="shrink-0 text-[10px] text-zinc-600 tabular-nums">
                       {trace.durationMs}ms
                     </span>
                   )}
