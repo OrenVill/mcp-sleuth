@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 665 tests
+npm test             # vitest run — 725 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.

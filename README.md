@@ -265,15 +265,17 @@ Sleuth ships no model and no key. From the picker in the chat header, add an **L
 | Field | Notes |
 |-------|-------|
 | Name | Whatever you want to call it, e.g. `Local Ollama` |
-| Type | OpenAI-compatible — the only adapter in this release |
-| Base URL | Defaults to `http://127.0.0.1:11434/v1` (Ollama); `https://api.openai.com/v1` for OpenAI |
+| Type | OpenAI-compatible, Anthropic, or Google Gemini |
+| Base URL | Defaults per type: `http://127.0.0.1:11434/v1` (Ollama), `https://api.anthropic.com/v1`, `https://generativelanguage.googleapis.com/v1beta` |
 | API key | Leave empty for a local model |
 
 Sleuth then asks that server which models it has and lists them; if it reports none, type a model
 name by hand. "OpenAI-compatible" means anything serving `/v1/chat/completions` — Ollama, LM
-Studio, llama.cpp, vLLM, OpenAI itself, Groq, OpenRouter, Together, DeepSeek. **The API key is
-stored in the same encrypted vault as your MCP server credentials** — there is no plaintext
-credential store anywhere in Sleuth.
+Studio, llama.cpp, vLLM, OpenAI itself, Groq, OpenRouter, Together, DeepSeek. Anthropic and
+Gemini have their own adapters because their tool-calling formats differ: Anthropic returns
+`tool_use` blocks and takes results back as user messages, and Gemini keys a tool response by the
+tool's name rather than by a call id. **The API key is stored in the same encrypted vault as your
+MCP server credentials** — there is no plaintext credential store anywhere in Sleuth.
 
 Tick the servers whose tools the model may see. The one you are investigating is ticked by
 default; adding others is how you find out whether two servers export tools a model cannot tell

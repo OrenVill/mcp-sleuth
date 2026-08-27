@@ -150,7 +150,9 @@ src/
     │   ├── observations.ts       # AgentEvent[] → AgentRunSummary; deliberately lossy
     │   ├── agentRunStore.ts      # folds a finished run's summary into appData
     │   └── providers/            # one file per vendor wire format: buildRequest plus an
-    │                             #   incremental stream parser, no I/O. openai.ts today.
+    │                             #   incremental stream parser, no I/O. openai.ts,
+    │                             #   anthropic.ts, gemini.ts; index.ts holds the registry
+    │                             #   and index.test.ts asserts every id has an adapter.
     │
     ├── host/                     # the browser/desktop seam — see "Host Seam" below
     │   ├── index.ts              # getHost(): detects the preload bridge, picks an impl
@@ -354,7 +356,7 @@ open/closed flag:
 
 Use TDD for all new behavior in `src/lib/` and `electron/`. Vitest covers
 `src/**/*.test.ts`, `*.test.js` at the repo root, `electron/**/*.test.js`, and
-`scripts/**/*.test.js` (665 tests). Electron
+`scripts/**/*.test.js` (725 tests). Electron
 modules inject their dependencies (`fs`, the SDK, the dialog) precisely so they are testable
 without launching Electron — keep it that way when adding to that tree.
 

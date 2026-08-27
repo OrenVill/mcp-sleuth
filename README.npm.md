@@ -60,9 +60,10 @@ Click **Chat** in the toolbar to point a model you supply at a connected MCP ser
 it actually uses the tools. It is a test-bench for the server, not a chat client — the output is
 evidence about the server, not a conversation worth keeping.
 
-Add an **LLM server** from the picker in the chat header: a name, an OpenAI-compatible base URL
-(defaults to `http://127.0.0.1:11434/v1` for Ollama), and an API key only if the provider needs
-one. Sleuth asks that server which models it has and lists them. The key is stored in the same
+Add an **LLM server** from the picker in the chat header: a name, a type (OpenAI-compatible,
+Anthropic, or Google Gemini), a base URL (defaults to `http://127.0.0.1:11434/v1` for Ollama), and
+an API key only if the provider needs one. Sleuth asks that server which models it has and lists
+them. The key is stored in the same
 encrypted vault as your MCP server credentials.
 
 **Local models work without any extra configuration.** The browser never calls the provider

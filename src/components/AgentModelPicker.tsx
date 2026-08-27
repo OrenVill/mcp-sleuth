@@ -28,6 +28,18 @@ const PROVIDERS: { id: LlmProviderId; label: string; baseUrl: string; hint: stri
     baseUrl: 'http://127.0.0.1:11434/v1',
     hint: 'Ollama, LM Studio, vLLM, OpenAI itself — anything serving /v1/chat/completions.',
   },
+  {
+    id: 'anthropic',
+    label: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com/v1',
+    hint: 'Claude models. The key is sent as x-api-key, never in the page URL.',
+  },
+  {
+    id: 'gemini',
+    label: 'Google Gemini',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+    hint: 'Gemini models. The model name is part of the request path, so it must match exactly.',
+  },
 ];
 
 function blankConfig(): LlmConfig {
