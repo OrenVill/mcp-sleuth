@@ -22,6 +22,11 @@ interface Props {
 /** The conversation and the composer share one column so text keeps a readable measure. */
 const COLUMN = 'w-full max-w-3xl mx-auto px-6';
 
+/** Milliseconds, but readable once a call runs into seconds. */
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
 /** The tool a `tools/call` trace targeted, when the params carry one. */
 function toolNameOf(trace: { params?: unknown }): string | null {
   const params = trace.params;
@@ -106,6 +111,7 @@ export function AgentChatPanel({
   });
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
+  const [traceFilter, setTraceFilter] = useState<'all' | 'failed'>('all');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   /** Whether the reader is parked at the bottom, sampled before each update. */
@@ -186,6 +192,14 @@ export function AgentChatPanel({
   );
 
   const runTraces = traces.filter((trace) => trace.method === 'tools/call').slice(0, 40);
+  const traceStats = {
+    ok: runTraces.filter((t) => t.status === 'ok').length,
+    failed: runTraces.filter((t) => t.status === 'error').length,
+    total: runTraces.reduce((sum, t) => sum + (t.durationMs ?? 0), 0),
+    slowest: runTraces.reduce((max, t) => Math.max(max, t.durationMs ?? 0), 0),
+  };
+  const visibleTraces =
+    traceFilter === 'failed' ? runTraces.filter((t) => t.status === 'error') : runTraces;
   const hasConversation = run.messages.length > 0 || run.streamingText.length > 0;
 
   return (
@@ -200,13 +214,15 @@ export function AgentChatPanel({
         moved at all while the chat is open. WindowControls below restores
         minimise/maximise/close for the same reason.
       */}
-      <header className="app-header shrink-0 flex items-center gap-3 pl-4 pr-3 h-14 border-b border-zinc-800 bg-zinc-900/40">
+      <header className="app-header shrink-0 flex items-center gap-3 pl-3 pr-3 h-16 border-b border-zinc-800 bg-gradient-to-b from-zinc-900/80 to-zinc-900/30">
         <button
           type="button"
           onClick={onClose}
-          className="flex items-center gap-1 text-xs px-2 py-1 -ml-1 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/70 transition-colors"
+          title="Back to servers"
+          aria-label="Back to servers"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
         >
-          <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+          <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" aria-hidden>
             <path
               d="M10 3.5 5.5 8l4.5 4.5"
               stroke="currentColor"
@@ -215,18 +231,47 @@ export function AgentChatPanel({
               strokeLinejoin="round"
             />
           </svg>
-          Servers
         </button>
 
-        <div className="h-4 w-px bg-zinc-800" aria-hidden />
+        <div className="h-5 w-px bg-zinc-800" aria-hidden />
 
-        <div className="flex items-baseline gap-2 min-w-0">
-          <span className="text-sm font-medium text-zinc-100">Agent Chat</span>
-          {ready && (
-            <span className="text-[11px] text-zinc-600 truncate">
-              {run.toolCount} tool{run.toolCount === 1 ? '' : 's'}
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg border border-violet-800/50 bg-violet-950/40 text-violet-300">
+            <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" aria-hidden>
+              <path
+                d="M2.5 3.5h11v7h-6l-3.5 2.5v-2.5h-1.5z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <div className="flex flex-col min-w-0 leading-tight">
+            <span className="text-sm font-medium text-zinc-100">Agent Chat</span>
+            {/*
+              A status line rather than a bare tool count: whether the chat can
+              run at all is the thing a reader needs first, and it was previously
+              only discoverable by finding the composer disabled.
+            */}
+            <span className="flex items-center gap-1.5 text-[11px] min-w-0">
+              <span
+                className={[
+                  'w-1.5 h-1.5 rounded-full shrink-0',
+                  ready ? 'bg-emerald-400' : 'bg-amber-400',
+                ].join(' ')}
+                aria-hidden
+              />
+              <span className={`truncate ${ready ? 'text-zinc-500' : 'text-amber-500/80'}`}>
+                {ready
+                  ? `${run.toolCount} tool${run.toolCount === 1 ? '' : 's'} exposed`
+                  : connectedIds.length === 0
+                    ? 'No connected MCP server'
+                    : !config
+                      ? 'No model selected'
+                      : 'No server in scope'}
+              </span>
             </span>
-          )}
+          </div>
         </div>
 
         <div className="ml-auto flex items-center gap-2 min-w-0">
@@ -392,7 +437,7 @@ export function AgentChatPanel({
         </section>
 
         <aside className="w-80 shrink-0 flex flex-col min-h-0 border-l border-zinc-800/80 bg-zinc-900/40">
-          <div className="shrink-0 px-3 h-14 border-b border-zinc-800/80 flex items-center gap-2">
+          <div className="shrink-0 px-3 h-16 border-b border-zinc-800/80 flex items-center gap-2">
             <span className="text-[11px] font-medium text-zinc-300">Live trace</span>
             <span
               className={[
@@ -423,7 +468,47 @@ export function AgentChatPanel({
               Capture
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-1">
+
+          {/*
+            A summary strip, because the question a trace panel is usually asked
+            is "did anything fail and where did the time go" — which a flat list
+            of rows makes you compute yourself.
+          */}
+          {runTraces.length > 0 && (
+            <div className="shrink-0 px-3 py-2 border-b border-zinc-800/60 flex items-center gap-2 text-[10px]">
+              <span className="text-zinc-500 tabular-nums">
+                {traceStats.ok} ok
+              </span>
+              {traceStats.failed > 0 && (
+                <span className="text-red-400 tabular-nums">{traceStats.failed} failed</span>
+              )}
+              <span className="ml-auto text-zinc-600 tabular-nums">
+                {formatDuration(traceStats.total)} total
+              </span>
+            </div>
+          )}
+
+          {traceStats.failed > 0 && (
+            <div className="shrink-0 px-2 py-1.5 border-b border-zinc-800/60 flex items-center gap-1">
+              {(['all', 'failed'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setTraceFilter(mode)}
+                  className={[
+                    'text-[10px] px-2 py-0.5 rounded-md border transition-colors',
+                    traceFilter === mode
+                      ? 'border-zinc-700 bg-zinc-800 text-zinc-200'
+                      : 'border-transparent text-zinc-500 hover:text-zinc-300',
+                  ].join(' ')}
+                >
+                  {mode === 'all' ? 'All' : 'Failed'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex-1 overflow-y-auto p-2">
             {runTraces.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center gap-2 px-6">
                 <div className="w-8 h-8 rounded-lg border border-zinc-800 bg-zinc-900 flex items-center justify-center">
@@ -444,37 +529,61 @@ export function AgentChatPanel({
                 </p>
               </div>
             ) : (
-              runTraces.map((trace) => (
-                <div
-                  key={trace.id}
-                  className="group flex items-center gap-2.5 rounded-lg border border-transparent px-2 py-1.5 hover:border-zinc-800 hover:bg-zinc-900/70 transition-colors"
-                >
-                  <span
-                    className={[
-                      'shrink-0 w-1.5 h-1.5 rounded-full ring-2',
-                      trace.status === 'error'
-                        ? 'bg-red-400 ring-red-500/15'
-                        : trace.status === 'ok'
-                          ? 'bg-emerald-400 ring-emerald-500/15'
-                          : 'bg-amber-400 ring-amber-500/15 animate-pulse',
-                    ].join(' ')}
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-[11px] text-zinc-300 truncate">
-                      {toolNameOf(trace) ?? trace.method}
-                    </div>
-                    {toolNameOf(trace) && (
-                      <div className="text-[10px] text-zinc-600 truncate">{trace.method}</div>
-                    )}
-                  </div>
-                  {typeof trace.durationMs === 'number' && (
-                    <span className="shrink-0 text-[10px] text-zinc-600 tabular-nums">
-                      {trace.durationMs}ms
-                    </span>
-                  )}
-                </div>
-              ))
+              <ol className="relative">
+                {/* The connector reads the rows as one sequence rather than a
+                    pile of unrelated cards. */}
+                <span
+                  className="absolute left-[7px] top-2 bottom-2 w-px bg-zinc-800"
+                  aria-hidden
+                />
+                {visibleTraces.map((trace) => {
+                  const duration = typeof trace.durationMs === 'number' ? trace.durationMs : null;
+                  const share =
+                    duration !== null && traceStats.slowest > 0
+                      ? Math.max(2, Math.round((duration / traceStats.slowest) * 100))
+                      : 0;
+                  const failed = trace.status === 'error';
+                  return (
+                    <li
+                      key={trace.id}
+                      data-testid="trace-row"
+                      className="group relative pl-6 pr-1 py-1.5 rounded-lg hover:bg-zinc-900/70 transition-colors"
+                    >
+                      <span
+                        className={[
+                          'absolute left-1 top-[13px] w-3 h-3 rounded-full border-2 border-zinc-900',
+                          failed
+                            ? 'bg-red-400'
+                            : trace.status === 'ok'
+                              ? 'bg-emerald-400'
+                              : 'bg-amber-400 animate-pulse',
+                        ].join(' ')}
+                        aria-hidden
+                      />
+                      <div className="flex items-baseline gap-2">
+                        <span
+                          className={`font-mono text-[11px] truncate ${failed ? 'text-red-300' : 'text-zinc-300'}`}
+                        >
+                          {toolNameOf(trace) ?? trace.method}
+                        </span>
+                        <span className="ml-auto shrink-0 text-[10px] text-zinc-600 tabular-nums">
+                          {duration !== null ? formatDuration(duration) : '…'}
+                        </span>
+                      </div>
+                      {/* Relative to the slowest call in the run, so the outlier
+                          is visible without reading every number. */}
+                      {share > 0 && (
+                        <div className="mt-1 h-0.5 rounded-full bg-zinc-800 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${failed ? 'bg-red-500/60' : 'bg-violet-500/50'}`}
+                            style={{ width: `${share}%` }}
+                          />
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ol>
             )}
           </div>
         </aside>

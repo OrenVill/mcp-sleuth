@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ServerEntry } from '../types';
 import { getHost } from '../lib/host';
 import type { LlmConfig, LlmProviderId } from '../lib/agent/types';
 import { Select } from './Select';
+import { Popover } from './Popover';
 
 interface Props {
   configs: LlmConfig[];
@@ -255,212 +256,266 @@ export function AgentModelPicker({
     );
   }
 
+  const modelLabel = active
+    ? loading
+      ? 'Finding models…'
+      : active.model || 'No model'
+    : 'No model server';
+  const selectedCount = connected.filter((s) => selectedServerIds.includes(s.id)).length;
+
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex items-center gap-2">
       {/*
-        Two clusters, not one run-on row: which model is driving the chat, and
-        which servers it may reach, are separate decisions and are framed
-        separately. `appearance-none` on the selects is load-bearing — without
-        it they render in the OS's own light chrome on a dark page.
+        Two popovers rather than a row of controls. Which model drives the chat
+        and which servers it may reach are the only two decisions here, and each
+        one's detail — the model list, the per-server checkboxes — belongs behind
+        its own summary rather than spread across the bar.
       */}
-      <div className="flex items-center rounded-lg border border-zinc-800 bg-zinc-900/70 divide-x divide-zinc-800">
-        <Select
-          testId="llm-config-select"
-          value={activeConfigId ?? ''}
-          onChange={onSelectConfig}
-          title="LLM server"
-          aria-label="LLM server"
-          options={configs.map((config) => ({ value: config.id, label: config.label }))}
-          className="max-w-[13rem]"
-          bare
-        />
-
-      {active && (
-        <>
-          {loading ? (
-            <span data-testid="llm-models-loading" className="text-[11px] text-zinc-500">
-              Finding models…
-            </span>
-          ) : found?.status === 'error' ? (
-            <span className="flex items-center gap-1.5">
-              <span
-                data-testid="llm-models-error"
-                title={found.error}
-                className="text-[11px] text-amber-400 max-w-[14rem] truncate"
-              >
-                No model list from this server
-              </span>
-              {/* Not every OpenAI-compatible server implements /v1/models, so a
-                  failed lookup must not make the server unusable. */}
-              <input
-                data-testid="llm-model-manual"
-                value={active.model}
-                onChange={(e) => onSaveConfig({ ...active, model: e.target.value })}
-                placeholder="model name"
-                className="w-32 bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-violet-500"
-              />
-            </span>
-          ) : (
-            <Select
-              testId="llm-model-select"
-              value={active.model}
-              onChange={(model) => onSaveConfig({ ...active, model })}
-              title="Model"
-              aria-label="Model"
-              placeholder="No models reported"
-              options={(found?.models ?? []).map((model) => ({ value: model, label: model }))}
-              className="max-w-[13rem]"
-              bare
-            />
-          )}
-
-          <button
-            type="button"
-            onClick={rediscover}
-            title="Re-check which models this server has"
-            aria-label="Refresh model list"
-            className="px-2 py-2 text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/70 transition-colors"
-          >
-            <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5" aria-hidden>
-              <path
-                d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3"
-                stroke="currentColor"
-                strokeWidth="1.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </>
-      )}
-      </div>
-
-      {/*
-        Add/Edit/Remove live behind one control. Remove is destructive and was
-        sitting exposed in the toolbar, a mis-click away from deleting the
-        server whose model is driving the conversation.
-      */}
-      <ServerMenu
-        hasActive={Boolean(active)}
-        onAdd={() => setDraft(blankConfig())}
-        onEdit={() => active && setDraft(active)}
-        onRemove={() => active && onDeleteConfig(active.id)}
-      />
-
-      <div className="flex items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900/70 pl-2 pr-1.5 py-1">
-        <span className="text-[10px] uppercase tracking-wide text-zinc-600">MCP</span>
-        {/* A bare label with nothing after it reads as broken chrome rather than
-            as "you have not connected anything yet". */}
-        {connected.length === 0 && (
-          <span data-testid="no-connected-servers" className="text-[11px] text-zinc-600 pr-1">
-            none connected
-          </span>
-        )}
-        {connected.map((server) => {
-          const on = selectedServerIds.includes(server.id);
-          return (
-            <label
-              key={server.id}
-              title={on ? 'Exposed to the model' : 'Not exposed to the model'}
+      <Popover
+        testId="llm-picker"
+        aria-label="Model"
+        align="right"
+        className="group flex items-center gap-2 h-9 pl-2 pr-2.5 rounded-lg border border-zinc-800 bg-zinc-900/70 hover:border-zinc-700 transition-colors"
+        panelClassName="w-72"
+        trigger={({ open }) => (
+          <>
+            <span
               className={[
-                'flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border cursor-pointer transition-colors',
-                on
-                  ? 'border-violet-800/70 bg-violet-950/40 text-violet-200'
-                  : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700',
+                'flex items-center justify-center w-6 h-6 rounded-md border',
+                active
+                  ? 'border-violet-800/60 bg-violet-950/50 text-violet-300'
+                  : 'border-zinc-800 bg-zinc-900 text-zinc-600',
               ].join(' ')}
             >
-              <input
-                type="checkbox"
-                checked={on}
-                onChange={() => onToggleServer(server.id)}
-                className="accent-violet-500 w-3 h-3"
-              />
-              {server.name}
-            </label>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-/** Add / Edit / Remove behind one button, so the destructive one is not exposed. */
-function ServerMenu({
-  hasActive,
-  onAdd,
-  onEdit,
-  onRemove,
-}: {
-  hasActive: boolean;
-  onAdd: () => void;
-  onEdit: () => void;
-  onRemove: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent) => {
-      if (!ref.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  const item =
-    'w-full text-left text-xs px-3 py-1.5 text-zinc-300 hover:bg-zinc-800 transition-colors disabled:opacity-40 disabled:hover:bg-transparent';
-
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        data-testid="llm-server-menu"
-        aria-label="LLM server actions"
-        aria-expanded={open}
-        title="LLM server actions"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center justify-center w-7 h-7 rounded-lg border border-zinc-800 bg-zinc-900/70 text-zinc-500 hover:text-zinc-200 hover:border-zinc-700 transition-colors"
+              <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3" aria-hidden>
+                <path d="M8 1.5 9.6 6l4.4 1.6L9.6 9.2 8 13.6 6.4 9.2 2 7.6 6.4 6z" />
+              </svg>
+            </span>
+            <span className="flex flex-col items-start min-w-0 leading-tight">
+              <span className="text-[11px] font-medium text-zinc-200 truncate max-w-[11rem]">
+                {modelLabel}
+              </span>
+              <span className="text-[10px] text-zinc-600 truncate max-w-[11rem]">
+                {active?.label ?? 'Add one to start'}
+              </span>
+            </span>
+            <Chevron open={open} />
+          </>
+        )}
       >
-        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
-          <circle cx="3.5" cy="8" r="1.2" />
-          <circle cx="8" cy="8" r="1.2" />
-          <circle cx="12.5" cy="8" r="1.2" />
-        </svg>
-      </button>
+        {({ close }) => (
+          <div className="py-1">
+            <PanelHeading>Model server</PanelHeading>
+            <div className="px-2 pb-2">
+              <Select
+                testId="llm-config-select"
+                value={activeConfigId ?? ''}
+                onChange={onSelectConfig}
+                aria-label="LLM server"
+                placeholder="No model server"
+                options={configs.map((config) => ({ value: config.id, label: config.label }))}
+                className="w-full"
+              />
+            </div>
 
-      {open && (
-        <div className="absolute right-0 top-9 z-10 w-40 py-1 rounded-lg border border-zinc-800 bg-zinc-900 shadow-xl">
-          <button type="button" className={item} onClick={() => { setOpen(false); onAdd(); }}>
-            Add server
-          </button>
-          <button
-            type="button"
-            disabled={!hasActive}
-            className={item}
-            onClick={() => { setOpen(false); onEdit(); }}
-          >
-            Edit server
-          </button>
-          <div className="my-1 h-px bg-zinc-800" />
-          <button
-            type="button"
-            disabled={!hasActive}
-            className={`${item} text-red-300 hover:bg-red-950/50`}
-            onClick={() => { setOpen(false); onRemove(); }}
-          >
-            Remove server
-          </button>
-        </div>
-      )}
+            {active && (
+              <>
+                <PanelHeading>
+                  Model
+                  <button
+                    type="button"
+                    onClick={rediscover}
+                    title="Re-check which models this server has"
+                    aria-label="Refresh model list"
+                    className="ml-auto text-zinc-500 hover:text-zinc-200 transition-colors"
+                  >
+                    <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                      <path
+                        d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+                </PanelHeading>
+                <div className="px-2 pb-2">
+                  {loading ? (
+                    <p data-testid="llm-models-loading" className="text-[11px] text-zinc-500 px-1 py-1.5">
+                      Finding models…
+                    </p>
+                  ) : found?.status === 'error' ? (
+                    <div className="space-y-1.5">
+                      {/* Not every OpenAI-compatible server implements /v1/models,
+                          so a failed lookup must not make the server unusable. */}
+                      <p
+                        data-testid="llm-models-error"
+                        title={found.error}
+                        className="text-[11px] text-amber-400"
+                      >
+                        No model list from this server
+                      </p>
+                      <input
+                        data-testid="llm-model-manual"
+                        value={active.model}
+                        onChange={(e) => onSaveConfig({ ...active, model: e.target.value })}
+                        placeholder="model name"
+                        className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-violet-500"
+                      />
+                    </div>
+                  ) : (
+                    <Select
+                      testId="llm-model-select"
+                      value={active.model}
+                      onChange={(model) => onSaveConfig({ ...active, model })}
+                      aria-label="Model"
+                      placeholder="No models reported"
+                      options={(found?.models ?? []).map((model) => ({ value: model, label: model }))}
+                      className="w-full"
+                    />
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="my-1 h-px bg-zinc-800" />
+            <PanelAction onClick={() => { close(); setDraft(blankConfig()); }}>
+              Add model server
+            </PanelAction>
+            {active && (
+              <>
+                <PanelAction onClick={() => { close(); setDraft(active); }}>
+                  Edit “{active.label}”
+                </PanelAction>
+                <PanelAction
+                  destructive
+                  onClick={() => { close(); onDeleteConfig(active.id); }}
+                >
+                  Remove “{active.label}”
+                </PanelAction>
+              </>
+            )}
+          </div>
+        )}
+      </Popover>
+
+      <Popover
+        testId="mcp-scope-picker"
+        aria-label="MCP servers in scope"
+        align="right"
+        className="group flex items-center gap-2 h-9 px-2.5 rounded-lg border border-zinc-800 bg-zinc-900/70 hover:border-zinc-700 transition-colors"
+        panelClassName="w-64"
+        trigger={({ open }) => (
+          <>
+            <span
+              className={[
+                'w-1.5 h-1.5 rounded-full',
+                selectedCount > 0 ? 'bg-emerald-400' : 'bg-zinc-700',
+              ].join(' ')}
+              aria-hidden
+            />
+            <span className="text-[11px] text-zinc-300">
+              {connected.length === 0 ? (
+                <span data-testid="no-connected-servers" className="text-zinc-600">
+                  No MCP server
+                </span>
+              ) : (
+                <>
+                  {selectedCount} of {connected.length} server{connected.length === 1 ? '' : 's'}
+                </>
+              )}
+            </span>
+            <Chevron open={open} />
+          </>
+        )}
+      >
+        {() => (
+          <div className="py-1">
+            <PanelHeading>Exposed to the model</PanelHeading>
+            {connected.length === 0 ? (
+              <p className="px-3 pb-2 text-[11px] text-zinc-600">
+                Connect a server and it will appear here.
+              </p>
+            ) : (
+              <div className="pb-1">
+                {connected.map((server) => {
+                  const on = selectedServerIds.includes(server.id);
+                  return (
+                    <label
+                      key={server.id}
+                      className="flex items-center gap-2.5 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800 cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() => onToggleServer(server.id)}
+                        className="accent-violet-500 w-3.5 h-3.5"
+                      />
+                      <span className="flex-1 min-w-0 truncate">{server.name}</span>
+                      {on && <span className="text-[10px] text-violet-400">in scope</span>}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </Popover>
     </div>
   );
 }
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+      className={`shrink-0 w-3 h-3 text-zinc-600 transition-transform ${open ? 'rotate-180' : ''}`}
+    >
+      <path
+        d="M4.5 6.5 8 10l3.5-3.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function PanelHeading({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-zinc-600">
+      {children}
+    </div>
+  );
+}
+
+function PanelAction({
+  children,
+  onClick,
+  destructive = false,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'w-full text-left text-xs px-3 py-1.5 truncate transition-colors',
+        destructive
+          ? 'text-red-300 hover:bg-red-950/50'
+          : 'text-zinc-300 hover:bg-zinc-800',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  );
+}
+
 
