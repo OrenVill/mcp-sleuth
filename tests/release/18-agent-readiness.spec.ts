@@ -40,12 +40,16 @@ test.describe.serial('§3.18 — Agent Readiness', () => {
   });
 
   test('selecting a tool shows its specific score and issues with recommended fixes', async () => {
-    const toolSelect = page.locator('select').first();
+    const toolSelect = page.getByTestId('agent-readiness-tool-select');
     if (await toolSelect.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      const options = await toolSelect.locator('option').all();
-      if (options.length > 1) {
-        await toolSelect.selectOption({ index: 1 });
+      await toolSelect.click();
+      // Portalled to document.body, so do not scope this to the panel.
+      const options = page.getByRole('option');
+      if ((await options.count()) > 1) {
+        await options.nth(1).click();
         await page.waitForTimeout(500);
+      } else {
+        await page.keyboard.press('Escape');
       }
     }
     await page.screenshot({ path: 'test-results/18-tool-issues.png', fullPage: true });

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ServerEntry } from '../types';
 import { getHost } from '../lib/host';
 import type { LlmConfig, LlmProviderId } from '../lib/agent/types';
+import { Select } from './Select';
 
 interface Props {
   configs: LlmConfig[];
@@ -179,23 +180,18 @@ export function AgentModelPicker({
           <label className="block space-y-1">
             <span className={LABEL}>Type</span>
             <div className="relative">
-              <select
-                data-testid="llm-provider-select"
+              <Select
+                testId="llm-provider-select"
                 value={draft.provider}
-                onChange={(e) => {
+                onChange={(value) => {
                   const next =
-                    PROVIDERS.find((p) => p.id === (e.target.value as LlmProviderId)) ??
-                    PROVIDERS[0];
+                    PROVIDERS.find((p) => p.id === (value as LlmProviderId)) ?? PROVIDERS[0];
                   setDraft({ ...draft, provider: next.id, baseUrl: next.baseUrl });
                 }}
-                className={`${FIELD} appearance-none pr-7`}
-              >
-                {PROVIDERS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
+                aria-label="Type"
+                options={PROVIDERS.map((p) => ({ value: p.id, label: p.label }))}
+                className="w-full"
+              />
               <svg
                 viewBox="0 0 16 16"
                 fill="none"
@@ -268,19 +264,16 @@ export function AgentModelPicker({
         it they render in the OS's own light chrome on a dark page.
       */}
       <div className="flex items-center rounded-lg border border-zinc-800 bg-zinc-900/70 divide-x divide-zinc-800">
-        <Dropdown
+        <Select
           testId="llm-config-select"
           value={activeConfigId ?? ''}
           onChange={onSelectConfig}
           title="LLM server"
+          aria-label="LLM server"
+          options={configs.map((config) => ({ value: config.id, label: config.label }))}
+          className="max-w-[13rem]"
           bare
-        >
-          {configs.map((config) => (
-            <option key={config.id} value={config.id}>
-              {config.label}
-            </option>
-          ))}
-        </Dropdown>
+        />
 
       {active && (
         <>
@@ -308,23 +301,17 @@ export function AgentModelPicker({
               />
             </span>
           ) : (
-            <Dropdown
+            <Select
               testId="llm-model-select"
               value={active.model}
               onChange={(model) => onSaveConfig({ ...active, model })}
               title="Model"
+              aria-label="Model"
+              placeholder="No models reported"
+              options={(found?.models ?? []).map((model) => ({ value: model, label: model }))}
+              className="max-w-[13rem]"
               bare
-            >
-              {found?.models.length ? (
-                found.models.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))
-              ) : (
-                <option value="">No models reported</option>
-              )}
-            </Dropdown>
+            />
           )}
 
           <button
@@ -477,52 +464,3 @@ function ServerMenu({
   );
 }
 
-function Dropdown({
-  testId,
-  value,
-  onChange,
-  title,
-  children,
-  bare = false,
-}: {
-  testId: string;
-  value: string;
-  onChange: (value: string) => void;
-  title: string;
-  children: ReactNode;
-  /** Drop the frame so several can sit inside one segmented group. */
-  bare?: boolean;
-}) {
-  return (
-    <div className="relative">
-      <select
-        data-testid={testId}
-        title={title}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={[
-          'appearance-none pl-2.5 pr-7 py-1.5 text-xs text-zinc-200 focus:outline-none transition-colors max-w-[13rem] truncate',
-          bare
-            ? 'bg-transparent border-0 hover:text-white focus:text-white'
-            : 'bg-zinc-900 border border-zinc-700 rounded-md hover:border-zinc-600 focus:border-violet-500',
-        ].join(' ')}
-      >
-        {children}
-      </select>
-      <svg
-        viewBox="0 0 16 16"
-        fill="none"
-        aria-hidden
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-500"
-      >
-        <path
-          d="M4.5 6.5 8 10l3.5-3.5"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    </div>
-  );
-}
