@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 518 tests
+npm test             # vitest run — 665 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -54,11 +54,13 @@ Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-s
 ## 3. Playwright browser release suite
 
 Playwright starts both servers itself — the static server on `127.0.0.1:4173` and the
-MCP fixture on `127.0.0.1:3001` (`tests/fixtures/http-mcp-server.mjs`). No manual setup
-is needed. To run the fixture on its own while debugging:
+MCP fixture on `127.0.0.1:3001` (`tests/fixtures/http-mcp-server.mjs`), plus the scripted
+OpenAI-compatible LLM fixture on `127.0.0.1:3003` (`tests/fixtures/llm-server.mjs`) that §3.26
+needs. No manual setup is needed. To run either fixture on its own while debugging:
 
 ```bash
 node tests/fixtures/http-mcp-server.mjs
+node tests/fixtures/llm-server.mjs
 ```
 
 Run the full automated release suite:
@@ -67,20 +69,20 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 105 tests across 25 spec files must pass. Any failure blocks the release.
+All 113 tests across 26 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.25 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.26 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
 Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + echo
 tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
-Journal), error handling, and the absence of the desktop update notice.
+Journal), error handling, the absence of the desktop update notice, and Agent Chat.
 
 **Fixture content is load-bearing.** `http-mcp-server.mjs` documents which spec depends
 on each tool, resource, and prompt it registers — read that header before changing it.
@@ -102,7 +104,55 @@ to `api.github.com` appears in the network tab. The browser and CLI builds updat
 must not acquire a desktop-only surface. Automated:
 `tests/release/25-update-notifier.spec.ts`.
 
-> Spec numbers map to the `§3.N` sections above. The next spec added should be `26`.
+**§3.26 — Agent Chat (manual pass):** This one needs a real model, because the automated spec
+drives a scripted fixture that always picks the same tool. Point it at a local model — Ollama with
+any tool-capable model is enough, and needs no key:
+
+```bash
+ollama serve            # then: ollama pull <a tool-capable model>
+npm run dev             # or: mcp-sleuth
+```
+
+With the fixture server (or any real server) connected, click **Chat** in the toolbar, add an LLM
+server (Type *OpenAI-compatible*, Base URL `http://127.0.0.1:11434/v1`, no API key), and confirm
+Sleuth lists that server's models rather than leaving the model box empty. Then, in order:
+
+1. **The header status line reads the state correctly** — "N tools exposed" once a model and at
+   least one server are selected; "No model selected" / "No connected MCP server" / "No server in
+   scope" otherwise, with the composer disabled in each of those cases.
+2. **Ask something that needs a tool.** An approval card appears before anything runs, naming the
+   tool and showing the exact arguments. Nothing reaches the server until you click.
+3. **Allow** it. The call appears in the live trace with a duration, in the Protocol Inspector,
+   and the model answers from the result.
+4. **Deny** a call with **Wrong tool**. The run must *continue* — the model gets the reason back
+   and adapts. A denial that aborts the run is a regression, not a UI nicety.
+5. **A risk-locked tool asks every time.** Pick a tool the Permission Surface audit tags
+   destructive, shell, credential, or admin: the card shows the risk-locked badge and offers no
+   "always allow". Being able to session-allowlist such a tool blocks release.
+6. **Capture** the run as a replay suite, then open Dev Tools → Replay Suites and confirm it is
+   there with the run's successful calls. **Record** a tool step and confirm it lands in that
+   server's Observation Journal.
+7. **Agent Readiness** for that server now lists the deny reasons as issues (wrong tool picked /
+   unusable arguments), on top of the schema heuristics.
+8. **Close and reopen the overlay.** The transcript must be gone. **Transcripts are never
+   persisted** — only the counters in `<data dir>/data.gz` under `agentRuns`. A transcript that
+   survives a reopen, or any message text found in `data.gz`, blocks release.
+9. **Credentials.** An API key entered here must appear only inside the encrypted `vault.json`.
+   Grep the data directory for it: a hit outside the ciphertext blocks release.
+10. **Failure surfaces, not silence.** Stop the model server mid-run and send again: the error is
+    shown inline in the transcript and the app stays usable.
+
+**Release blockers, in priority order:** a tool call that runs without an approval card; a
+risk-locked tool that can be session-allowlisted; a denial that aborts the run instead of
+feeding the reason back; transcript text found on disk; an API key found anywhere outside the
+vault ciphertext. Everything else in the list is a defect to file, not a stop.
+
+Automated: `tests/release/26-agent-chat.spec.ts`, against `tests/fixtures/llm-server.mjs` — it
+covers the header readiness line, the gate appearing before the call runs, allow, deny with a
+reason and the run continuing, the live trace, replay capture, the MCP scope popover, and the
+disabled composer. Steps 5, 7, 8, 9, and 10 above are the manual-only ones.
+
+> Spec numbers map to the `§3.N` sections above. The next spec added should be `27`.
 
 ---
 
@@ -116,7 +166,7 @@ npm run test:e2e:electron          # needs a display
 xvfb-run -a npm run test:e2e:electron   # headless machine / CI
 ```
 
-All 44 tests across 7 spec files must pass:
+All 49 tests across 8 spec files must pass:
 
 | Spec | Area |
 |------|------|
@@ -127,6 +177,13 @@ All 44 tests across 7 spec files must pass:
 | `05-app-chrome.spec.ts` | Frameless window, title bar, window controls, menu |
 | `06-dialogs.spec.ts` | In-app dialogs — vault reset confirm/cancel/Escape, no browser chrome |
 | `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failed check |
+| `08-agent-chat.spec.ts` | Agent Chat — provider requests leave the main process directly, no `/__llm_proxy` |
+
+**Agent Chat egress (manual pass).** The desktop build has no proxy in the path, so this is a
+different code path from §3.26, not a repeat of it. With a local model running, open **Chat**, add
+the LLM server, and confirm a run completes. Then confirm the request left the main process: no
+request to `/__llm_proxy` appears in the renderer's network panel, and the app:// origin never
+talks to the provider host directly. Automated: `tests/electron/08-agent-chat.spec.ts`.
 
 **Update notifier (manual pass).** The automated spec drives a local fake feed; do this once by
 hand before a release, because it is the path real users take:
