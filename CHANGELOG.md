@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.2.0...v1.3.0) (2026-08-28)
+
+
+### Features
+
+* **agent:** make the chat readable, interruptible, and recoverable ([#60](https://github.com/OrenVill/mcp-sleuth/issues/60)) ([27641ff](https://github.com/OrenVill/mcp-sleuth/commit/27641ffd1bee947d51c28a5a0c286978b41a5f93))
+
 ## [1.2.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.1.0...v1.2.0) (2026-08-28)
 
 
