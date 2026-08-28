@@ -1,5 +1,5 @@
-import { describe, expect, test } from 'vitest';
-import { analyzeAgentReadiness } from './agentReadiness';
+import { describe, expect, it, test } from 'vitest';
+import { analyzeAgentReadiness, analyzeToolReadiness } from './agentReadiness';
 import type { ServerEntry, ToolDef } from '../types';
 import type { ProtocolTraceEvent } from './protocolTrace';
 
@@ -190,5 +190,61 @@ describe('agentReadiness', () => {
     expect(report.issues.map((issue) => issue.id)).toEqual(
       expect.arrayContaining(['unstructured-text-result', 'unclear-error-message']),
     );
+  });
+});
+describe('agent run issues', () => {
+  const tool = {
+    name: 'search',
+    description: 'Searches the index for matching records.',
+    inputSchema: {
+      type: 'object',
+      properties: { query: { type: 'string', description: 'The search text.' } },
+      required: ['query'],
+    },
+  };
+  const server = { id: 's1', name: 'One' };
+
+  const summary = (over: Partial<import('./agent/types').AgentRunSummary>) => ({
+    serverId: 's1',
+    runs: 5,
+    wrongToolPicks: 0,
+    badArgDenials: 0,
+    toolErrors: 0,
+    unrecoveredErrors: 0,
+    lastRunAt: 1,
+    ...over,
+  });
+
+  it('adds no issue when no runs have happened', () => {
+    const report = analyzeToolReadiness(tool, server, [], undefined);
+    expect(report.issues.some((i) => i.id.startsWith('agent-'))).toBe(false);
+  });
+
+  it('adds no issue when runs were clean', () => {
+    const report = analyzeToolReadiness(tool, server, [], summary({}));
+    expect(report.issues.some((i) => i.id.startsWith('agent-'))).toBe(false);
+  });
+
+  it('flags repeated wrong-tool picks as high severity', () => {
+    const report = analyzeToolReadiness(tool, server, [], summary({ wrongToolPicks: 2 }));
+    const issue = report.issues.find((i) => i.id === 'agent-wrong-tool-picked');
+    expect(issue?.severity).toBe('high');
+    expect(issue?.message).toContain('2');
+  });
+
+  it('flags bad-argument denials', () => {
+    const report = analyzeToolReadiness(tool, server, [], summary({ badArgDenials: 3 }));
+    expect(report.issues.some((i) => i.id === 'agent-bad-arguments')).toBe(true);
+  });
+
+  it('flags runs that ended without recovering', () => {
+    const report = analyzeToolReadiness(tool, server, [], summary({ unrecoveredErrors: 2 }));
+    expect(report.issues.some((i) => i.id === 'agent-unrecovered-run')).toBe(true);
+  });
+
+  it('lowers the score when agent issues are present', () => {
+    const clean = analyzeToolReadiness(tool, server, [], summary({}));
+    const messy = analyzeToolReadiness(tool, server, [], summary({ wrongToolPicks: 2 }));
+    expect(messy.score).toBeLessThan(clean.score);
   });
 });

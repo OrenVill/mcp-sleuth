@@ -5,16 +5,15 @@ import {
   type AgentReadinessIssue,
   type AgentReadinessSeverity,
 } from '../lib/agentReadiness';
+import { getAgentRunSummaries } from '../lib/agent/agentRunStore';
 import type { ServerEntry } from '../types';
 import { AgentReadinessBadge } from './AgentReadinessBadge';
+import { Select } from './Select';
 import { useProtocolTraces } from './useProtocolTraces';
 
 interface Props {
   servers: ServerEntry[];
 }
-
-const SELECT_CLASS =
-  'mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
 function severityClass(severity: AgentReadinessSeverity): string {
   switch (severity) {
@@ -77,7 +76,12 @@ function IssueCard({ issue }: { issue: AgentReadinessIssue }) {
 
 export function AgentReadinessPanel({ servers }: Props) {
   const traces = useProtocolTraces();
-  const report = useMemo(() => analyzeAgentReadiness(servers, traces), [servers, traces]);
+  // Re-read the run summaries alongside traces: a finished agent run writes both,
+  // so `traces` changing is a reliable signal that the summaries moved too.
+  const report = useMemo(
+    () => analyzeAgentReadiness(servers, traces, getAgentRunSummaries()),
+    [servers, traces],
+  );
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const scoredServers = useMemo(
@@ -160,44 +164,43 @@ export function AgentReadinessPanel({ servers }: Props) {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 mb-4">
-            <label className="block">
+            <div className="block">
               <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
                 Server
               </span>
-              <select
+              <Select
                 value={activeServerId ?? ''}
-                onChange={(event) => {
-                  const nextServerId = event.target.value;
+                onChange={(nextServerId) => {
                   const firstTool = report.tools.find((tool) => tool.serverId === nextServerId);
                   setSelectedServerId(nextServerId);
                   setSelectedToolName(firstTool?.toolName ?? null);
                 }}
-                className={SELECT_CLASS}
-              >
-                {scoredServers.map(([serverId, serverName]) => (
-                  <option key={serverId} value={serverId}>
-                    {serverName}
-                  </option>
-                ))}
-              </select>
-            </label>
+                options={scoredServers.map(([serverId, serverName]) => ({
+                  value: serverId,
+                  label: serverName,
+                }))}
+                aria-label="Server"
+                testId="agent-readiness-server-select"
+                className="mt-1 w-full"
+              />
+            </div>
 
-            <label className="block">
+            <div className="block">
               <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
                 Tool
               </span>
-              <select
+              <Select
                 value={activeToolName ?? ''}
-                onChange={(event) => setSelectedToolName(event.target.value)}
-                className={`${SELECT_CLASS} font-mono`}
-              >
-                {activeServerTools.map((tool) => (
-                  <option key={tool.toolName} value={tool.toolName}>
-                    {tool.toolName}
-                  </option>
-                ))}
-              </select>
-            </label>
+                onChange={(nextToolName) => setSelectedToolName(nextToolName)}
+                options={activeServerTools.map((tool) => ({
+                  value: tool.toolName,
+                  label: tool.toolName,
+                }))}
+                aria-label="Tool"
+                testId="agent-readiness-tool-select"
+                className="mt-1 w-full font-mono"
+              />
+            </div>
           </div>
 
           {selectedTool && (

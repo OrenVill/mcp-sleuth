@@ -68,6 +68,11 @@ src/
 │   ├── ReplaySuitesPanel.tsx     # Replay Suites tab
 │   ├── SchemaLabPanel.tsx        # Schema Lab tab
 │   ├── ScenarioRunnerPanel.tsx   # Scenario Runner overlay (opened from App.tsx, not a tab)
+│   ├── AgentChatPanel.tsx        # Agent Chat overlay (opened from App.tsx, not a tab)
+│   ├── AgentModelPicker.tsx      # model server / model choice + which servers are in scope
+│   ├── AgentTranscript.tsx       # chat messages and tool steps; "Record" to the journal
+│   ├── ToolCallApproval.tsx      # the approval gate, including the deny-reason choice
+│   ├── useAgentRun.ts            # React hook over lib/agent/loop.ts; owns one run's state
 │   ├── AgentReadinessPanel.tsx   # Agent Readiness tab
 │   ├── PermissionSurfacePanel.tsx # Permission Surface tab
 │   ├── PromptInjectionPanel.tsx  # Prompt Injection scan tab
@@ -83,6 +88,8 @@ src/
 │   ├── TitleBar.tsx              # slim drag/close bar for the pre-vault screens (desktop only)
 │   ├── WindowControls.tsx        # min/max/close for the frameless desktop window; renders
 │   │                             #   nothing in the browser build or on macOS
+│   ├── Select.tsx                # portalled listbox; replaces every native <select>
+│   ├── Popover.tsx               # portalled panel anchored to a trigger button
 │   ├── CodeBlock.tsx             # syntax-highlighted code display (shiki)
 │   ├── MarkdownPreview.tsx       # renders markdown content (marked)
 │   ├── HighlightedText.tsx       # renders injection-scan match highlights
@@ -97,12 +104,15 @@ src/
     ├── protocolDiff.ts           # diff two protocol call payloads (for call history view)
     ├── storage.ts                # StoredServer shape + read/clear of the pre-vault
     │                             #   plaintext server list (migration path only)
-    ├── appData.ts                # bookmarks, call history, observation journals; goes through
-    │                             #   the host's files group, falls back to localStorage
+    ├── appData.ts                # bookmarks, call history, observation journals, agent-run
+    │                             #   summaries; goes through the host's files group, falls back
+    │                             #   to localStorage
     ├── history.ts                # CallRecord types + ring-buffer management
     ├── bookmarks.ts              # bookmark CRUD helpers
     ├── serverTools.ts            # native + discovered tools, deduped; connected-server filter
     ├── replaySuites.ts           # capture and replay sets of MCP tool calls
+    ├── replaySuiteSession.ts     # the session's suites, push/subscribe, so both the panel
+    │                             #   and Agent Chat can add one
     ├── scenarioRunner.ts         # execute ordered multi-step call chains (scenarios)
     ├── schemaLab.ts              # schema analysis: required fields, example generation,
     │                             #   JSON-RPC tools/call payload copy
@@ -113,22 +123,43 @@ src/
     ├── observationJournalStore.ts # journal persistence on top of appData
     ├── clientConfigExport.ts     # generate claude_desktop_config.json and Cursor JSON
     ├── handoffReadme.ts          # generate a "handoff" README describing a server's tools
-    ├── agentReadiness.ts         # score a server 0–100 for agent-readiness heuristics
+    ├── agentReadiness.ts         # score a server 0–100 for agent-readiness heuristics, plus
+    │                             #   real findings from Agent Chat runs (agent/observations)
     ├── connectionErrorMessage.ts # user-facing error message formatter for connect failures
     ├── stdioParse.ts             # parse/serialize stdio command, args, env; bridge URL prefix
     ├── stdioSession.ts           # start a stdio session against the local bridge
     ├── windowControls.ts         # frameless-window min/max/close; deliberately OUTSIDE Host —
     │                             #   window chrome has no browser equivalent
     ├── highlighter.ts            # syntax highlighting (shiki) helper
+    ├── markdown.ts               # markdown → HTML with raw HTML escaped and URL schemes
+    │                             #   allowlisted; server text is untrusted
     ├── promptSerialize.ts        # serialize MCP prompt messages for display
     ├── uriTemplate.ts            # RFC 6570 URI template expansion
     ├── export.ts                 # JSON round-trip import/export helpers
     │
+    ├── agent/                    # the Agent Chat engine: a test-bench for the server under
+    │                             #   investigation, not a general chat client. Every module
+    │                             #   is pure — network and MCP are injected.
+    │   ├── types.ts              # AgentMessage, AgentEvent, LlmConfig, AgentRunSummary
+    │   ├── loop.ts               # the model ↔ tool cycle; emits AgentEvent, never fetches.
+    │   │                         #   A denial is fed back to the model, not an abort.
+    │   ├── gating.ts             # allow / always-allow / risk-locked, over the profiles
+    │   │                         #   permissionSurfaceAudit.ts already computes
+    │   ├── toolCatalog.ts        # ToolDef[] → provider tool schemas; names are never
+    │   │                         #   namespaced, so cross-server collisions are surfaced
+    │   ├── observations.ts       # AgentEvent[] → AgentRunSummary; deliberately lossy
+    │   ├── agentRunStore.ts      # folds a finished run's summary into appData
+    │   └── providers/            # one file per vendor wire format: buildRequest plus an
+    │                             #   incremental stream parser, no I/O. openai.ts,
+    │                             #   anthropic.ts, gemini.ts; index.ts holds the registry
+    │                             #   and index.test.ts asserts every id has an adapter.
+    │
     ├── host/                     # the browser/desktop seam — see "Host Seam" below
     │   ├── index.ts              # getHost(): detects the preload bridge, picks an impl
-    │   ├── types.ts              # Host = { mcp, secrets, files, updates } interfaces
+    │   ├── types.ts              # Host = { mcp, secrets, files, updates, llm } interfaces
     │   ├── browser/              # MCP SDK in the renderer; /__vault_storage + /__app_data;
-    │   │                         #   blob download for saveFile
+    │   │                         #   /__llm_proxy for provider calls; blob download for
+    │   │                         #   saveFile
     │   └── electron/             # every call forwarded over the preload bridge to main
     │
     ├── discovery/                # multi-strategy meta-tool discovery engine
@@ -170,7 +201,9 @@ electron/
 ├── externalLinks.js              # only http(s) may reach the OS — link targets can come from an
 │                                 #   untrusted MCP server's descriptions or resources
 ├── ipc/                          # channels.js (contract, Electron-free), mcpHandlers.js,
-│                                 #   nativeHandlers.js, windowHandlers.js, updateHandlers.js.
+│                                 #   nativeHandlers.js, windowHandlers.js, updateHandlers.js,
+│                                 #   llmHandlers.js (Agent Chat provider fetches; bodies are
+│                                 #   never logged).
 │                                 #   Handlers return envelopes, never throw: errors do not
 │                                 #   survive IPC intact
 ├── mcp/sessions.js               # the live MCP client sessions; SDK wiring is injected so this
@@ -197,6 +230,12 @@ never put tracing inside a host implementation, and remember that a host method 
 implementable on both sides. `windowControls.ts` is the deliberate exception — window chrome has
 no browser equivalent, so it sits outside `Host` and no-ops in the browser.
 
+The `llm` group carries Agent Chat's provider traffic. The browser posts to the same-origin
+`/__llm_proxy`; Electron forwards over the preload bridge and fetches from main. Both hosts share
+the provider adapters and the stream parsing — only the transport differs. LLM traffic is **not**
+MCP traffic and never enters `protocolTrace.ts`; the tool calls it causes do, through
+`mcpClient.ts`, unchanged.
+
 The `updates` group shows the pattern for a desktop-only capability that still respects the rule:
 the Electron host talks to `electron/update/`, and the browser host implements the same interface
 by resolving `null` from every read. The banner and the version pill therefore disappear from the
@@ -220,6 +259,7 @@ runtime dependencies** except `stdio-bridge.js`, which needs the MCP SDK.
 |------|---------|
 | `server.js` | Zero-dep static file server for `dist/`. Proper MIME types, immutable cache headers for hashed assets, SPA fallback. Intercepts `/__mcp_proxy`, `/__mcp_stdio`, `/__app_data`, `/__vault_storage`. |
 | `proxy.js` | Rewrites browser MCP requests to real MCP server URLs; adds CORS headers. Called by `server.js` and by the Vite dev middleware. |
+| `llm-proxy.js` | Forwards Agent Chat's provider requests from the browser build so the page never calls a provider cross-origin. Deliberately narrower than `proxy.js`: the request names a configured provider and the proxy accepts only the paths that provider exposes, requires a same-origin `Sec-Fetch-Site`, and never logs request or response bodies. Registered beside the other interceptors in `server.js` and in `vite.config.ts`. The desktop app does not use it — Electron fetches providers from the main process. |
 | `stdio-bridge.js` | Spawns a stdio MCP subprocess and fronts it as a same-origin streamable-HTTP endpoint under `/__mcp_stdio/<id>`, so the browser build reuses one MCP client for both transports. The desktop app does not use it — Electron spawns stdio servers directly. |
 | `data-dir.js` | Resolves the data directory (`MCP_SLEUTH_DATA_DIR`, then the pre-rename `MCP_EXPLORER_DATA_DIR`, then `~/.mcp-sleuth`) and performs the one-time non-destructive migration from the pre-rename directory. Every other store asks this module for its path. |
 | `app-data-handler.js` | Reads/writes gzipped bookmarks + history + journals at `<data dir>/data.gz`, outside the browser sandbox. |
@@ -247,11 +287,14 @@ CLI and the desktop app at once is last-write-wins.
 | Bookmarks | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Bookmarked tool call IDs |
 | Call history | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Ring buffer of recent tool calls |
 | Observation journals | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Trust notes, tool annotations, approve/reject decisions |
+| LLM provider configs | Encrypted vault, beside the server list (payload `version` 2) | Agent Chat's model servers: label, provider, base URL, model, API key |
+| Agent run summaries | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Per-server counters only: runs, wrong-tool picks, bad-argument denials, tool errors, unrecovered runs |
 | Vault auto-unlock passphrase | Sealed with the OS keychain via Electron `safeStorage` → `<data dir>/device-key.bin` (desktop only) | Generated passphrase; not written at all when the only backend is the insecure `basic_text` |
 | Window state | `<data dir>/window-state.json` (desktop only) | Size, position, maximised flag |
 | Update preferences | `<data dir>/update-state.json` (desktop only) | Auto-check flag, skipped and dismissed versions, last check time |
 | CLI daemon lock | `<data dir>/daemon.json` (CLI only) | Daemon PID + port |
 | Protocol traces | In-memory only (never persisted) | MCP call timeline for the current session |
+| Agent Chat transcripts | In-memory only (**never persisted**) | Messages, tool arguments, and raw tool output. A transcript holds raw output from the server under investigation, which must not land in `data.gz`; only the derived counters above survive a run. |
 | Replay suites | In-memory + optional JSON export | Captured call sets for replay |
 
 ### Pre-rename fallbacks — read-only, do not "fix"
@@ -288,9 +331,16 @@ belong here — not in the main 3-column layout.
 | Observation Journal | `ObservationJournalPanel` | `observationJournal.ts`, `observationJournalStore.ts` | Per-server trust notes, tool annotations, invocation observations, approve/reject decisions. Persisted with app data; exportable as Markdown. |
 | Agent Readiness | `AgentReadinessPanel` | `agentReadiness.ts` | Scores a connected server 0–100 across heuristics (tool descriptions, schema quality, error surfaces, etc.). Badge shown in server header. |
 
-`DevToolsModal.tsx` owns the tab list — add a tab there, not in `App.tsx`. The **Scenario Runner**
-(`ScenarioRunnerPanel` + `scenarioRunner.ts`, ordered multi-step call chains with parameter
-threading between steps) is the exception: it is a separate overlay opened from `App.tsx`.
+`DevToolsModal.tsx` owns the tab list — add a tab there, not in `App.tsx`. Two surfaces are the
+exception; both are full overlays opened from the toolbar, with `App.tsx` owning only the
+open/closed flag:
+
+- **Scenario Runner** (`ScenarioRunnerPanel` + `scenarioRunner.ts`) — ordered multi-step call
+  chains with parameter threading between steps, authored by hand.
+- **Agent Chat** (`AgentChatPanel` + `src/lib/agent/`) — the same thing driven by a user-supplied
+  LLM instead. It is a test-bench for the server, not a chat client: every tool call is
+  approval-gated, a run's calls can be captured as a Replay Suite, any step can be recorded to the
+  Observation Journal, and deny reasons feed Agent Readiness. Transcripts are never persisted.
 
 ---
 
@@ -306,7 +356,7 @@ threading between steps) is the exception: it is a separate overlay opened from 
 
 Use TDD for all new behavior in `src/lib/` and `electron/`. Vitest covers
 `src/**/*.test.ts`, `*.test.js` at the repo root, `electron/**/*.test.js`, and
-`scripts/**/*.test.js` (518 tests). Electron
+`scripts/**/*.test.js` (725 tests). Electron
 modules inject their dependencies (`fs`, the SDK, the dialog) precisely so they are testable
 without launching Electron — keep it that way when adding to that tree.
 
@@ -362,9 +412,10 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-25 spec files, 105 tests. Runs against the **built `dist/`** served by `server.js` at
-`http://127.0.0.1:4173`. Playwright starts both that server and the MCP fixture
-(`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001` itself — no manual setup.
+26 spec files, 113 tests. Runs against the **built `dist/`** served by `server.js` at
+`http://127.0.0.1:4173`. Playwright starts that server, the MCP fixture
+(`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001`, and the scripted OpenAI-compatible LLM
+fixture (`tests/fixtures/llm-server.mjs`) on `127.0.0.1:3003` itself — no manual setup.
 
 ```bash
 npx playwright test tests/release/
@@ -399,15 +450,16 @@ Spec numbering maps directly to release checklist sections (`§3.N`):
 | `23-trust-evaluators.spec.ts` | Permission Surface, Prompt Injection scan, Observation Journal |
 | `24-error-handling.spec.ts` | Unhandled rejections and uncaught errors are reported, app stays usable |
 | `25-update-notifier.spec.ts` | The desktop update notice is absent from the browser build |
+| `26-agent-chat.spec.ts` | Agent Chat against the scripted LLM fixture: approval, denial, capture |
 
 The numbers are a naming convention, not a mechanism — nothing enforces them — but they map to
-the `§3.N` sections of the release checklist, so the next spec added should be `26`. If you
+the `§3.N` sections of the release checklist, so the next spec added should be `27`. If you
 renumber one, update the `§` title inside it and the section list in `SKILL.md` in the same
 change.
 
 ### Electron suite — `tests/electron/`
 
-7 spec files, 44 tests, driven by `playwright.electron.config.ts` against the packaged main
+8 spec files, 49 tests, driven by `playwright.electron.config.ts` against the packaged main
 process. Needs a display: on a headless machine use `xvfb-run -a`.
 
 ```bash
@@ -423,6 +475,7 @@ npm run test:e2e:electron                 # or: xvfb-run -a npm run test:e2e:ele
 | `05-app-chrome.spec.ts` | Frameless window, title bar, window controls, menu |
 | `06-dialogs.spec.ts` | In-app dialogs — vault reset uses `ConfirmDialog`, not browser chrome |
 | `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failure |
+| `08-agent-chat.spec.ts` | Agent Chat provider traffic straight from the main process — no proxy |
 
 ---
 

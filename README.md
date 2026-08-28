@@ -25,6 +25,7 @@ Three ways to run it:
 - **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).
 - **Prompt Injection scan** — flags suspicious patterns in tool names, descriptions, and parameter metadata with highlighted matches.
 - **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-sleuth/` and exportable as Markdown.
+- **Agent Chat** — drive a model you supply (local or cloud) against a connected server and watch how it actually uses the tools. Every tool call is approval-gated, the run's calls can be captured as a Replay Suite or recorded to the Observation Journal, and refusals feed Agent Readiness. See [Agent Chat](#agent-chat).
 - **Meta-tool discovery** — recognizes tools that exist to discover *other* tools (`list_tools`, `search_tools`, `invoke_tool`, `get_manifest`, etc.) and surfaces a one-click **Discover all tools** button. Discovered tools appear in a collapsible section in the tool list and can be invoked directly or routed through a proxy meta-tool.
 
 ## Tech
@@ -159,8 +160,8 @@ The desktop app and the CLI read and write the same directory, `~/.mcp-sleuth/`:
 
 | File | Contents |
 |------|----------|
-| `vault.json` | Encrypted vault — server list and credentials |
-| `data.gz` | Bookmarks, call history, observation journals |
+| `vault.json` | Encrypted vault — server list, credentials, and Agent Chat model-server configs |
+| `data.gz` | Bookmarks, call history, observation journals, agent-run counters |
 | `device-key.bin` | Auto-unlock passphrase, sealed with the OS keychain (desktop only) |
 | `window-state.json` | Desktop window size, position, maximised flag (desktop only) |
 | `update-state.json` | Update-check preference and dismissed/skipped versions (desktop only) |
@@ -246,6 +247,92 @@ Stdio servers run as a local subprocess on your machine. The explorer's Node ser
 
 Use the **✎** button next to a server to edit its name, transport settings, or description; **✕** removes it.
 
+## Agent Chat
+
+Every other trust surface in Sleuth — Permission Surface, Prompt Injection, Agent Readiness —
+infers risk from schemas and descriptions. Agent Chat closes the loop by letting a real model
+loose on the server and showing you what it does.
+
+It is a **test-bench for the server, not a chat client.** There is no cross-session memory, no
+attachments, and no productivity workflow. The output is evidence about the server.
+
+Open it with **Chat** in the toolbar.
+
+### Bring your own model
+
+Sleuth ships no model and no key. From the picker in the chat header, add an **LLM server**:
+
+| Field | Notes |
+|-------|-------|
+| Name | Whatever you want to call it, e.g. `Local Ollama` |
+| Type | OpenAI-compatible, Anthropic, or Google Gemini |
+| Base URL | Defaults per type: `http://127.0.0.1:11434/v1` (Ollama), `https://api.anthropic.com/v1`, `https://generativelanguage.googleapis.com/v1beta` |
+| API key | Leave empty for a local model |
+
+Sleuth then asks that server which models it has and lists them; if it reports none, type a model
+name by hand. "OpenAI-compatible" means anything serving `/v1/chat/completions` — Ollama, LM
+Studio, llama.cpp, vLLM, OpenAI itself, Groq, OpenRouter, Together, DeepSeek. Anthropic and
+Gemini have their own adapters because their tool-calling formats differ: Anthropic returns
+`tool_use` blocks and takes results back as user messages, and Gemini keys a tool response by the
+tool's name rather than by a call id. **The API key is stored in the same encrypted vault as your
+MCP server credentials** — there is no plaintext credential store anywhere in Sleuth.
+
+Tick the servers whose tools the model may see. The one you are investigating is ticked by
+default; adding others is how you find out whether two servers export tools a model cannot tell
+apart, so colliding names are reported rather than renamed away.
+
+### Every call is approved by you
+
+The model never calls a tool on its own. Each request pauses with the tool name and the exact
+arguments, and you choose:
+
+- **Allow** — run it once.
+- **Always allow** — run it for the rest of this session without asking. Unavailable for any tool
+  the Permission Surface audit tags `destructive`, `shell`, `credential`, or `admin`; those are
+  risk-locked and ask every single time. The allowlist is per run and never persisted.
+- **Deny**, with an optional reason — *Wrong tool*, *Bad arguments*, *Unsafe*, or *Just no*.
+
+**A denial does not end the run.** The reason is handed back to the model as the tool's result and
+the conversation continues, because how a model recovers from a refused call is itself a finding.
+*Wrong tool* and *Bad arguments* each feed an Agent Readiness counter for that server; *Unsafe* and
+*Just no* deliberately record nothing, so nobody is pushed into miscategorising a refusal to make
+it count.
+
+A run stops on its own after 8 model turns, and **Stop** cancels the in-flight model call and any
+pending tool call.
+
+### What you get out of it
+
+- **Live trace** beside the transcript — every `tools/call` as it happens, with duration and a bar
+  relative to the slowest call in the run. The same calls also land in the Protocol Inspector.
+- **Capture** — save the run's successful tool calls as a Replay Suite and re-run them later.
+- **Record** — send any tool step to that server's Observation Journal.
+- **Agent Readiness** — deny reasons, tool errors, and runs that hit the turn limit become issues
+  on the server's score, with recommendations aimed at the tool descriptions and schemas that
+  caused them.
+
+### Transcripts are never saved
+
+Only compact per-server counters persist (runs, wrong-tool picks, bad-argument denials, tool
+errors, unrecovered runs). The transcript itself — the messages, arguments, and raw tool output —
+lives in memory for the session and is gone when you close the overlay. A transcript contains raw
+output from the server you are investigating, which is exactly the material that should not sit on
+disk.
+
+### How provider traffic leaves
+
+| Way you run it | Path |
+|----------------|------|
+| `npm run dev` / `mcp-sleuth` CLI | Through Sleuth's own local server at `/__llm_proxy`, then to the provider. This is why a local Ollama works without setting `OLLAMA_ORIGINS` — the browser only ever talks to same-origin. |
+| Desktop app | Straight from the Electron main process, like MCP traffic. No proxy in the path. |
+
+The proxy is a CORS forwarder, not a security boundary: the vault decrypts in the renderer, so the
+key is in renderer memory either way. It accepts only the paths a provider actually exposes,
+requires a same-origin request, and never logs request or response bodies.
+
+LLM traffic does **not** appear in the Protocol Inspector — that timeline is MCP only. The tool
+calls the model causes do.
+
 ## Layout
 
 ```
@@ -253,6 +340,7 @@ bin/
 └── mcp-sleuth.js              # CLI: vite build (silent) → server.js → opens browser
 server.js                        # zero-dep static server for dist/ (used by `npm start`)
 data-dir.js                      # ~/.mcp-sleuth resolution + one-time pre-rename migration
+llm-proxy.js                     # forwards Agent Chat provider calls (browser build only)
 electron/                        # desktop app main process (see Desktop app above)
 ├── main.js                      # entry: app lifecycle, app:// scheme, IPC wiring
 ├── window.js                    # frameless BrowserWindow
@@ -265,6 +353,8 @@ src/
 ├── types.ts                     # ServerEntry, ToolDef, ToolResult, JSON Schema
 ├── lib/
 │   ├── mcpClient.ts             # traced MCP API; delegates transport to the active host
+│   ├── agent/                   # Agent Chat: the model↔tool loop, gating, tool catalog,
+│   │                            #   run summaries, provider adapters
 │   ├── host/                    # browser host (SDK in the renderer) | Electron host (IPC)
 │   └── storage.ts               # pre-vault server-list migration
 └── components/

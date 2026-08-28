@@ -19,18 +19,25 @@ test.describe.serial('§3.17 — Schema Lab', () => {
 
   test('Schema Lab shows server and tool selectors', async () => {
     await page.screenshot({ path: 'test-results/17-schema-lab.png', fullPage: true });
-    const serverSelector = page.locator('select').first();
+    // Our own select now: a role=combobox trigger plus a listbox portalled to
+    // document.body, so options exist only while the list is open.
+    const serverSelector = page.getByTestId('schema-lab-server-select');
     await expect(serverSelector).toBeVisible({ timeout: 5_000 });
-    const toolSelector = page.locator('select').nth(1);
+    const toolSelector = page.getByTestId('schema-lab-tool-select');
     await expect(toolSelector).toBeVisible({ timeout: 3_000 });
   });
 
   test('selecting a tool with required args highlights required fields', async () => {
-    const toolSelect = page.locator('select').nth(1);
-    const options = await toolSelect.locator('option').all();
-    if (options.length > 1) {
-      await toolSelect.selectOption({ index: 1 });
-      await page.waitForTimeout(500);
+    const toolSelect = page.getByTestId('schema-lab-tool-select');
+    if (!(await toolSelect.isDisabled())) {
+      await toolSelect.click();
+      const options = page.getByRole('option');
+      if ((await options.count()) > 1) {
+        await options.nth(1).click();
+        await page.waitForTimeout(500);
+      } else {
+        await page.keyboard.press('Escape');
+      }
     }
     await page.screenshot({ path: 'test-results/17-required-fields.png', fullPage: true });
     const bodyText = await page.locator('body').innerText();
@@ -54,7 +61,7 @@ test.describe.serial('§3.17 — Schema Lab', () => {
     await page.screenshot({ path: 'test-results/17-form-inputs.png', fullPage: true });
     // Schema Lab renders form preview as text labels (e.g. "Text input", "Number input"),
     // not actual <input>/<select> elements. Verify the server/tool selectors are visible.
-    const serverSelect = page.locator('select').first();
+    const serverSelect = page.getByTestId('schema-lab-server-select');
     await expect(serverSelect).toBeVisible({ timeout: 3_000 });
   });
 

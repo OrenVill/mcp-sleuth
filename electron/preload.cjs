@@ -63,6 +63,27 @@ const api = {
     ipcRenderer.on('mcp:closed', listener);
     return () => ipcRenderer.removeListener('mcp:closed', listener);
   },
+
+  // LLM traffic leaves main, so it cannot ride the generic `invoke` allowlist:
+  // the response is streamed back on push channels keyed by request id.
+  llmChatStart: (payload) => ipcRenderer.invoke('mcp:llmChatStart', payload),
+  llmChatAbort: (requestId) => ipcRenderer.invoke('mcp:llmChatAbort', requestId),
+  llmListModels: (payload) => ipcRenderer.invoke('mcp:llmListModels', payload),
+  onLlmChunk: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('mcp:llmChunk', listener);
+    return () => ipcRenderer.removeListener('mcp:llmChunk', listener);
+  },
+  onLlmDone: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('mcp:llmDone', listener);
+    return () => ipcRenderer.removeListener('mcp:llmDone', listener);
+  },
+  onLlmError: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('mcp:llmError', listener);
+    return () => ipcRenderer.removeListener('mcp:llmError', listener);
+  },
 };
 
 contextBridge.exposeInMainWorld('mcpSleuth', Object.freeze(api));

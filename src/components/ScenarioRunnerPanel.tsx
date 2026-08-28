@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { ServerEntry } from '../types';
+import { Select } from './Select';
 import {
   createScenario,
   addStep,
@@ -144,21 +145,23 @@ function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProp
       {/* Tool selector */}
       <div className="space-y-1">
         <label className="block text-[10px] text-zinc-500 uppercase tracking-wide">Tool</label>
-        <select
+        <Select
           value={`${step.serverId}::${step.toolName}`}
-          onChange={(e) => {
-            const [serverId, toolName] = e.target.value.split('::');
+          onChange={(value) => {
+            const [serverId, toolName] = value.split('::');
             onChange({ ...step, serverId: serverId ?? '', toolName: toolName ?? '' });
           }}
-          className="w-full bg-zinc-900 border border-zinc-700 rounded-md px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-violet-500"
-        >
-          <option value="::">— select tool —</option>
-          {tools.map((t) => (
-            <option key={`${t.serverId}::${t.toolName}`} value={`${t.serverId}::${t.toolName}`}>
-              {t.serverName} / {t.toolName}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: '::', label: '— select tool —' },
+            ...tools.map((t) => ({
+              value: `${t.serverId}::${t.toolName}`,
+              label: `${t.serverName} / ${t.toolName}`,
+            })),
+          ]}
+          aria-label="Tool"
+          testId={`scenario-step-tool-select-${index}`}
+          className="w-full"
+        />
       </div>
 
       {/* Args */}
@@ -195,6 +198,7 @@ function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProp
           <AssertionEditor
             key={i}
             assertion={assertion}
+            index={i}
             onChange={(updated) => updateAssertion(i, updated)}
             onRemove={() => removeAssertion(i)}
           />
@@ -210,44 +214,52 @@ function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProp
 
 function AssertionEditor({
   assertion,
+  index,
   onChange,
   onRemove,
 }: {
   assertion: StepAssertion;
+  index: number;
   onChange: (a: StepAssertion) => void;
   onRemove: () => void;
 }) {
   return (
     <div className="flex items-start gap-2 bg-zinc-900/60 rounded-md p-2">
-      <select
+      <Select
         value={assertion.type}
-        onChange={(e) => {
-          const type = e.target.value as StepAssertion['type'];
+        onChange={(value) => {
+          const type = value as StepAssertion['type'];
           if (type === 'status') onChange({ type, expected: 'success' });
           else if (type === 'field_exists') onChange({ type, path: '' });
           else if (type === 'field_missing') onChange({ type, path: '' });
           else if (type === 'json_path_equals') onChange({ type, path: '', expected: '' });
           else if (type === 'contains_text') onChange({ type, text: '' });
         }}
-        className="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-300 focus:outline-none focus:border-violet-500 shrink-0"
-      >
-        <option value="status">Status</option>
-        <option value="field_exists">Field exists</option>
-        <option value="field_missing">Field missing</option>
-        <option value="json_path_equals">JSON path equals</option>
-        <option value="contains_text">Contains text</option>
-      </select>
+        options={[
+          { value: 'status', label: 'Status' },
+          { value: 'field_exists', label: 'Field exists' },
+          { value: 'field_missing', label: 'Field missing' },
+          { value: 'json_path_equals', label: 'JSON path equals' },
+          { value: 'contains_text', label: 'Contains text' },
+        ]}
+        aria-label="Assertion type"
+        testId={`scenario-assertion-type-select-${index}`}
+        className="shrink-0"
+      />
 
       {/* Type-specific inputs */}
       {assertion.type === 'status' && (
-        <select
+        <Select
           value={assertion.expected}
-          onChange={(e) => onChange({ ...assertion, expected: e.target.value as 'success' | 'error' })}
-          className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-1.5 py-1 text-[11px] text-zinc-300 focus:outline-none focus:border-violet-500"
-        >
-          <option value="success">success</option>
-          <option value="error">error</option>
-        </select>
+          onChange={(value) => onChange({ ...assertion, expected: value as 'success' | 'error' })}
+          options={[
+            { value: 'success', label: 'success' },
+            { value: 'error', label: 'error' },
+          ]}
+          aria-label="Expected status"
+          testId={`scenario-assertion-status-select-${index}`}
+          className="flex-1"
+        />
       )}
 
       {(assertion.type === 'field_exists' || assertion.type === 'field_missing') && (

@@ -10,6 +10,7 @@ import type {
   ToolResult,
 } from '../../../types';
 import type { McpHost } from '../types';
+import type { LlmBridge } from './llmElectron';
 
 export interface IpcFailure {
   ok: false;
@@ -21,7 +22,12 @@ export interface IpcSuccess<T> {
 }
 export type IpcEnvelope<T> = IpcSuccess<T> | IpcFailure;
 
-export interface ElectronBridge {
+/**
+ * The preload surface. The six LLM members are optional for the same reason
+ * `onUpdateAvailable` is: a preload from an older build does not expose them,
+ * and a missing method must not crash the renderer at import time.
+ */
+export interface ElectronBridge extends Partial<LlmBridge> {
   readonly kind: 'electron';
   invoke(channel: string, ...args: unknown[]): Promise<IpcEnvelope<unknown>>;
   onToolsChanged(handler: (serverId: string) => void): () => void;

@@ -29,7 +29,9 @@ test.describe.serial('§3.6 — Tool forms — all input types', () => {
       await toolItems.nth(i).click();
       await page.waitForTimeout(300);
       const input = page.locator(`input[type="${paramType}"]`).first();
-      const select = paramType === 'select' ? page.locator('select').first() : null;
+      // Enum and boolean params render our own select: a role=combobox trigger,
+      // not a native <select>.
+      const select = paramType === 'select' ? page.getByRole('combobox').first() : null;
       const textarea = paramType === 'textarea' ? page.locator('textarea').first() : null;
 
       if (paramType === 'select' && select && await select.isVisible().catch(() => false)) return true;
@@ -60,11 +62,19 @@ test.describe.serial('§3.6 — Tool forms — all input types', () => {
     await page.locator('aside + aside').getByText('get_current_weather').first().click();
     await page.waitForTimeout(300);
 
-    // Booleans may render as checkbox OR as a boolean dropdown (select with true/false)
+    // Booleans may render as a checkbox OR as a boolean dropdown. The dropdown
+    // is our own component, so its trigger reads "— unset —" until something is
+    // chosen: open it and look for the true/false rows rather than matching text
+    // on the closed trigger.
     const checkbox = page.locator('input[type="checkbox"]').first();
-    const boolSelect = page.locator('select').filter({ hasText: /true|false/i }).first();
-    const found = await checkbox.isVisible().catch(() => false)
-      || await boolSelect.isVisible().catch(() => false);
+    const boolSelect = page.getByRole('combobox').first();
+    let found = await checkbox.isVisible().catch(() => false);
+    if (!found && (await boolSelect.isVisible().catch(() => false))) {
+      await boolSelect.click();
+      const labels = await page.getByRole('option').allTextContents();
+      await page.keyboard.press('Escape');
+      found = labels.some((t) => /true/i.test(t)) && labels.some((t) => /false/i.test(t));
+    }
     expect(found, 'get_current_weather on awesome-mcp-servers must render a boolean input').toBe(true);
     await page.screenshot({ path: 'test-results/06-boolean-param.png' });
 
@@ -76,8 +86,11 @@ test.describe.serial('§3.6 — Tool forms — all input types', () => {
   test('enum parameter renders a select dropdown with options', async () => {
     const found = await selectFirstToolWithParam(page, 'select');
     expect(found, 'No tool with an enum select found').toBe(true);
-    const select = page.locator('select').first();
-    const optionCount = await select.locator('option').count();
+    const select = page.getByRole('combobox').first();
+    await select.click();
+    // The listbox is portalled to document.body — do not scope it to the form.
+    const optionCount = await page.getByRole('option').count();
+    await page.keyboard.press('Escape');
     expect(optionCount).toBeGreaterThan(1);
     await page.screenshot({ path: 'test-results/06-enum-param.png' });
   });

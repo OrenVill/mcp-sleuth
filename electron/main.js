@@ -1,4 +1,4 @@
-import { app, net, protocol, safeStorage } from 'electron';
+import { app, ipcMain, net, protocol, safeStorage } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import * as nodeFs from 'node:fs/promises';
@@ -9,6 +9,8 @@ import { registerMcpHandlers } from './ipc/mcpHandlers.js';
 import { registerNativeHandlers } from './ipc/nativeHandlers.js';
 import { forwardWindowState, registerWindowHandlers } from './ipc/windowHandlers.js';
 import { registerUpdateHandlers } from './ipc/updateHandlers.js';
+import { registerLlmHandlers } from './ipc/llmHandlers.js';
+import { CHANNELS, fail, ok } from './ipc/channels.js';
 import { createUpdateService } from './update/service.js';
 import { createUpdateStateStore, getUpdateStateFilePath } from './update/store.js';
 import { fetchLatestRelease, resolveFeedUrl } from './update/feed.js';
@@ -71,6 +73,10 @@ if (!app.requestSingleInstanceLock()) {
     });
 
     registerMcpHandlers(sessions, () => mainWindow);
+
+    // Provider HTTP also leaves the main process: no CORS, so no proxy, and the
+    // response streams back to the renderer on a channel keyed by request id.
+    registerLlmHandlers(ipcMain, CHANNELS, ok, fail);
 
     // safeStorage must not be touched before the app is ready, so the stores are
     // built here rather than at module top level.
