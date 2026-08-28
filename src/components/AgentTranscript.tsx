@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AgentMessage, AgentToolCall } from '../lib/agent/types';
 import { MarkdownPreview } from './MarkdownPreview';
 
@@ -6,7 +6,137 @@ interface Props {
   messages: AgentMessage[];
   /** Text arriving from the model right now, not yet a finished message. */
   streamingText: string;
+  /**
+   * The run is live: the model is generating, or a tool it asked for is
+   * executing. False while the run waits on the approval gate — that is the
+   * user's turn, not the agent's.
+   */
+  busy: boolean;
   onRecordObservation: (toolName: string, note: string) => void;
+}
+
+/** The `Record` button's weight, shared by every control in the transcript. */
+const QUIET_BUTTON =
+  'shrink-0 rounded-md px-2 py-0.5 text-[11px] text-zinc-600 transition-colors hover:bg-zinc-800/70 hover:text-violet-300';
+
+/**
+ * Out of the way until its block is hovered — but `focus-visible` keeps it
+ * reachable, because a control only a mouse can find is not a control.
+ *
+ * No `transition-opacity`: it would fight `transition-colors` on the shared
+ * button class for the same `transition-property`, and one of the two would
+ * silently lose depending on stylesheet order.
+ */
+const HOVER_REVEAL = 'opacity-0 group-hover/block:opacity-100 focus-visible:opacity-100';
+
+type CopyState = 'idle' | 'copied' | 'failed';
+
+/**
+ * Raw text out of the app and into a bug report, which is most of why anyone
+ * runs a tool here in the first place.
+ *
+ * `navigator.clipboard` is undefined over plain HTTP and `writeText` rejects
+ * when the permission is denied, so the failure is reported on the button: a
+ * copy control that quietly does nothing is worse than no button at all.
+ */
+function CopyButton({ text, label, testId }: { text: string; label: string; testId: string }) {
+  const [state, setState] = useState<CopyState>('idle');
+  const revert = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Closing the panel unmounts the transcript, which happens well inside the
+  // revert window often enough to matter.
+  useEffect(
+    () => () => {
+      if (revert.current !== null) clearTimeout(revert.current);
+    },
+    [],
+  );
+
+  async function copy() {
+    if (revert.current !== null) clearTimeout(revert.current);
+    let next: CopyState = 'copied';
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      next = 'failed';
+    }
+    setState(next);
+    revert.current = setTimeout(() => setState('idle'), 2000);
+  }
+
+  const caption = state === 'copied' ? 'Copied' : state === 'failed' ? 'Copy failed' : 'Copy';
+
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      onClick={() => void copy()}
+      aria-label={state === 'idle' ? label : `${label} — ${caption.toLowerCase()}`}
+      title={label}
+      className={[
+        QUIET_BUTTON,
+        state === 'idle' ? HOVER_REVEAL : 'opacity-100',
+        state === 'copied' ? 'text-violet-300' : '',
+        state === 'failed' ? 'text-red-400' : '',
+      ].join(' ')}
+    >
+      {caption}
+    </button>
+  );
+}
+
+/**
+ * A tool result, capped so one huge payload cannot bury the rest of the
+ * transcript, plus the controls for getting at all of it.
+ */
+function ToolResultBody({ text, className }: { text: string; className: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [clipped, setClipped] = useState(false);
+  const body = useRef<HTMLDivElement | null>(null);
+
+  /*
+   * Whether the cap bites is a layout fact rather than a property of the text —
+   * the same payload fits a wide panel and overflows a narrow one. Measuring it
+   * keeps the expander off short results, where it is pure noise.
+   */
+  useLayoutEffect(() => {
+    const el = body.current;
+    // While expanded there is nothing left to measure, so the verdict reached
+    // while collapsed stands and the control does not vanish under the user.
+    if (!el || expanded) return;
+    setClipped(el.scrollHeight - el.clientHeight > 1);
+  }, [text, expanded]);
+
+  return (
+    <div className="group/block space-y-1">
+      <div
+        ref={body}
+        data-testid="tool-result"
+        className={[
+          'overflow-auto whitespace-pre-wrap',
+          expanded ? '' : 'max-h-64',
+          className,
+        ].join(' ')}
+      >
+        {text}
+      </div>
+
+      <div className="-ml-1 flex items-center gap-1">
+        {clipped && (
+          <button
+            type="button"
+            data-testid="tool-result-expand"
+            onClick={() => setExpanded(!expanded)}
+            aria-expanded={expanded}
+            className={QUIET_BUTTON}
+          >
+            {expanded ? 'Collapse' : 'Show full result'}
+          </button>
+        )}
+        <CopyButton text={text} label="Copy tool result" testId="tool-result-copy" />
+      </div>
+    </div>
+  );
 }
 
 function Avatar() {
@@ -18,6 +148,32 @@ function Avatar() {
       <svg viewBox="0 0 16 16" className="h-3 w-3 text-violet-400" fill="currentColor">
         <path d="M8 1.5l1.6 3.9L13.5 7l-3.9 1.6L8 12.5 6.4 8.6 2.5 7l3.9-1.6L8 1.5z" />
       </svg>
+    </div>
+  );
+}
+
+/**
+ * Proof the run is still alive when there is nothing else to show.
+ *
+ * The streaming caret only exists once the first token lands, so the gaps that
+ * matter — waiting on the model's first token, a tool executing, the model
+ * thinking again after a tool result — used to render as a frozen transcript.
+ */
+function WorkingIndicator() {
+  return (
+    <div className="flex gap-3" data-testid="agent-working" role="status" aria-live="polite">
+      <Avatar />
+      <div className="flex h-6 items-center gap-1.5">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            aria-hidden
+            className="h-1.5 w-1.5 rounded-full bg-violet-400/80 animate-bounce"
+            style={{ animationDelay: `${i * 150}ms` }}
+          />
+        ))}
+        <span className="sr-only">Working</span>
+      </div>
     </div>
   );
 }
@@ -121,15 +277,13 @@ function ToolStep({
               <p className="text-[10px] uppercase tracking-wide text-zinc-600">
                 {failed ? 'Error' : 'Result'}
               </p>
-              <div
-                data-testid="tool-result"
+              <ToolResultBody
+                text={result.text}
                 className={[
-                  'max-h-64 overflow-auto whitespace-pre-wrap rounded-lg p-2 font-mono text-[11px]',
+                  'rounded-lg p-2 font-mono text-[11px]',
                   failed ? 'bg-red-950/30 text-red-300' : 'bg-zinc-950/70 text-zinc-400',
                 ].join(' ')}
-              >
-                {result.text}
-              </div>
+              />
             </div>
           )}
         </div>
@@ -138,7 +292,7 @@ function ToolStep({
   );
 }
 
-export function AgentTranscript({ messages, streamingText, onRecordObservation }: Props) {
+export function AgentTranscript({ messages, streamingText, busy, onRecordObservation }: Props) {
   // Results are looked up by call id so each step renders as one unit. Any
   // result whose call is missing still renders on its own below.
   const resultsByCallId = new Map<string, AgentMessage>();
@@ -171,17 +325,16 @@ export function AgentTranscript({ messages, streamingText, onRecordObservation }
           // Already shown inside its ToolStep.
           if (message.toolCallId && paired.has(message.toolCallId)) return null;
           return (
-            <div
-              key={index}
-              data-testid="tool-result"
-              className={[
-                'ml-9 whitespace-pre-wrap rounded-xl border p-2.5 font-mono text-[11px]',
-                message.isError
-                  ? 'border-red-900/50 bg-red-950/20 text-red-300'
-                  : 'border-zinc-800 bg-zinc-900/50 text-zinc-400',
-              ].join(' ')}
-            >
-              {message.text}
+            <div key={index} className="ml-9">
+              <ToolResultBody
+                text={message.text}
+                className={[
+                  'rounded-xl border p-2.5 font-mono text-[11px]',
+                  message.isError
+                    ? 'border-red-900/50 bg-red-950/20 text-red-300'
+                    : 'border-zinc-800 bg-zinc-900/50 text-zinc-400',
+                ].join(' ')}
+              />
             </div>
           );
         }
@@ -191,8 +344,19 @@ export function AgentTranscript({ messages, streamingText, onRecordObservation }
             <Avatar />
             <div className="min-w-0 flex-1 space-y-2">
               {message.text && (
-                <div data-testid="assistant-markdown">
-                  <MarkdownPreview source={message.text} className="md-preview md-chat" />
+                <div className="group/block">
+                  <div data-testid="assistant-markdown">
+                    <MarkdownPreview source={message.text} className="md-preview md-chat" />
+                  </div>
+                  <div className="-ml-2 flex items-center">
+                    {/* The markdown source, not the rendered HTML — what gets
+                        pasted into an issue should be the model's own text. */}
+                    <CopyButton
+                      text={message.text}
+                      label="Copy assistant message"
+                      testId="assistant-copy"
+                    />
+                  </div>
                 </div>
               )}
               {message.toolCalls?.map((call) => (
@@ -219,6 +383,8 @@ export function AgentTranscript({ messages, streamingText, onRecordObservation }
           </div>
         </div>
       )}
+
+      {busy && !streamingText && <WorkingIndicator />}
     </div>
   );
 }

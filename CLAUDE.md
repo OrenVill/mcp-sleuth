@@ -148,6 +148,8 @@ src/
     │   ├── toolCatalog.ts        # ToolDef[] → provider tool schemas; names are never
     │   │                         #   namespaced, so cross-server collisions are surfaced
     │   ├── observations.ts       # AgentEvent[] → AgentRunSummary; deliberately lossy
+    │   ├── retry.ts              # the history a retry may re-send: drops a turn whose tool
+    │   │                         #   calls never got results, which providers reject
     │   ├── agentRunStore.ts      # folds a finished run's summary into appData
     │   └── providers/            # one file per vendor wire format: buildRequest plus an
     │                             #   incremental stream parser, no I/O. openai.ts,
@@ -412,7 +414,7 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-26 spec files, 113 tests. Runs against the **built `dist/`** served by `server.js` at
+26 spec files, 124 tests. Runs against the **built `dist/`** served by `server.js` at
 `http://127.0.0.1:4173`. Playwright starts that server, the MCP fixture
 (`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001`, and the scripted OpenAI-compatible LLM
 fixture (`tests/fixtures/llm-server.mjs`) on `127.0.0.1:3003` itself — no manual setup.

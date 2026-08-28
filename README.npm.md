@@ -88,6 +88,11 @@ What the chat does:
   Journal.
 - **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-sleuth/`;
   the messages and raw tool output live in memory for the session.
+- **It always shows you it is working** — dots while the agent has the turn, a caret while text
+  streams. Type during a run and the message is queued rather than dropped; Enter sends,
+  Shift+Enter adds a line.
+- **New chat** clears the conversation, **Retry** re-runs a failed turn without retyping it, and
+  any message or tool result can be copied.
 
 A run stops on its own after 8 model turns, and **Stop** cancels whatever is in flight.
 
