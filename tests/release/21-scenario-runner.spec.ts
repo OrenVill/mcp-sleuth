@@ -51,10 +51,15 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
     await page.waitForTimeout(300);
     await page.screenshot({ path: 'test-results/21-add-step.png', fullPage: true });
 
-    const toolSelector = page.locator('select').first();
+    // The selects are our own component now: a role=combobox trigger plus a
+    // listbox portalled to document.body, so the options only exist while open
+    // and must not be scoped to the panel.
+    const toolSelector = page.getByTestId('scenario-step-tool-select-0');
     await expect(toolSelector).toBeVisible({ timeout: 3_000 });
-    const optionCount = await toolSelector.locator('option').count();
+    await toolSelector.click();
+    const optionCount = await page.getByRole('option').count();
     expect(optionCount).toBeGreaterThan(1);
+    await page.keyboard.press('Escape');
   });
 
   test('invalid JSON in Arguments field shows inline error', async () => {
@@ -78,12 +83,11 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
       await addAssertionBtn.click();
       await page.waitForTimeout(300);
     }
-    // The assertion type selector has option value="status" — use that to find it specifically
-    const assertionTypeSelect = page.locator('select').filter({
-      has: page.locator('option[value="status"]'),
-    }).first();
+    const assertionTypeSelect = page.getByTestId('scenario-assertion-type-select-0').first();
     if (await assertionTypeSelect.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      const options = await assertionTypeSelect.locator('option').allTextContents();
+      await assertionTypeSelect.click();
+      const options = await page.getByRole('option').allTextContents();
+      await page.keyboard.press('Escape');
       const types = options.map((t) => t.toLowerCase());
       expect(types.some((t) => t.includes('status'))).toBe(true);
       expect(types.some((t) => t.includes('field') || t.includes('exist'))).toBe(true);
@@ -93,11 +97,10 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
   });
 
   test('clicking Run executes scenario and shows pass/fail badge', async () => {
-    const assertionTypeSelect = page.locator('select').filter({
-      has: page.locator('option[value="status"]'),
-    }).first();
+    const assertionTypeSelect = page.getByTestId('scenario-assertion-type-select-0').first();
     if (await assertionTypeSelect.isVisible({ timeout: 1_000 }).catch(() => false)) {
-      await assertionTypeSelect.selectOption({ value: 'status' });
+      await assertionTypeSelect.click();
+      await page.getByRole('option', { name: 'Status', exact: true }).click();
       await page.waitForTimeout(200);
     }
     const runBtn = page.getByRole('button', { name: /▶|run/i }).first();

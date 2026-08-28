@@ -1,3 +1,4 @@
+import type { AgentRunSummaries } from './agent/types';
 import { getHost } from './host';
 import type { CallRecord } from './history';
 import type { ObservationJournalsStore } from './observationJournal';
@@ -7,9 +8,17 @@ export interface AppData {
   bookmarks: string[];
   history: CallRecord[];
   observationJournals: ObservationJournalsStore;
+  /** Derived per-server agent-run signal. Transcripts are never stored here. */
+  agentRuns: AgentRunSummaries;
 }
 
-const DEFAULT: AppData = { version: 1, bookmarks: [], history: [], observationJournals: {} };
+const DEFAULT: AppData = {
+  version: 2,
+  bookmarks: [],
+  history: [],
+  observationJournals: {},
+  agentRuns: {},
+};
 const LS_BOOKMARKS = 'mcp-sleuth:bookmarks';
 const LS_HISTORY = 'mcp-sleuth:call-history';
 const LS_APP_DATA = 'mcp-sleuth:app-data';
@@ -36,7 +45,7 @@ function parseAppData(raw: unknown): AppData {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT };
   const obj = raw as Record<string, unknown>;
   return {
-    version: typeof obj.version === 'number' ? obj.version : 1,
+    version: typeof obj.version === 'number' ? obj.version : 2,
     bookmarks: Array.isArray(obj.bookmarks)
       ? (obj.bookmarks as unknown[]).filter((b): b is string => typeof b === 'string')
       : [],
@@ -44,6 +53,10 @@ function parseAppData(raw: unknown): AppData {
     observationJournals:
       obj.observationJournals && typeof obj.observationJournals === 'object' && !Array.isArray(obj.observationJournals)
         ? (obj.observationJournals as ObservationJournalsStore)
+        : {},
+    agentRuns:
+      obj.agentRuns && typeof obj.agentRuns === 'object' && !Array.isArray(obj.agentRuns)
+        ? (obj.agentRuns as AgentRunSummaries)
         : {},
   };
 }
@@ -63,6 +76,7 @@ function loadFromLocalStorage(): AppData {
         : [],
       history: rawHistory ? (JSON.parse(rawHistory) as CallRecord[]) : [],
       observationJournals: {},
+      agentRuns: {},
     };
   } catch {
     return { ...DEFAULT };

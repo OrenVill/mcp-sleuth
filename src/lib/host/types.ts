@@ -1,3 +1,4 @@
+import type { LlmConfig, LlmRequest, LlmStreamEvent } from '../agent/types';
 import type {
   PromptDef,
   PromptMessage,
@@ -119,10 +120,26 @@ export interface UpdateHost {
   onUpdateAvailable(handler: (status: UpdateStatus) => void): () => void;
 }
 
+/**
+ * Provider HTTP. The browser routes through the same-origin `/__llm_proxy`
+ * because Anthropic requires an explicit browser opt-in header and Ollama
+ * rejects cross-origin requests unless the user set OLLAMA_ORIGINS. Electron
+ * fetches from main, where CORS does not apply.
+ *
+ * Tracing is deliberately absent: LLM traffic is not MCP traffic and never
+ * enters protocolTrace.ts. The tool calls it causes are traced by mcpClient.ts.
+ */
+export interface LlmHost {
+  chat(req: LlmRequest, signal: AbortSignal): AsyncIterable<LlmStreamEvent>;
+  /** Model discovery for local servers (Ollama, LM Studio). */
+  listModels(config: LlmConfig): Promise<string[]>;
+}
+
 export interface Host {
   readonly kind: 'browser' | 'electron';
   readonly mcp: McpHost;
   readonly files: FilesHost;
   readonly secrets: SecretsHost;
   readonly updates: UpdateHost;
+  readonly llm: LlmHost;
 }

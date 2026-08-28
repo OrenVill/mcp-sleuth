@@ -63,13 +63,13 @@ describe('appData (localStorage fallback path)', () => {
   });
 
   it('patchAppData updates the cache', () => {
-    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {} });
+    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {}, agentRuns: {} });
     patchAppData({ bookmarks: ['a::b'] });
     expect(getAppData().bookmarks).toEqual(['a::b']);
   });
 
   it('patchAppData writes to localStorage when file API unavailable', async () => {
-    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {} });
+    _seedCache({ version: 1, bookmarks: [], history: [], observationJournals: {}, agentRuns: {} });
     patchAppData({ bookmarks: ['a::b'] });
     // wait for the async background save to flush
     await new Promise((r) => setTimeout(r, 10));
@@ -78,7 +78,7 @@ describe('appData (localStorage fallback path)', () => {
   });
 
   it('_seedCache sets cache and marks initialized', () => {
-    _seedCache({ version: 1, bookmarks: ['x::y'], history: [], observationJournals: {} });
+    _seedCache({ version: 1, bookmarks: ['x::y'], history: [], observationJournals: {}, agentRuns: {} });
     expect(getAppData().bookmarks).toEqual(['x::y']);
   });
 });

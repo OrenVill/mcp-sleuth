@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { JsonSchema, JsonSchemaProperty } from '../types';
 import { MarkdownPreview } from './MarkdownPreview';
+import { Select } from './Select';
 
 interface Props {
   schema: JsonSchema;
@@ -95,31 +96,31 @@ export function SchemaForm({ schema, values, onChange }: Props) {
               </div>
             )}
             {prop.enum ? (
-              <select
+              <Select
                 value={(value as string) ?? ''}
-                onChange={(e) => onChange(key, e.target.value || undefined)}
-                className={inputClass}
-              >
-                <option value="">— choose —</option>
-                {(prop.enum as unknown[]).map((opt) => (
-                  <option key={String(opt)} value={String(opt)}>
-                    {String(opt)}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => onChange(key, v || undefined)}
+                options={[
+                  { value: '', label: '— choose —' },
+                  ...(prop.enum as unknown[]).map((opt) => ({
+                    value: String(opt),
+                    label: String(opt),
+                  })),
+                ]}
+                aria-label={key}
+                className="w-full"
+              />
             ) : t === 'boolean' ? (
-              <select
+              <Select
                 value={value === undefined ? '' : value ? 'true' : 'false'}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  onChange(key, v === '' ? undefined : v === 'true');
-                }}
-                className={inputClass}
-              >
-                <option value="">— unset —</option>
-                <option value="true">true</option>
-                <option value="false">false</option>
-              </select>
+                onChange={(v) => onChange(key, v === '' ? undefined : v === 'true')}
+                options={[
+                  { value: '', label: '— unset —' },
+                  { value: 'true', label: 'true' },
+                  { value: 'false', label: 'false' },
+                ]}
+                aria-label={key}
+                className="w-full"
+              />
             ) : t === 'number' || t === 'integer' ? (
               <input
                 type="number"

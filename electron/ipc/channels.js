@@ -36,6 +36,10 @@ export const CHANNELS = {
   updateSkip: 'mcp:updateSkip',
   updateDismiss: 'mcp:updateDismiss',
   updateOpenRelease: 'mcp:updateOpenRelease',
+  // llm
+  llmChatStart: 'mcp:llmChatStart',
+  llmChatAbort: 'mcp:llmChatAbort',
+  llmListModels: 'mcp:llmListModels',
   // files + app data
   saveFile: 'mcp:saveFile',
   readAppData: 'mcp:readAppData',
@@ -44,6 +48,9 @@ export const CHANNELS = {
   toolsChanged: 'mcp:toolsChanged',
   closed: 'mcp:closed',
   updateAvailable: 'mcp:updateAvailable',
+  llmChunk: 'mcp:llmChunk',
+  llmDone: 'mcp:llmDone',
+  llmError: 'mcp:llmError',
 };
 
 export function ok(value) {

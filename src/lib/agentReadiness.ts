@@ -1,4 +1,5 @@
 import type { ServerEntry, ToolDef } from '../types';
+import type { AgentRunSummaries, AgentRunSummary } from './agent/types';
 import type { ProtocolTraceEvent } from './protocolTrace';
 
 export type AgentReadinessSeverity = 'critical' | 'high' | 'medium' | 'low';
@@ -63,10 +64,13 @@ const GENERIC_PARAM_NAMES = new Set(['q', 'arg', 'args', 'data', 'input', 'paylo
 export function analyzeAgentReadiness(
   servers: ServerEntry[],
   traces: ProtocolTraceEvent[] = [],
+  agentRuns: AgentRunSummaries = {},
 ): AgentReadinessReport {
   const connectedServers = servers.filter((server) => server.status === 'connected');
   const tools = connectedServers.flatMap((server) =>
-    getAllTools(server).map((tool) => analyzeToolReadiness(tool, server, traces)),
+    getAllTools(server).map((tool) =>
+      analyzeToolReadiness(tool, server, traces, agentRuns[server.id]),
+    ),
   );
   const issues = tools.flatMap((tool) => tool.issues).sort(compareIssues);
   const score = tools.length === 0
@@ -88,10 +92,57 @@ export function analyzeAgentReadiness(
   };
 }
 
+/**
+ * Observed agent behaviour, as recorded by the chat's deny-reason prompts.
+ * Nothing here is inferred from schemas — these are findings a human marked at
+ * the moment they refused a call, which is why they carry more weight than the
+ * static heuristics above.
+ *
+ * Only server-level counters exist today, so these attach to every tool on the
+ * server rather than to the specific one that was mis-picked.
+ */
+function agentIssues(
+  context: Pick<AgentReadinessIssue, 'serverId' | 'serverName' | 'toolName'>,
+  summary: AgentRunSummary | undefined,
+): AgentReadinessIssue[] {
+  if (!summary || summary.runs === 0) return [];
+  const issues: AgentReadinessIssue[] = [];
+
+  if (summary.wrongToolPicks > 0) {
+    issues.push(issue(context, {
+      id: 'agent-wrong-tool-picked',
+      severity: summary.wrongToolPicks > 1 ? 'high' : 'medium',
+      message: `A model picked the wrong tool ${summary.wrongToolPicks} time(s) across ${summary.runs} run(s) on this server.`,
+      recommendation: 'Make each tool description state what it does and, explicitly, when not to use it.',
+    }));
+  }
+
+  if (summary.badArgDenials > 0) {
+    issues.push(issue(context, {
+      id: 'agent-bad-arguments',
+      severity: summary.badArgDenials > 1 ? 'high' : 'medium',
+      message: `A model produced unusable arguments ${summary.badArgDenials} time(s) across ${summary.runs} run(s).`,
+      recommendation: 'Constrain the schema: add enums, formats, examples, and per-field descriptions.',
+    }));
+  }
+
+  if (summary.unrecoveredErrors > 0) {
+    issues.push(issue(context, {
+      id: 'agent-unrecovered-run',
+      severity: 'medium',
+      message: `${summary.unrecoveredErrors} of ${summary.runs} run(s) ended without recovering from an error or hit the turn limit.`,
+      recommendation: 'Return errors that name the failing field and suggest a next step the agent can take.',
+    }));
+  }
+
+  return issues;
+}
+
 export function analyzeToolReadiness(
   tool: ToolDef,
   server: Pick<ServerEntry, 'id' | 'name'> = { id: 'server', name: 'Server' },
   traces: ProtocolTraceEvent[] = [],
+  agentRun?: AgentRunSummary,
 ): AgentReadinessToolReport {
   const context = {
     serverId: server.id,
@@ -102,6 +153,7 @@ export function analyzeToolReadiness(
     ...toolMetadataIssues(tool, context),
     ...schemaIssues(tool, context),
     ...traceIssues(tool, context, traces),
+    ...agentIssues(context, agentRun),
   ].sort(compareIssues);
   const score = scoreFor(issues);
 

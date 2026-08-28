@@ -37,7 +37,9 @@
     "vault-file-handler.js",
     "vault-file-handler.d.ts",
     "app-data-handler.js",
-    "app-data-handler.d.ts"
+    "app-data-handler.d.ts",
+    "llm-proxy.js",
+    "llm-proxy.d.ts"
   ],
   "scripts": {
     "dev": "vite",

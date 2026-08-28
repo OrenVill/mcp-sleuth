@@ -7,13 +7,11 @@ import {
 } from '../lib/promptInjectionScan';
 import type { ServerEntry } from '../types';
 import { HighlightedText } from './HighlightedText';
+import { Select } from './Select';
 
 interface Props {
   servers: ServerEntry[];
 }
-
-const SELECT_CLASS =
-  'mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm';
 
 function severityClass(severity: PromptInjectionFinding['severity']): string {
   switch (severity) {
@@ -107,26 +105,25 @@ export function PromptInjectionPanel({ servers }: Props) {
         ) : (
           <>
             {serverIds.length > 1 && (
-              <label className="block">
+              <div className="block">
                 <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
                   Filter by server
                 </span>
-                <select
+                <Select
                   value={serverFilter}
-                  onChange={(e) => setServerFilter(e.target.value)}
-                  className={SELECT_CLASS}
-                >
-                  <option value="all">All servers</option>
-                  {serverIds.map((id) => {
-                    const name = report.findings.find((f) => f.serverId === id)?.serverName ?? id;
-                    return (
-                      <option key={id} value={id}>
-                        {name}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
+                  onChange={(value) => setServerFilter(value)}
+                  options={[
+                    { value: 'all', label: 'All servers' },
+                    ...serverIds.map((id) => ({
+                      value: id,
+                      label: report.findings.find((f) => f.serverId === id)?.serverName ?? id,
+                    })),
+                  ]}
+                  aria-label="Filter by server"
+                  testId="prompt-injection-server-filter"
+                  className="mt-1 w-full"
+                />
+              </div>
             )}
 
             <div className="space-y-2">

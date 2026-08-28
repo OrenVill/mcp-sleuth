@@ -8,6 +8,7 @@ import { handleMcpProxy, PROXY_PATH } from './proxy.js';
 import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
+import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultRoot = resolve(here, 'dist');
@@ -86,6 +87,15 @@ export function start({
     }
     if (isAppDataRequest(url)) {
       handleAppData(req, res).catch((err) => {
+        if (!res.headersSent) {
+          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        }
+        res.end(err instanceof Error ? err.message : String(err));
+      });
+      return;
+    }
+    if (isLlmProxyRequest(url)) {
+      handleLlmProxy(req, res).catch((err) => {
         if (!res.headersSent) {
           res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
         }

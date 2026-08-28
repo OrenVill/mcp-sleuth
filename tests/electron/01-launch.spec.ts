@@ -115,12 +115,25 @@ test.describe.serial('Electron — launch and security posture', () => {
     expect(controls.noDrag).toBe('no-drag');
   });
 
+  /** Shared by the maximize test and the restore test that follows it. */
+  let startBounds: { x: number; y: number; width: number; height: number };
+
   test('maximizing fills the work area exactly, with no offset', async () => {
-    // A frameless window cannot use the manager's maximize: it sizes to the
-    // screen plus frame thickness, leaving the window offset down-right and
-    // overflowing. We size to the work area ourselves instead.
-    await launched.app.evaluate(async ({ BrowserWindow }) => {
-      BrowserWindow.getAllWindows()[0].setBounds({ x: 120, y: 90, width: 900, height: 600 });
+    // Maximise goes through the manager and is checked afterwards: a manager
+    // that offsets a frameless window, or one that is absent entirely, is
+    // corrected by sizing to the work area instead.
+    //
+    // The start position is derived from the display rather than hardcoded. A
+    // literal like 120,90 is off-screen on any layout whose primary monitor
+    // does not begin at the origin -- a staggered multi-monitor desktop leaves
+    // dead space there, and the compositor then relocates the window and the
+    // assertion below compares against a position that never existed.
+    startBounds = await launched.app.evaluate(async ({ BrowserWindow, screen }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      const area = screen.getPrimaryDisplay().workArea;
+      const bounds = { x: area.x + 120, y: area.y + 90, width: 900, height: 600 };
+      win.setBounds(bounds);
+      return bounds;
     });
     await launched.page.waitForTimeout(400);
 
@@ -152,7 +165,7 @@ test.describe.serial('Electron — launch and security posture', () => {
           }),
         { timeout: 5_000 },
       )
-      .toBe('120,90,900,600');
+      .toBe(`${startBounds.x},${startBounds.y},${startBounds.width},${startBounds.height}`);
   });
 
   test('the window carries a real icon', async () => {

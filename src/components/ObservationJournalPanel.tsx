@@ -15,15 +15,13 @@ import {
 import { downloadFile } from '../lib/export';
 import { getAllTools, getConnectedServers } from '../lib/serverTools';
 import type { ServerEntry } from '../types';
+import { Select } from './Select';
 
 interface Props {
   servers: ServerEntry[];
   selectedServerId: string | null;
   selectedToolName: string | null;
 }
-
-const SELECT_CLASS =
-  'mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm';
 
 const TEXTAREA_CLASS =
   'mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm min-h-[80px]';
@@ -150,22 +148,19 @@ export function ObservationJournalPanel({
     <div className="h-full min-h-0 overflow-y-auto bg-zinc-950">
       <div className="max-w-6xl mx-auto px-5 py-5 space-y-5">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="block flex-1 min-w-[200px]">
+          <div className="block flex-1 min-w-[200px]">
             <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
               Server
             </span>
-            <select
+            <Select
               value={serverId ?? ''}
-              onChange={(e) => setActiveServerId(e.target.value)}
-              className={SELECT_CLASS}
-            >
-              {connected.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              onChange={(value) => setActiveServerId(value)}
+              options={connected.map((s) => ({ value: s.id, label: s.name }))}
+              aria-label="Server"
+              testId="journal-server-select"
+              className="mt-1 w-full"
+            />
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -253,17 +248,14 @@ export function ObservationJournalPanel({
               <h4 className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
                 Tool annotation
               </h4>
-              <select
+              <Select
                 value={activeToolName}
-                onChange={(e) => setPickedTool(e.target.value)}
-                className={`${SELECT_CLASS} font-mono`}
-              >
-                {tools.map((t) => (
-                  <option key={t.name} value={t.name}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(value) => setPickedTool(value)}
+                options={tools.map((t) => ({ value: t.name, label: t.name }))}
+                aria-label="Tool"
+                testId="journal-tool-select"
+                className="mt-1 w-full font-mono"
+              />
               {activeToolName && (
                 <ToolAnnotationForm
                   key={`${journal.serverId}-${activeToolName}-${revision}`}

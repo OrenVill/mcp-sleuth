@@ -8,11 +8,22 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: 'line',
   use: { trace: 'on-first-retry' },
-  webServer: {
-    // Only the MCP fixture — the Electron app serves its own renderer over app://.
-    command: 'node tests/fixtures/http-mcp-server.mjs',
-    port: 3001,
-    reuseExistingServer: !process.env.CI,
-    timeout: 30_000,
-  },
+  // Only the fixtures — the Electron app serves its own renderer over app://.
+  webServer: [
+    {
+      command: 'node tests/fixtures/http-mcp-server.mjs',
+      port: 3001,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      // Scripted OpenAI-compatible model for 08-agent-chat.
+      // 3003, not 3002: playwright.config.ts runs meta-mcp-server.mjs on 3002,
+      // and `reuseExistingServer` would let this fixture silently stand in for it.
+      command: 'node tests/fixtures/llm-server.mjs 3003',
+      url: 'http://127.0.0.1:3003/v1/models',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+  ],
 });

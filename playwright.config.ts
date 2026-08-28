@@ -52,5 +52,16 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      // Scripted OpenAI-compatible model for §3.26. Real models are
+      // non-deterministic and need a paid key, so the agent-chat spec could not
+      // assert on a run without this. 3003 deliberately: 3002 is the meta
+      // fixture, and `reuseExistingServer` would silently hand §3.6 and §3.12 a
+      // server with no /mcp route rather than failing loudly.
+      command: 'node tests/fixtures/llm-server.mjs',
+      url: 'http://127.0.0.1:3003/v1/models',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });

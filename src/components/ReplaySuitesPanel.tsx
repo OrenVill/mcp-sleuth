@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   buildReplayCaseFromTrace,
   runReplaySuite,
@@ -7,6 +7,11 @@ import {
   type ReplaySuite,
 } from '../lib/replaySuites';
 import { getProtocolTraces, subscribeProtocolTraces } from '../lib/protocolTrace';
+import {
+  getSessionSuites,
+  setSessionSuites,
+  subscribeSessionSuites,
+} from '../lib/replaySuiteSession';
 import type { ProtocolTraceEvent } from '../lib/protocolTrace';
 import type { ServerEntry, ToolResult } from '../types';
 import { CodeBlock } from './CodeBlock';
@@ -20,7 +25,6 @@ interface Props {
   ) => Promise<ToolResult>;
 }
 
-let sessionSuites: ReplaySuite[] = [];
 let sessionSelectedSuiteId: string | null = null;
 let sessionResultsBySuite: Record<string, ReplayCaseResult[]> = {};
 
@@ -58,7 +62,7 @@ function resultClass(status: ReplayCaseResult['status']): string {
 export function ReplaySuitesPanel({ servers, onReplayToolCall }: Props) {
   const traces = useProtocolTraces();
   const [suiteName, setSuiteName] = useState('Docs server smoke test');
-  const [suites, setSuites] = useState<ReplaySuite[]>(() => sessionSuites);
+  const [suites, setSuites] = useState<ReplaySuite[]>(() => getSessionSuites());
   const [selectedSuiteId, setSelectedSuiteId] = useState<string | null>(() => sessionSelectedSuiteId);
   const [resultsBySuite, setResultsBySuite] = useState<Record<string, ReplayCaseResult[]>>(
     () => sessionResultsBySuite,
@@ -75,9 +79,17 @@ export function ReplaySuitesPanel({ servers, onReplayToolCall }: Props) {
     .map((trace) => buildReplayCaseFromTrace(trace, serverNames.get(trace.serverId)))
     .filter((testCase): testCase is ReplayCase => Boolean(testCase));
 
-  useEffect(() => {
-    sessionSuites = suites;
-  }, [suites]);
+  // Suites can also arrive from the agent chat, so re-read on every change
+  // rather than treating this component as the only writer.
+  useEffect(() => subscribeSessionSuites(() => setSuites(getSessionSuites())), []);
+
+  // A user edit: write it back to the shared module, which then notifies every
+  // other reader (including the subscription above).
+  const commitSuites = useCallback((update: (current: ReplaySuite[]) => ReplaySuite[]) => {
+    const next = update(getSessionSuites());
+    setSuites(next);
+    setSessionSuites(next);
+  }, []);
 
   useEffect(() => {
     sessionSelectedSuiteId = selectedSuiteId;
@@ -89,19 +101,19 @@ export function ReplaySuitesPanel({ servers, onReplayToolCall }: Props) {
 
   function createSuite() {
     const next = makeSuite(suiteName);
-    setSuites((current) => [next, ...current]);
+    commitSuites((current) => [next, ...current]);
     setSelectedSuiteId(next.id);
   }
 
   function addCase(testCase: ReplayCase) {
     if (!selectedSuite) {
       const next = { ...makeSuite(suiteName), cases: [testCase] };
-      setSuites((current) => [next, ...current]);
+      commitSuites((current) => [next, ...current]);
       setSelectedSuiteId(next.id);
       return;
     }
 
-    setSuites((current) =>
+    commitSuites((current) =>
       current.map((candidate) =>
         candidate.id === selectedSuite.id && !candidate.cases.some((item) => item.id === testCase.id)
           ? { ...candidate, cases: [...candidate.cases, testCase] }
@@ -112,7 +124,7 @@ export function ReplaySuitesPanel({ servers, onReplayToolCall }: Props) {
 
   function removeCase(caseId: string) {
     if (!selectedSuite) return;
-    setSuites((current) =>
+    commitSuites((current) =>
       current.map((suite) =>
         suite.id === selectedSuite.id
           ? { ...suite, cases: suite.cases.filter((testCase) => testCase.id !== caseId) }
@@ -123,7 +135,7 @@ export function ReplaySuitesPanel({ servers, onReplayToolCall }: Props) {
 
   function deleteSuite() {
     if (!selectedSuite) return;
-    setSuites((current) => current.filter((suite) => suite.id !== selectedSuite.id));
+    commitSuites((current) => current.filter((suite) => suite.id !== selectedSuite.id));
     setSelectedSuiteId(null);
   }
 

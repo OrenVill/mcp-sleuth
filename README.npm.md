@@ -43,7 +43,7 @@ The explorer auto-connects, lists all available tools, and generates input forms
 
 **Stdio note:** stdio servers use a local Node bridge built into `mcp-sleuth`. You must run the app via **`mcp-sleuth`** (or `npm run dev` from source) — opening static files alone does not spawn subprocesses.
 
-- Add / edit / remove HTTP or stdio MCP servers — persisted to `localStorage`
+- Add / edit / remove HTTP or stdio MCP servers — persisted to the encrypted vault under `~/.mcp-sleuth/`
 - Stdio bridge for local command-based MCP servers (requires `mcp-sleuth` or `npm run dev`)
 - Local proxy mode for HTTP MCP servers that do not expose browser CORS headers
 - Auto-discovered tool list via `tools/list`
@@ -52,6 +52,44 @@ The explorer auto-connects, lists all available tools, and generates input forms
 - Schema Lab for inspecting tool schemas, generating example args, and copying JSON-RPC calls
 - Permission Surface audit, Prompt Injection scan, and Observation Journal for MCP trust evaluation
 - Meta-tool discovery with one-click **Discover all tools**
+- Agent Chat — drive your own model against a connected server, with every tool call approved by you (see below)
+
+## Agent Chat
+
+Click **Chat** in the toolbar to point a model you supply at a connected MCP server and watch how
+it actually uses the tools. It is a test-bench for the server, not a chat client — the output is
+evidence about the server, not a conversation worth keeping.
+
+Add an **LLM server** from the picker in the chat header: a name, a type (OpenAI-compatible,
+Anthropic, or Google Gemini), a base URL (defaults to `http://127.0.0.1:11434/v1` for Ollama), and
+an API key only if the provider needs one. Sleuth asks that server which models it has and lists
+them. The key is stored in the same
+encrypted vault as your MCP server credentials.
+
+**Local models work without any extra configuration.** The browser never calls the provider
+directly — `mcp-sleuth`'s own local server forwards the request at `/__llm_proxy`, so everything
+the page sends is same-origin. That is why a local Ollama works on the first try with no
+`OLLAMA_ORIGINS` set. The forwarder accepts only the endpoints a provider actually exposes,
+requires a same-origin request, and never logs request or response bodies. It is a CORS
+forwarder, not a security boundary: the vault decrypts in the page, so the key is in browser
+memory either way.
+
+What the chat does:
+
+- **Every tool call is approved by you**, showing the tool name and the exact arguments. Allow it
+  once, allow it for the rest of the session, or deny it with a reason. Tools the Permission
+  Surface audit tags destructive, shell, credential, or admin can never be session-allowed — they
+  ask every time.
+- **A denial does not end the run.** The reason goes back to the model as the tool's result, so
+  you see how it recovers. *Wrong tool* and *Bad arguments* feed the server's Agent Readiness
+  score.
+- **Live trace** beside the transcript, with every call also landing in the Protocol Inspector.
+- **Capture** a run's tool calls as a Replay Suite, or **Record** any step to the Observation
+  Journal.
+- **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-sleuth/`;
+  the messages and raw tool output live in memory for the session.
+
+A run stops on its own after 8 model turns, and **Stop** cancels whatever is in flight.
 
 ## Desktop app
 
@@ -63,6 +101,7 @@ this CLI it adds:
 - Stdio servers spawned directly as child processes, with no local HTTP bridge in between
 - Vault auto-unlock from the OS keychain where the platform has a real keyring
 - Native save dialogs for exports
+- Agent Chat provider requests sent straight from the main process, with no local forwarder in between
 
 The builds are unsigned, so macOS and Windows warn on first launch; the README on GitHub has the
 click-through steps. There is no auto-update — updating means downloading a newer installer.

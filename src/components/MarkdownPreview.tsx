@@ -1,4 +1,4 @@
-import { marked } from 'marked';
+import { renderMarkdown } from '../lib/markdown';
 
 interface Props {
   source: string;
@@ -7,6 +7,6 @@ interface Props {
 }
 
 export function MarkdownPreview({ source, className = 'md-preview' }: Props) {
-  const html = marked.parse(source) as string;
+  const html = renderMarkdown(source);
   return <div className={className} dangerouslySetInnerHTML={{ __html: html }} />;
 }

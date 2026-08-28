@@ -5,6 +5,7 @@ import { loadLegacyServers } from '../lib/storage';
 import { initAppData } from '../lib/appData';
 import { disconnect } from '../lib/mcpClient';
 import type { ServerEntry } from '../types';
+import type { LlmConfig } from '../lib/agent/types';
 
 export type VaultPhase = 'loading' | 'needs-setup' | 'needs-unlock' | 'ready';
 
@@ -19,6 +20,8 @@ export interface Vault {
   phase: VaultPhase;
   error: string | null;
   busy: boolean;
+  llmConfigs: LlmConfig[];
+  saveLlmConfigs: (next: LlmConfig[]) => void;
   create: (passphrase: string) => Promise<void>;
   unlock: (passphrase: string) => Promise<void>;
   lock: () => void;
@@ -36,15 +39,18 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
   const [phase, setPhase] = useState<VaultPhase>('loading');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [llmConfigs, setLlmConfigs] = useState<LlmConfig[]>([]);
 
   const aesKeyRef = useRef<CryptoKey | null>(null);
   const serversRef = useRef<ServerEntry[]>(servers);
+  const llmConfigsRef = useRef<LlmConfig[]>([]);
   const phaseRef = useRef<VaultPhase>(phase);
 
   useLayoutEffect(() => {
     serversRef.current = servers;
+    llmConfigsRef.current = llmConfigs;
     phaseRef.current = phase;
-  }, [servers, phase]);
+  }, [servers, llmConfigs, phase]);
 
   useEffect(() => {
     void (async () => {
@@ -55,6 +61,8 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
         const result = await bootstrapVault();
         if (result.phase === 'ready') {
           aesKeyRef.current = result.aesKey;
+          llmConfigsRef.current = result.llmConfigs;
+          setLlmConfigs(result.llmConfigs);
           setServers(fromStoredServers(result.servers));
           setPhase('ready');
         } else {
@@ -71,7 +79,7 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
 
   useEffect(() => {
     if (phase !== 'ready' || !aesKeyRef.current) return;
-    void saveVault(aesKeyRef.current, toStoredServers(servers)).catch((err: unknown) => {
+    void saveVault(aesKeyRef.current, toStoredServers(servers), llmConfigsRef.current).catch((err: unknown) => {
       const message = err instanceof Error ? err.message : String(err);
       setError(`Vault save failed: ${message}`);
     });
@@ -82,7 +90,7 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
     function flush() {
       const key = aesKeyRef.current;
       if (phaseRef.current !== 'ready' || !key) return;
-      void saveVault(key, toStoredServers(serversRef.current)).catch((err: unknown) => {
+      void saveVault(key, toStoredServers(serversRef.current), llmConfigsRef.current).catch((err: unknown) => {
         console.error('sleuth: vault background save failed', err);
       });
     }
@@ -122,8 +130,10 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
       setBusy(true);
       setError(null);
       try {
-        const { aesKey, servers: stored } = await unlockVault(passphrase);
+        const { aesKey, servers: stored, llmConfigs: storedConfigs } = await unlockVault(passphrase);
         aesKeyRef.current = aesKey;
+        llmConfigsRef.current = storedConfigs;
+        setLlmConfigs(storedConfigs);
         setServers(fromStoredServers(stored));
         setPhase('ready');
       } catch (err) {
@@ -134,6 +144,17 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
     },
     [setServers],
   );
+
+  const saveLlmConfigs = useCallback((next: LlmConfig[]) => {
+    llmConfigsRef.current = next;
+    setLlmConfigs(next);
+    if (!aesKeyRef.current) return;
+    void saveVault(aesKeyRef.current, toStoredServers(serversRef.current), next).catch(
+      (err: unknown) => {
+        console.error('Failed to persist LLM configs', err);
+      },
+    );
+  }, []);
 
   const lock = useCallback(() => {
     const snapshot = serversRef.current;
@@ -147,6 +168,10 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
     ).finally(() => {
       aesKeyRef.current = null;
       setServers([]);
+      // LlmConfig can carry an apiKey, so a locked vault must not leave
+      // provider credentials sitting in renderer memory.
+      llmConfigsRef.current = [];
+      setLlmConfigs([]);
     });
   }, [onCleared, setServers]);
 
@@ -156,6 +181,8 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
       await resetVault();
       aesKeyRef.current = null;
       setServers([]);
+      llmConfigsRef.current = [];
+      setLlmConfigs([]);
       onCleared();
       setError(null);
       setPhase('needs-setup');
@@ -166,5 +193,5 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
     }
   }, [onCleared, setServers]);
 
-  return { phase, error, busy, create, unlock, lock, reset };
+  return { phase, error, busy, llmConfigs, saveLlmConfigs, create, unlock, lock, reset };
 }

@@ -6,13 +6,11 @@ import {
   type ServerPermissionSurface,
 } from '../lib/permissionSurfaceAudit';
 import type { ServerEntry } from '../types';
+import { Select } from './Select';
 
 interface Props {
   servers: ServerEntry[];
 }
-
-const SELECT_CLASS =
-  'mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
 const CATEGORY_COLORS: Record<PermissionCategory, string> = {
   filesystem: 'border-sky-900/60 bg-sky-950/30 text-sky-200',
@@ -99,25 +97,22 @@ export function PermissionSurfacePanel({ servers }: Props) {
   return (
     <div className="h-full min-h-0 overflow-y-auto bg-zinc-950">
       <div className="max-w-6xl mx-auto px-5 py-5 space-y-5">
-        <label className="block">
+        <div className="block">
           <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
             Server
           </span>
-          <select
+          <Select
             value={activeServerId ?? ''}
-            onChange={(e) => {
-              setSelectedServerId(e.target.value);
+            onChange={(value) => {
+              setSelectedServerId(value);
               setExpandedTool(null);
             }}
-            className={SELECT_CLASS}
-          >
-            {report.servers.map((s) => (
-              <option key={s.serverId} value={s.serverId}>
-                {s.serverName}
-              </option>
-            ))}
-          </select>
-        </label>
+            options={report.servers.map((s) => ({ value: s.serverId, label: s.serverName }))}
+            aria-label="Server"
+            testId="permission-surface-server-select"
+            className="mt-1 w-full"
+          />
+        </div>
 
         {surface && <ServerSummary surface={surface} />}
 

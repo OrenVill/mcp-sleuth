@@ -7,6 +7,7 @@ import { handleMcpProxy, PROXY_PATH } from './proxy.js';
 import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
+import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
 
 function vaultStorageMiddleware(
   req: IncomingMessage,
@@ -71,6 +72,37 @@ function appDataPlugin(): PluginOption {
   };
 }
 
+function llmProxyMiddleware(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void,
+) {
+  if (isLlmProxyRequest(req.url ?? '/')) {
+    void handleLlmProxy(req, res).catch((err: unknown) => {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      }
+      res.end(err instanceof Error ? err.message : String(err));
+    });
+    return;
+  }
+  next();
+}
+
+function llmProxyPlugin(): PluginOption {
+  return {
+    name: 'mcp-sleuth-llm-proxy',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(llmProxyMiddleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(llmProxyMiddleware);
+    },
+  };
+}
+
 function stdioBridgeMiddleware(
   req: IncomingMessage,
   res: ServerResponse,
@@ -104,7 +136,7 @@ function mcpProxyPlugin(): PluginOption {
 }
 
 export default defineConfig({
-  plugins: [vaultStoragePlugin(), appDataPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
+  plugins: [vaultStoragePlugin(), appDataPlugin(), llmProxyPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
   build: {
     rollupOptions: {
       output: {

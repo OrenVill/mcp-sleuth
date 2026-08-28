@@ -12,6 +12,7 @@ import {
 import type { ServerEntry, ToolDef } from '../types';
 import { CodeBlock } from './CodeBlock';
 import { MarkdownPreview } from './MarkdownPreview';
+import { Select } from './Select';
 
 interface Props {
   servers: ServerEntry[];
@@ -24,9 +25,6 @@ interface PanelSelection {
   toolName: string | null;
   propKey: string;
 }
-
-const SELECT_CLASS =
-  'mt-1 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm disabled:opacity-50 disabled:cursor-not-allowed';
 
 function getConnectedServers(servers: ServerEntry[]): ServerEntry[] {
   return servers.filter((server) => server.status === 'connected');
@@ -180,14 +178,13 @@ export function SchemaLabPanel({ servers, selectedServerId, selectedToolName }: 
     <div className="h-full min-h-0 overflow-y-auto bg-zinc-950">
       <div className="max-w-6xl mx-auto px-5 py-5 space-y-5">
         <section className="grid gap-3 md:grid-cols-2">
-          <label className="block">
+          <div className="block">
             <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
               Server
             </span>
-            <select
+            <Select
               value={activeServer?.id ?? ''}
-              onChange={(event) => {
-                const nextServerId = event.target.value;
+              onChange={(nextServerId) => {
                 const nextServer = getActiveServer(connectedServers, nextServerId);
                 const nextTools = getAllTools(nextServer);
 
@@ -197,43 +194,40 @@ export function SchemaLabPanel({ servers, selectedServerId, selectedToolName }: 
                   propKey,
                 });
               }}
-              className={SELECT_CLASS}
-            >
-              {connectedServers.map((server) => (
-                <option key={server.id} value={server.id}>
-                  {server.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={connectedServers.map((server) => ({
+                value: server.id,
+                label: server.name,
+              }))}
+              aria-label="Server"
+              testId="schema-lab-server-select"
+              className="mt-1 w-full"
+            />
+          </div>
 
-          <label className="block">
+          <div className="block">
             <span className="text-[11px] uppercase tracking-[0.12em] font-semibold text-zinc-500">
               Tool
             </span>
-            <select
+            <Select
               value={tool?.name ?? ''}
-              onChange={(event) =>
+              onChange={(nextToolName) =>
                 setPanelSelection({
                   serverId: activeServer?.id ?? null,
-                  toolName: event.target.value,
+                  toolName: nextToolName,
                   propKey,
                 })
               }
+              options={tools.map((candidate) => ({
+                value: candidate.name,
+                label: candidate.name,
+              }))}
               disabled={tools.length === 0}
-              className={`${SELECT_CLASS} font-mono`}
-            >
-              {tools.length === 0 ? (
-                <option value="">No tools available</option>
-              ) : (
-                tools.map((candidate) => (
-                  <option key={candidate.name} value={candidate.name}>
-                    {candidate.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </label>
+              placeholder="No tools available"
+              aria-label="Tool"
+              testId="schema-lab-tool-select"
+              className="mt-1 w-full font-mono"
+            />
+          </div>
         </section>
 
         {!activeServer || !tool || !summary || !jsonRpcCall ? (

@@ -3,6 +3,7 @@ import { createElectronMcpHost, type ElectronBridge } from './mcpElectron';
 import { createElectronFilesHost } from './filesElectron';
 import { createElectronSecretsHost } from './secretsElectron';
 import { createElectronUpdateHost } from './updatesElectron';
+import { createLlmElectron, type LlmBridge } from './llmElectron';
 
 export function createElectronHost(bridge: ElectronBridge): Host {
   return {
@@ -11,5 +12,6 @@ export function createElectronHost(bridge: ElectronBridge): Host {
     files: createElectronFilesHost(bridge),
     secrets: createElectronSecretsHost(bridge),
     updates: createElectronUpdateHost(bridge),
+    llm: createLlmElectron(bridge as unknown as LlmBridge),
   };
 }

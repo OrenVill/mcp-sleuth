@@ -49,6 +49,9 @@ const DevToolsModal = lazy(() =>
 const ScenarioRunnerPanel = lazy(() =>
   import('./components/ScenarioRunnerPanel').then((m) => ({ default: m.ScenarioRunnerPanel })),
 );
+const AgentChatPanel = lazy(() =>
+  import('./components/AgentChatPanel').then((m) => ({ default: m.AgentChatPanel })),
+);
 import { loadHistory } from './lib/history';
 import type {
   DiscoveryRun,
@@ -82,6 +85,7 @@ export default function App() {
   const [devToolsOpen, setDevToolsOpen] = useState(false);
   const [devToolsInitialTab, setDevToolsInitialTab] = useState<DevToolsTab>('protocol');
   const [scenarioRunnerOpen, setScenarioRunnerOpen] = useState(false);
+  const [agentChatOpen, setAgentChatOpen] = useState(false);
   const discoveryControllersRef = useRef<Map<string, AbortController>>(new Map());
   /** Discovery runs for up to 30s; it reads current servers rather than a stale closure. */
   const serversRef = useRef<ServerEntry[]>(servers);
@@ -607,6 +611,23 @@ export default function App() {
           </button>
           <button
             type="button"
+            onClick={() => setAgentChatOpen(true)}
+            title="Agent Chat"
+            data-testid="open-agent-chat"
+            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1"
+          >
+            <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+              <path
+                d="M2.5 3.5h11v7h-6l-3.5 2.5v-2.5h-1.5z"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Chat</span>
+          </button>
+          <button
+            type="button"
             onClick={() => {
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
             }}
@@ -733,6 +754,17 @@ export default function App() {
             servers={servers}
             onClose={() => setScenarioRunnerOpen(false)}
             onCallTool={async (serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
+          />
+        </Suspense>
+      )}
+      {agentChatOpen && (
+        <Suspense fallback={null}>
+          <AgentChatPanel
+            servers={servers}
+            llmConfigs={vault.llmConfigs}
+            onSaveLlmConfigs={vault.saveLlmConfigs}
+            activeServerId={selectedId}
+            onClose={() => setAgentChatOpen(false)}
           />
         </Suspense>
       )}
