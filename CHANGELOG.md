@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.1.0...v1.2.0) (2026-08-28)
+
+
+### Features
+
+* Agent Chat — drive a real model against an MCP server, gated and traced ([#58](https://github.com/OrenVill/mcp-sleuth/issues/58)) ([1a71795](https://github.com/OrenVill/mcp-sleuth/commit/1a71795ac6a100dc9dc0f6d296f5c4210cc1176e))
+
 ## [1.1.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.0.1...v1.1.0) (2026-08-21)
 
 
