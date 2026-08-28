@@ -301,6 +301,28 @@ it count.
 A run stops on its own after 8 model turns, and **Stop** cancels the in-flight model call and any
 pending tool call.
 
+The card takes focus when it appears, so it can be answered from the keyboard — but focus lands on
+the card, not on **Allow**. A card can arrive while you are mid-sentence in the composer, and a
+focused Allow would turn a stray Enter into an approved tool call. Tab once to reach it. Escape
+never dismisses an open card either.
+
+### While a run is going
+
+- **You can always tell it is working.** Bouncing dots hold the place whenever the agent has the
+  turn — waiting on the model, running a tool, thinking again after a result — and a caret trails
+  the text as it streams. They are absent while an approval card is open, because that is your
+  turn, not the agent's.
+- **Type while it runs.** Enter queues the message and sends it the moment the run ends; a pill
+  above the composer shows what is waiting, with an X to drop it. Enter sends, Shift+Enter starts
+  a new line, and the composer grows with the text.
+- **Jump to latest** appears if you scroll up to read something earlier — the transcript stops
+  following you there rather than yanking the viewport, so this is the way back.
+- **New chat** clears the conversation without leaving the overlay. **Retry** re-runs a failed
+  turn from the existing history, so a dropped connection does not mean retyping the prompt.
+- **Copy** any assistant message — as its markdown source, not the rendered text — or any tool
+  result. Results too long for their box expand in place.
+- **Escape** closes the overlay, unless a picker or an approval card is open.
+
 ### What you get out of it
 
 - **Live trace** beside the transcript — every `tools/call` as it happens, with duration and a bar

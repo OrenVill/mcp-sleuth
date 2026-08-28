@@ -14,22 +14,46 @@ import { createServer } from 'node:http';
 // fixture on that port silently hijacks those specs instead of failing loudly.
 const PORT = Number(process.argv[2] ?? process.env.LLM_FIXTURE_PORT ?? 3003);
 
+/** How long the scripted "slowly" prompt stalls before it starts streaming. */
+const SLOW_DELAY_MS = 2500;
+
+/** Long enough to overflow the transcript's collapsed result cap. */
+const LONG_ECHO = Array.from({ length: 40 }, (_, i) => `line ${i + 1} of a long payload`).join('\n');
+
+/**
+ * The "explode" prompt fails once and then works, so a test can drive the
+ * error surface AND the recovery. A prompt that always failed could only ever
+ * prove that Retry re-fails.
+ */
+let explodedOnce = false;
+
 /**
  * Turn 0: call `echo_markdown` (a real tool on the MCP fixture) with a fixed argument.
  * Turn 1 onward: answer in prose, ending the run.
  */
-function scriptFor(toolResultCount) {
+function scriptFor(toolResultCount, userText) {
+  // Recovery from the one-shot failure below: prose, so the retried run ends
+  // without a second approval to drive.
+  if (userText.includes('explode')) {
+    return { content: 'Recovered after the failure.', toolCalls: [] };
+  }
   if (toolResultCount === 0) {
     return {
       content: '',
       toolCalls: [
         // Must name a tool the MCP fixture actually exports, or the agent loop
         // takes the unresolvable-name path and no approval card ever appears.
-        { id: 'call_1', name: 'echo_markdown', args: { message: 'hello from the agent' } },
+        {
+          id: 'call_1',
+          name: 'echo_markdown',
+          args: { message: userText.includes('long') ? LONG_ECHO : 'hello from the agent' },
+        },
       ],
     };
   }
-  return { content: 'The tool replied. We are done.', toolCalls: [] };
+  // The bold is load-bearing: it is how a test tells copying the raw markdown
+  // source apart from copying the rendered text.
+  return { content: 'The tool replied. **We are done.**', toolCalls: [] };
 }
 
 function sse(res, payload) {
@@ -101,7 +125,25 @@ const server = createServer(async (req, res) => {
     const body = await readBody(req);
     const messages = Array.isArray(body.messages) ? body.messages : [];
     const toolResults = messages.filter((m) => m.role === 'tool').length;
-    streamCompletion(res, scriptFor(toolResults));
+    const userText = messages
+      .filter((m) => m.role === 'user')
+      .map((m) => String(m.content ?? ''))
+      .join(' ');
+
+    if (userText.includes('explode') && !explodedOnce) {
+      explodedOnce = true;
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: { message: 'scripted upstream failure' } }));
+      return;
+    }
+
+    // A prompt containing "slowly" stalls before the first token. Without it the
+    // script answers instantly and the working indicator — which only exists in
+    // that gap — could never be observed without racing it.
+    if (userText.includes('slowly')) {
+      await new Promise((resolve) => setTimeout(resolve, SLOW_DELAY_MS));
+    }
+    streamCompletion(res, scriptFor(toolResults, userText));
     return;
   }
 

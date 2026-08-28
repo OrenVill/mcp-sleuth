@@ -9,6 +9,7 @@ import { addSessionSuite } from '../lib/replaySuiteSession';
 import { gateVerdict, rememberAllowed } from '../lib/agent/gating';
 import { DENIAL_TEXT, runAgentTurn } from '../lib/agent/loop';
 import { recordAgentRun } from '../lib/agent/agentRunStore';
+import { historyForRetry } from '../lib/agent/retry';
 import { buildToolCatalog } from '../lib/agent/toolCatalog';
 import {
   DEFAULT_MAX_TURNS,
@@ -101,18 +102,18 @@ export function useAgentRun(
     allowedRef.current = new Set();
   }, [commit, stop]);
 
-  const send = useCallback(
-    async (text: string) => {
-      if (!config || running || selectedServerIds.length === 0) return;
-
+  /**
+   * One turn against the given history. Shared by `send` and `retry` so a retry
+   * is genuinely the same run, not a second implementation of it: the history is
+   * the only thing that differs, and the caller has already committed it.
+   */
+  const runFrom = useCallback(
+    async (activeConfig: LlmConfig, history: AgentMessage[]) => {
       setError(null);
       setRunning(true);
       const controller = new AbortController();
       abortRef.current = controller;
       preRunTraceIds.current = new Set(getProtocolTraces().map((trace) => trace.id));
-
-      const history: AgentMessage[] = [...messagesRef.current, { role: 'user', text }];
-      commit(history);
 
       const events: AgentEvent[] = [];
       let streamed = '';
@@ -151,7 +152,7 @@ export function useAgentRun(
             maxTurns,
             signal: controller.signal,
           },
-          { config, system: SYSTEM_PROMPT, tools: catalog.tools, messages: history },
+          { config: activeConfig, system: SYSTEM_PROMPT, tools: catalog.tools, messages: history },
         );
 
         for (;;) {
@@ -202,8 +203,37 @@ export function useAgentRun(
         if (selectedServerIds[0]) recordAgentRun(selectedServerIds[0], events);
       }
     },
-    [catalog, commit, config, maxTurns, profiles, running, selectedServerIds, serverName],
+    [catalog, commit, maxTurns, profiles, selectedServerIds, serverName],
   );
+
+  const send = useCallback(
+    async (text: string) => {
+      if (!config || running || selectedServerIds.length === 0) return;
+      const history: AgentMessage[] = [...messagesRef.current, { role: 'user', text }];
+      commit(history);
+      await runFrom(config, history);
+    },
+    [commit, config, running, runFrom, selectedServerIds],
+  );
+
+  /**
+   * Re-run the last turn from the history as it stands. Nothing is appended: the
+   * user's message is already in there, and a failed turn left no assistant
+   * reply behind, so re-sending the same history is the whole of a retry.
+   *
+   * The pruning matters after a Stop, which can leave a tool call with no
+   * result. The pruned history is committed before the run so the transcript
+   * shows what was actually re-sent — `runFrom` would drop those messages at
+   * its first append anyway, and a transcript that disagrees with what the
+   * model received is the one thing this whole surface exists to avoid.
+   */
+  const retry = useCallback(async () => {
+    if (!config || running || selectedServerIds.length === 0) return;
+    const history = historyForRetry(messagesRef.current);
+    if (history.length === 0) return;
+    commit(history);
+    await runFrom(config, history);
+  }, [commit, config, running, runFrom, selectedServerIds]);
 
   /**
    * Turn this run's tool calls into a replay suite. The calls are already
@@ -238,6 +268,7 @@ export function useAgentRun(
     collisions: catalog.collisions,
     toolCount: catalog.tools.length,
     send,
+    retry,
     decide,
     stop,
     reset,

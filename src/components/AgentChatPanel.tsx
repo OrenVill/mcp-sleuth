@@ -110,12 +110,29 @@ export function AgentChatPanel({
     return connected.length === 1 ? [connected[0].id] : [];
   });
   const [input, setInput] = useState('');
+  /**
+   * Text typed while a run was in flight. `send` refuses mid-run, so without
+   * this the message would be dropped between the composer clearing and the
+   * refusal — it is held here and sent the moment the run ends.
+   */
+  const [queued, setQueued] = useState<string | null>(null);
+  /** Mirrors `queued` so the finishing run can read it without a stale closure. */
+  const queuedRef = useRef<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [traceFilter, setTraceFilter] = useState<'all' | 'failed'>('all');
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   /** Whether the reader is parked at the bottom, sampled before each update. */
   const atBottomRef = useRef(true);
+  /*
+   * The same fact as `atBottomRef`, kept in state only so the jump-to-latest
+   * pill can render. The ref stays the source of truth for the autoscroll
+   * effect, which must read it during a commit rather than a render behind.
+   */
+  const [atBottom, setAtBottom] = useState(true);
+  const wasRunningRef = useRef(false);
+  const focusedOnceRef = useRef(false);
 
   const traces = useProtocolTraces();
   /**
@@ -139,6 +156,7 @@ export function AgentChatPanel({
    */
   const ready =
     Boolean(config) && selectedServerIds.some((id) => connectedIds.includes(id));
+  const approvalOpen = run.pending !== null;
 
   /*
    * Follow the conversation as it grows, but only when the reader is already at
@@ -148,7 +166,7 @@ export function AgentChatPanel({
   useEffect(() => {
     const el = scrollRef.current;
     if (el && atBottomRef.current) el.scrollTop = el.scrollHeight;
-  }, [run.messages, run.streamingText, run.pending]);
+  }, [run.messages, run.streamingText, run.pending, run.running]);
 
   /* A confirmation that never leaves is just clutter. */
   useEffect(() => {
@@ -156,6 +174,65 @@ export function AgentChatPanel({
     const timer = setTimeout(() => setNotice(null), 6000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+  /*
+   * Open in the composer, and return to it when a run ends so the follow-up
+   * needs no click. Never while it is disabled: focusing a disabled control does
+   * nothing except take focus away from whatever the reader was using.
+   */
+  useEffect(() => {
+    const runEnded = wasRunningRef.current && !run.running;
+    wasRunningRef.current = run.running;
+    /*
+     * The mount pass is spent whether or not it could focus anything. Keeping
+     * it alive until `ready` first turns true would fire this the moment the
+     * user ticks their first server — inside the MCP scope popover — and pull
+     * focus straight out from under them.
+     */
+    const onMount = !focusedOnceRef.current;
+    focusedOnceRef.current = true;
+    if (!ready) return;
+    if (runEnded || onMount) inputRef.current?.focus();
+  }, [ready, run.running]);
+
+  /*
+   * Escape closes the chat, with two exceptions.
+   *
+   * `Select` and `Popover` portal their layer to the body and close themselves
+   * on Escape without stopping propagation, so a keypress meant for an open
+   * model picker would otherwise close the whole overlay underneath it. Their
+   * portals are direct children of the body, which is what the query below
+   * looks for.
+   *
+   * An open approval card is the other: it is a security gate, and dismissing
+   * one with a stray keypress is not a decision the user made.
+   */
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || approvalOpen) return;
+      if (document.querySelector('body > [role="listbox"], body > [role="dialog"]')) return;
+      onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [approvalOpen, onClose]);
+
+  /* Grow with the content; the height cap in the style below turns it into an
+     internal scroll rather than a composer that eats the transcript. */
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [input]);
+
+  const jumpToLatest = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    atBottomRef.current = true;
+    setAtBottom(true);
+  }, []);
 
   const recordObservation = useCallback(
     (toolName: string, note: string) => {
@@ -179,17 +256,63 @@ export function AgentChatPanel({
     );
   }, [run]);
 
+  const enqueue = useCallback((text: string) => {
+    // Two messages typed during one run are joined rather than the second
+    // replacing the first: losing typed text is the bug this queue exists to
+    // fix, so it must not reappear inside the queue itself.
+    queuedRef.current = queuedRef.current ? `${queuedRef.current}\n${text}` : text;
+    setQueued(queuedRef.current);
+  }, []);
+
+  const clearQueue = useCallback(() => {
+    queuedRef.current = null;
+    setQueued(null);
+  }, []);
+
+  /*
+   * Send, then drain whatever was typed while that run was in flight.
+   *
+   * The queue is drained here rather than from an effect watching `queued`
+   * because `run.send` resolves exactly when the run is over, which is the
+   * event we actually want: no effect can fire twice for one queued message,
+   * and this `send` closure is known to pass its own in-flight guard, so the
+   * queued text cannot be swallowed the way an unqueued one was.
+   */
+  const dispatch = useCallback(
+    async (first: string) => {
+      let text: string | null = first;
+      while (text) {
+        await run.send(text);
+        text = queuedRef.current;
+        if (text) clearQueue();
+      }
+    },
+    [clearQueue, run],
+  );
+
   const submit = useCallback(
-    (event: FormEvent) => {
-      event.preventDefault();
+    (event?: FormEvent) => {
+      event?.preventDefault();
       const text = input.trim();
-      if (!text) return;
+      if (!text || !ready) return;
       setInput('');
       setNotice(null);
-      void run.send(text);
+      if (run.running) {
+        enqueue(text);
+        return;
+      }
+      void dispatch(text);
     },
-    [input, run],
+    [dispatch, enqueue, input, ready, run],
   );
+
+  const newChat = useCallback(() => {
+    run.reset();
+    setInput('');
+    clearQueue();
+    setNotice(null);
+    inputRef.current?.focus();
+  }, [clearQueue, run]);
 
   const runTraces = traces.filter((trace) => trace.method === 'tools/call').slice(0, 40);
   const traceStats = {
@@ -275,6 +398,27 @@ export function AgentChatPanel({
         </div>
 
         <div className="ml-auto flex items-center gap-2 min-w-0">
+          {/* Only once there is something to clear — an empty chat has no
+              "new" to offer, and the header is already crowded. */}
+          {hasConversation && (
+            <button
+              type="button"
+              data-testid="agent-new-chat"
+              onClick={newChat}
+              title="Start a new conversation"
+              className="shrink-0 inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md border border-zinc-800 text-zinc-400 hover:text-violet-300 hover:border-violet-800/70 hover:bg-violet-950/30 transition-colors"
+            >
+              <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                <path
+                  d="M8 3.5v9M3.5 8h9"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+              New chat
+            </button>
+          )}
           <AgentModelPicker
             configs={llmConfigs}
             activeConfigId={effectiveConfigId}
@@ -326,7 +470,11 @@ export function AgentChatPanel({
             ref={scrollRef}
             onScroll={(e) => {
               const el = e.currentTarget;
-              atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+              const next = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+              atBottomRef.current = next;
+              // Only on the flip. A setState per scroll event would re-render
+              // the whole transcript on every frame of a drag.
+              setAtBottom((current) => (current === next ? current : next));
             }}
             className="flex-1 overflow-y-auto flex flex-col"
           >
@@ -348,6 +496,8 @@ export function AgentChatPanel({
                 <AgentTranscript
                   messages={run.messages}
                   streamingText={run.streamingText}
+                  /* An open approval card is the user's turn, not the agent's. */
+                  busy={run.running && !run.pending}
                   onRecordObservation={recordObservation}
                 />
               ) : (
@@ -373,23 +523,96 @@ export function AgentChatPanel({
               )}
 
               {run.error && (
-                <p
+                <div
                   data-testid="agent-error"
-                  className="text-xs text-red-300 bg-red-950/30 border border-red-900/50 rounded-lg px-3 py-2"
+                  className="flex items-start gap-3 text-xs text-red-300 bg-red-950/30 border border-red-900/50 rounded-lg px-3 py-2"
                 >
-                  {run.error}
-                </p>
+                  <p className="flex-1 min-w-0">{run.error}</p>
+                  {/* A failed turn otherwise means retyping the prompt: the
+                      history is still intact, so it can just be re-sent. */}
+                  <button
+                    type="button"
+                    data-testid="agent-retry"
+                    onClick={() => void run.retry()}
+                    disabled={!ready || run.running || run.messages.length === 0}
+                    className="shrink-0 text-[11px] px-2 py-1 rounded-md border border-red-900/60 text-red-200 hover:bg-red-900/40 hover:text-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
               )}
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-zinc-800 bg-zinc-900/30 py-4">
+          <div className="relative shrink-0 border-t border-zinc-800 bg-zinc-900/30 py-4">
+            {/* Scrolled up, the conversation keeps growing out of sight; this is
+                the way back. */}
+            {!atBottom && (
+              <div className="absolute -top-5 inset-x-0 flex justify-center pointer-events-none">
+                <button
+                  type="button"
+                  data-testid="agent-jump-to-latest"
+                  onClick={jumpToLatest}
+                  className="pointer-events-auto inline-flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-full border border-zinc-700 bg-zinc-900 text-zinc-300 shadow-lg hover:text-zinc-100 hover:border-violet-700 transition-colors"
+                >
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                    <path
+                      d="M8 3.5v9M4.5 9 8 12.5 11.5 9"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Jump to latest
+                </button>
+              </div>
+            )}
+
             <form onSubmit={submit} className={COLUMN}>
-              <div className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-1.5 focus-within:border-violet-600 transition-colors">
-                <input
+              {queued && (
+                <div
+                  data-testid="agent-queued"
+                  className="mb-2 flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/70 px-2.5 py-1.5"
+                >
+                  <span className="shrink-0 text-[10px] uppercase tracking-wide text-violet-400">
+                    Queued
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-xs text-zinc-400">{queued}</span>
+                  <button
+                    type="button"
+                    data-testid="agent-cancel-queued"
+                    onClick={clearQueue}
+                    aria-label="Cancel queued message"
+                    title="Cancel queued message"
+                    className="shrink-0 flex items-center justify-center w-5 h-5 rounded-md text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+                  >
+                    <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                      <path
+                        d="m4.5 4.5 7 7m0-7-7 7"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <div className="flex items-end gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-2 py-1.5 focus-within:border-violet-600 transition-colors">
+                <textarea
+                  ref={inputRef}
                   data-testid="agent-input"
+                  rows={1}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    // An IME uses Enter to commit the candidate it is showing;
+                    // sending there would cut the word being typed in half.
+                    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                      e.preventDefault();
+                      submit();
+                    }
+                  }}
                   disabled={!ready}
                   placeholder={
                     !config
@@ -400,24 +623,41 @@ export function AgentChatPanel({
                           ? 'Select a connected server'
                           : 'Ask something…'
                   }
-                  className="flex-1 min-w-0 bg-transparent px-2 py-1 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none disabled:cursor-not-allowed"
+                  className="flex-1 min-w-0 resize-none overflow-y-auto bg-transparent px-2 py-1 text-sm leading-5 text-zinc-100 placeholder-zinc-600 focus:outline-none disabled:cursor-not-allowed"
                   /*
                    * index.css gives every focused input a violet ring. Here the
                    * wrapper already draws it, so the input's own ring would nest
                    * one rectangle inside another. That rule is un-layered, which
                    * beats any Tailwind utility, so an inline style is the
                    * override that actually wins.
+                   *
+                   * The cap is the point where a long message stops pushing the
+                   * transcript off screen and scrolls inside the composer
+                   * instead; the effect above sets `height` under it.
                    */
-                  style={{ boxShadow: 'none' }}
+                  style={{ boxShadow: 'none', maxHeight: 'min(40vh, 10.5rem)' }}
                 />
                 {run.running ? (
-                  <button
-                    type="button"
-                    onClick={run.stop}
-                    className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
-                  >
-                    Stop
-                  </button>
+                  <>
+                    {/* Enter queues; without this there is no pointer route to
+                        the same thing, since Send is not on screen mid-run. */}
+                    {input.trim().length > 0 && (
+                      <button
+                        type="submit"
+                        data-testid="agent-queue"
+                        className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-violet-800/70 text-violet-300 hover:bg-violet-950/40 transition-colors"
+                      >
+                        Queue
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={run.stop}
+                      className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
+                    >
+                      Stop
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="submit"
