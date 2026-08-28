@@ -69,7 +69,7 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 113 tests across 26 spec files must pass. Any failure blocks the release.
+All 124 tests across 26 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
@@ -141,6 +141,26 @@ Sleuth lists that server's models rather than leaving the model box empty. Then,
    Grep the data directory for it: a hit outside the ciphertext blocks release.
 10. **Failure surfaces, not silence.** Stop the model server mid-run and send again: the error is
     shown inline in the transcript and the app stays usable.
+11. **The run never looks frozen.** From the moment you send until the run ends, something on
+    screen says the agent is working — the bouncing dots while it waits on the model or a tool,
+    the caret while text streams. The one exception is an open approval card: that is your turn,
+    so the dots must be gone. Dots still bouncing after the answer lands is a defect.
+12. **Typing during a run does not lose the message.** Send something, and while it is still
+    running type a second message and press Enter. It must appear queued above the composer and
+    send itself once the run ends — never vanish. Shift+Enter must add a line instead of sending,
+    and the composer must grow with the text.
+13. **The keyboard reaches the gate without arming it.** When an approval card appears, focus is
+    on the card and Enter does *nothing*; one Tab reaches **Allow**, and Enter there approves.
+    Enter approving straight from the composer blocks release — it is the same class of defect as
+    a call that runs without a card.
+14. **Escape respects what is open.** With the model picker open, Escape closes only the picker.
+    With an approval card open, Escape does nothing. Otherwise it closes the chat.
+15. **Recovery and housekeeping.** Stop the model server mid-run to force an error, then
+    **Retry** — the turn re-runs from the existing history and the prompt is not duplicated as a
+    second user message. **New chat** clears the conversation in place. Scroll up mid-run and
+    **Jump to latest** returns you to the bottom. Copy an assistant message and confirm you get
+    the markdown source rather than the rendered text; a tool result longer than its box offers
+    **Show full result**.
 
 **Release blockers, in priority order:** a tool call that runs without an approval card; a
 risk-locked tool that can be session-allowlisted; a denial that aborts the run instead of
@@ -149,8 +169,13 @@ vault ciphertext. Everything else in the list is a defect to file, not a stop.
 
 Automated: `tests/release/26-agent-chat.spec.ts`, against `tests/fixtures/llm-server.mjs` — it
 covers the header readiness line, the gate appearing before the call runs, allow, deny with a
-reason and the run continuing, the live trace, replay capture, the MCP scope popover, and the
-disabled composer. Steps 5, 7, 8, 9, and 10 above are the manual-only ones.
+reason and the run continuing, the live trace, replay capture, the working indicator across every
+gap in a run, Enter/Shift+Enter in the composer, queueing a message typed mid-run, the expander on
+a long tool result, jump-to-latest, New chat, Escape against an open picker, Retry after a failed
+turn, Stop leaving the run cancelled but retryable, the approval card taking focus without arming
+Enter, copying an assistant message as markdown source, the MCP scope popover, and the disabled
+composer. Steps 5, 7, 8, 9, and 10 above
+are the manual-only ones.
 
 > Spec numbers map to the `§3.N` sections above. The next spec added should be `27`.
 
