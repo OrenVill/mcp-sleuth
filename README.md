@@ -413,6 +413,30 @@ npm install -g github:OrenVill/mcp-sleuth
 
 Or download `dist.tgz` from a [GitHub Release](https://github.com/OrenVill/mcp-sleuth/releases) and serve it with any static host.
 
+
+## Code signing policy
+
+Free code signing on Windows provided by [SignPath.io](https://about.signpath.io),
+certificate by [SignPath Foundation](https://signpath.org).
+
+**Team roles**
+- Committers and reviewers: Oren Vill ([@OrenVill](https://github.com/OrenVill))
+- Approvers: Oren Vill ([@OrenVill](https://github.com/OrenVill))
+
+**Privacy policy**
+
+Sleuth is local-first. All state lives in `~/.mcp-sleuth/` on your machine.
+There is no account, no backend service, and no telemetry or analytics.
+
+Sleuth makes outbound network requests only to:
+- MCP servers you add yourself.
+- The LLM provider you configure for Agent Chat, using your own API key.
+  Prompts, tool schemas and tool results are sent to that provider and are
+  governed by its own privacy policy. Agent Chat transcripts are never persisted.
+- `api.github.com`, roughly every six hours, to check whether a newer release
+  exists. This sends no data about you or your servers, and can be disabled in
+  Settings.
+
 ## License
 
 MIT.
