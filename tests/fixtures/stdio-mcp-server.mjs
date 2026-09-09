@@ -16,5 +16,16 @@ server.registerTool(
   }),
 );
 
+server.registerTool(
+  'env_value',
+  {
+    description: 'Return the value of an environment variable this process was spawned with',
+    inputSchema: { name: z.string() },
+  },
+  async ({ name }) => ({
+    content: [{ type: 'text', text: process.env[name] ?? '' }],
+  }),
+);
+
 const transport = new StdioServerTransport();
 await server.connect(transport);

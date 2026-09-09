@@ -4,6 +4,8 @@ import { getHost } from '../lib/host';
 import type { LlmConfig, LlmProviderId } from '../lib/agent/types';
 import { Select } from './Select';
 import { Popover } from './Popover';
+import { SecretInput } from './SecretInput';
+import { maskStoredSecret, resolveStoredSecret } from '../lib/secretFields';
 
 interface Props {
   configs: LlmConfig[];
@@ -158,6 +160,7 @@ export function AgentModelPicker({
   if (draft) {
     const provider = PROVIDERS.find((p) => p.id === draft.provider) ?? PROVIDERS[0];
     const editing = configs.some((c) => c.id === draft.id);
+    const storedApiKey = configs.find((c) => c.id === draft.id)?.apiKey;
     return (
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
         <form
@@ -165,7 +168,7 @@ export function AgentModelPicker({
           className="w-full max-w-md space-y-3 bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto"
           onSubmit={(event) => {
             event.preventDefault();
-            onSaveConfig(draft);
+            onSaveConfig({ ...draft, apiKey: resolveStoredSecret(draft.apiKey, storedApiKey) });
             setDraft(null);
           }}
         >
@@ -233,15 +236,20 @@ export function AgentModelPicker({
             />
           </label>
 
-          <label className="block space-y-1">
-            <span className={LABEL}>API key (leave empty for local models)</span>
-            <input
-              type="password"
+          {/* Not a wrapping label: the field shares its row with a button. */}
+          <div className="space-y-1">
+            <label htmlFor="llm-api-key" className={`block ${LABEL}`}>
+              API key (leave empty for local models)
+            </label>
+            <SecretInput
+              id="llm-api-key"
+              label="API key"
               value={draft.apiKey ?? ''}
-              onChange={(e) => setDraft({ ...draft, apiKey: e.target.value || undefined })}
+              onChange={(value) => setDraft({ ...draft, apiKey: value || undefined })}
+              hasStored={Boolean(storedApiKey)}
               className={FIELD}
             />
-          </label>
+          </div>
 
           <div className="flex gap-2 pt-1">
             <button
@@ -397,7 +405,13 @@ export function AgentModelPicker({
             </PanelAction>
             {active && (
               <>
-                <PanelAction onClick={() => { close(); setDraft(active); }}>
+                <PanelAction
+                  onClick={() => {
+                    close();
+                    // The stored key stays in the vault; the form gets a marker.
+                    setDraft({ ...active, apiKey: maskStoredSecret(active.apiKey) });
+                  }}
+                >
                   Edit “{active.label}”
                 </PanelAction>
                 <PanelAction

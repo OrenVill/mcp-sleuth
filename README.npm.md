@@ -44,6 +44,8 @@ The explorer auto-connects, lists all available tools, and generates input forms
 **Stdio note:** stdio servers use a local Node bridge built into `mcp-sleuth`. You must run the app via **`mcp-sleuth`** (or `npm run dev` from source) — opening static files alone does not spawn subprocesses.
 
 - Add / edit / remove HTTP or stdio MCP servers — persisted to the encrypted vault under `~/.mcp-sleuth/`
+- Editing a server never shows you its stored secrets — a saved password, token, API key, or
+  environment value shows as `*****`, with **Change** to replace it
 - Stdio bridge for local command-based MCP servers (requires `mcp-sleuth` or `npm run dev`)
 - Local proxy mode for HTTP MCP servers that do not expose browser CORS headers
 - Auto-discovered tool list via `tools/list`

@@ -17,6 +17,12 @@ import { Logo } from './components/Logo';
 import { GlobalSearch } from './components/GlobalSearch';
 import { formatConnectionError } from './lib/connectionErrorMessage';
 import {
+  keepMarker,
+  maskAuthSecrets,
+  resolveAuthSecrets,
+  resolveEnvSecrets,
+} from './lib/secretFields';
+import {
   connect,
   connectStdio,
   disconnect,
@@ -344,6 +350,13 @@ export default function App() {
   function handleSubmit(values: ServerFormValues) {
     const transport = values.transport ?? 'http';
     const isStdio = transport === 'stdio';
+    const stored =
+      dialogMode === 'edit' && editingId ? servers.find((s) => s.id === editingId) : undefined;
+    // The form carries markers where a stored credential would be, never the
+    // credential itself. Resolve them here, against what is actually stored,
+    // before anything is saved or put on the wire.
+    const auth = isStdio ? undefined : resolveAuthSecrets(values.auth, stored?.auth);
+    const stdioEnv = isStdio ? resolveEnvSecrets(values.stdioEnv, stored?.stdioEnv) : undefined;
 
     if (dialogMode === 'add') {
       const existingIds = new Set(servers.map((s) => s.id));
@@ -353,11 +366,11 @@ export default function App() {
         name: values.name,
         url: isStdio ? '' : values.url,
         description: values.description,
-        auth: isStdio ? undefined : values.auth,
+        auth,
         proxyThroughLocal: isStdio ? undefined : values.proxyThroughLocal,
         transport,
         stdio: values.stdio,
-        stdioEnv: values.stdioEnv,
+        stdioEnv,
         custom: true,
         status: 'disconnected',
       };
@@ -369,11 +382,11 @@ export default function App() {
           ? {
               transport: 'stdio',
               stdio: values.stdio,
-              stdioEnv: values.stdioEnv,
+              stdioEnv,
             }
           : {
               url: values.url,
-              auth: values.auth,
+              auth,
               proxyThroughLocal: values.proxyThroughLocal,
             },
       );
@@ -381,8 +394,7 @@ export default function App() {
     }
 
     if (dialogMode === 'edit' && editingId) {
-      const target = servers.find((s) => s.id === editingId);
-      if (!target) {
+      if (!stored) {
         handleDialogClose();
         return;
       }
@@ -390,11 +402,11 @@ export default function App() {
         name: values.name,
         url: isStdio ? '' : values.url,
         description: values.description,
-        auth: isStdio ? undefined : values.auth,
+        auth,
         proxyThroughLocal: isStdio ? undefined : values.proxyThroughLocal,
         transport,
         stdio: values.stdio,
-        stdioEnv: values.stdioEnv,
+        stdioEnv,
       });
       handleDialogClose();
       void handleConnect(
@@ -403,11 +415,11 @@ export default function App() {
           ? {
               transport: 'stdio',
               stdio: values.stdio,
-              stdioEnv: values.stdioEnv,
+              stdioEnv,
             }
           : {
               url: values.url,
-              auth: values.auth,
+              auth,
               proxyThroughLocal: values.proxyThroughLocal,
             },
       );
@@ -438,12 +450,23 @@ export default function App() {
     }
   }
 
-  function stdioEnvRowsForDialog(server: ServerEntry): { key: string; value: string }[] {
+  /**
+   * Rows for the edit dialog. A stored value is replaced by a marker naming its
+   * own key: stdio environment entries routinely hold API keys, and the form is
+   * never given one.
+   */
+  function stdioEnvRowsForDialog(
+    server: ServerEntry,
+  ): { key: string; value: string; storedKey?: string }[] {
     const env = server.stdioEnv ?? {};
     const orderedKeys = server.stdio?.envKeys?.length
       ? server.stdio.envKeys
       : Object.keys(env);
-    const rows = orderedKeys.map((key) => ({ key, value: env[key] ?? '' }));
+    const rows = orderedKeys.map((key) =>
+      env[key]
+        ? { key, value: keepMarker(key), storedKey: key }
+        : { key, value: '' },
+    );
     return rows.length > 0 ? rows : [{ key: '', value: '' }];
   }
 
@@ -453,7 +476,7 @@ export default function App() {
           name: editingServer.name,
           url: editingServer.url,
           description: editingServer.description,
-          auth: editingServer.auth,
+          auth: maskAuthSecrets(editingServer.auth),
           proxyThroughLocal: editingServer.proxyThroughLocal ?? true,
           transport: editingServer.transport ?? 'http',
           stdioCommand: editingServer.stdio?.command ?? '',
