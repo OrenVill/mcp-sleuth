@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 725 tests
+npm test             # vitest run — 758 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -69,20 +69,21 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 124 tests across 26 spec files must pass. Any failure blocks the release.
+All 127 tests across 27 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.26 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.27 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
 Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + echo
 tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
-Journal), error handling, the absence of the desktop update notice, and Agent Chat.
+Journal), error handling, the absence of the desktop update notice, Agent Chat, and stored
+secrets never reaching an edit form.
 
 **Fixture content is load-bearing.** `http-mcp-server.mjs` documents which spec depends
 on each tool, resource, and prompt it registers — read that header before changing it.
@@ -177,7 +178,39 @@ Enter, copying an assistant message as markdown source, the MCP scope popover, a
 composer. Steps 5, 7, 8, 9, and 10 above
 are the manual-only ones.
 
-> Spec numbers map to the `§3.N` sections above. The next spec added should be `27`.
+**§3.27 — Stored secrets never reach an edit form (manual pass):** A saved credential must not
+be recoverable from the UI that edits it. `type="password"` only draws dots; the value behind
+them is readable from devtools, a browser extension, the X11 primary selection on Linux, a
+password manager, and in some browsers an ordinary copy. So Sleuth never hands a stored
+credential to a form: the field shows `*****` read-only, with **Change** to replace it and
+**Keep existing** to go back.
+
+Check all three surfaces that hold a secret:
+
+1. **Server auth.** Add an HTTP server with **HTTP Basic** and a memorable password, then reopen
+   **Edit**. The password field must read `*****` and be read-only, while the username is still
+   shown. Select the field and copy it: you must get `*****`. Inspect the element and read its
+   `value`: `*****` again. The real password appearing in either place blocks release. Save
+   without touching the field and confirm the server still connects — an untouched field keeps
+   the stored credential rather than blanking it. Repeat for **Access token** and **API key**.
+2. **Stdio environment values.** Add a stdio server with an environment row holding a secret,
+   connect, then reopen **Edit**. The value reads `*****`; the key is still shown. Save without
+   touching it and confirm the subprocess is still spawned with the original value.
+3. **Agent Chat provider keys.** Add a model server with an API key, then reopen the picker and
+   choose **Edit**. The key field reads `*****` and is read-only.
+
+Then confirm the escape hatches work: **Change** empties the field so a new value can be typed,
+and **Keep existing** puts the mask back. A field left blank after **Change** clears the
+credential, which is how you remove one.
+
+**Release blockers:** a stored credential readable from an edit form by any means; an untouched
+field silently clearing the stored credential on save.
+
+Automated: `tests/release/27-stored-secrets.spec.ts`, covering all three surfaces plus the
+end-to-end proof that an untouched stdio environment value still reaches the spawned process.
+The unit tests for the marker logic are `src/lib/secretFields.test.ts`.
+
+> Spec numbers map to the `§3.N` sections above. The next spec added should be `28`.
 
 ---
 

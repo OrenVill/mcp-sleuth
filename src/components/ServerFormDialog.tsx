@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { ServerAuth, ServerStdioConfig, ServerTransport } from '../types';
 import { envRowsToMap, hasDuplicateEnvKeys, parseArgsLines } from '../lib/stdioParse';
+import { isKeptSecret } from '../lib/secretFields';
+import { SecretInput } from './SecretInput';
 
 export interface ServerFormValues {
   name: string;
@@ -13,7 +15,11 @@ export interface ServerFormValues {
   stdioCommand: string;
   stdioArgsText: string;
   stdioCwd: string;
-  stdioEnvRows: { key: string; value: string }[];
+  /**
+   * `storedKey` names the environment entry a row was masked from, so a row the
+   * user renames still resolves back to the right stored secret.
+   */
+  stdioEnvRows: { key: string; value: string; storedKey?: string }[];
   stdio?: ServerStdioConfig;
   stdioEnv?: Record<string, string>;
 }
@@ -30,9 +36,13 @@ interface Props {
 const inputClass =
   'mt-1.5 w-full px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm placeholder-zinc-600 focus:outline-none transition-colors';
 
+/** `inputClass` without the width and margin: a secret field shares its row with a button. */
+const secretInputClass =
+  'px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm placeholder-zinc-600 focus:outline-none transition-colors';
+
 /** UI-only distinction: both map to `ServerAuth.method === 'bearer'`. */
 type AuthChoice = 'none' | 'oauth_access' | 'bearer' | 'api_key' | 'basic';
-type EnvRow = { key: string; value: string };
+type EnvRow = { key: string; value: string; storedKey?: string };
 
 const EMPTY_ENV_ROW: EnvRow = { key: '', value: '' };
 
@@ -157,6 +167,11 @@ export function ServerFormDialog({
     initialValues?.auth?.method === 'basic' ? (initialValues.auth.basicUsername ?? '') : '';
   const initialBasicPassword =
     initialValues?.auth?.method === 'basic' ? (initialValues.auth.basicPassword ?? '') : '';
+  // A masked initial value is the form's only evidence that the server already
+  // has a credential here — it never receives the credential itself.
+  const hasStoredBearer = isKeptSecret(initialBearerToken);
+  const hasStoredApiKey = isKeptSecret(initialApiKeyValue);
+  const hasStoredBasicPassword = isKeptSecret(initialBasicPassword);
   const httpFieldsEdited =
     url !== initialUrl ||
     proxyThroughLocal !== initialProxyThroughLocal ||
@@ -435,8 +450,8 @@ export function ServerFormDialog({
             <fieldset className="space-y-2 min-w-0">
               <legend className="text-xs text-zinc-400 font-medium">Authentication</legend>
               <p className="text-[11px] text-zinc-600 leading-snug -mt-0.5">
-                Choose how requests to the MCP endpoint are authenticated. Credentials are stored in this browser
-                only (localStorage).
+                Choose how requests to the MCP endpoint are authenticated. Credentials are stored in
+                the encrypted vault, and are never shown again once saved.
               </p>
               <ul className="space-y-1.5" role="radiogroup" aria-label="Authentication method">
                 {AUTH_OPTIONS.map(({ choice, title }) => {
@@ -469,17 +484,22 @@ export function ServerFormDialog({
               )}
 
               {(authChoice === 'oauth_access' || authChoice === 'bearer') && (
-                <label className="block text-xs text-zinc-400 font-medium pt-1">
-                  {authChoice === 'oauth_access' ? 'OAuth access token' : 'Token'}
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    value={bearerToken}
-                    onChange={(e) => setBearerToken(e.target.value)}
-                    placeholder="••••••••••••"
-                    className={inputClass}
-                  />
-                </label>
+                <div className="pt-1">
+                  <label htmlFor="auth-bearer-token" className="block text-xs text-zinc-400 font-medium">
+                    {authChoice === 'oauth_access' ? 'OAuth access token' : 'Token'}
+                  </label>
+                  <div className="mt-1.5">
+                    <SecretInput
+                      id="auth-bearer-token"
+                      label={authChoice === 'oauth_access' ? 'OAuth access token' : 'Token'}
+                      value={bearerToken}
+                      onChange={setBearerToken}
+                      hasStored={hasStoredBearer}
+                      placeholder="••••••••••••"
+                      className={secretInputClass}
+                    />
+                  </div>
+                </div>
               )}
 
               {authChoice === 'api_key' && (
@@ -494,17 +514,22 @@ export function ServerFormDialog({
                       className={`${inputClass} font-mono text-xs`}
                     />
                   </label>
-                  <label className="block text-xs text-zinc-400 font-medium">
-                    API key
-                    <input
-                      type="password"
-                      autoComplete="off"
-                      value={apiKeyValue}
-                      onChange={(e) => setApiKeyValue(e.target.value)}
-                      placeholder="••••••••••••"
-                      className={inputClass}
-                    />
-                  </label>
+                  <div>
+                    <label htmlFor="auth-api-key" className="block text-xs text-zinc-400 font-medium">
+                      API key
+                    </label>
+                    <div className="mt-1.5">
+                      <SecretInput
+                        id="auth-api-key"
+                        label="API key"
+                        value={apiKeyValue}
+                        onChange={setApiKeyValue}
+                        hasStored={hasStoredApiKey}
+                        placeholder="••••••••••••"
+                        className={secretInputClass}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -520,16 +545,22 @@ export function ServerFormDialog({
                       className={inputClass}
                     />
                   </label>
-                  <label className="block text-xs text-zinc-400 font-medium">
-                    Password
-                    <input
-                      type="password"
-                      autoComplete="new-password"
-                      value={basicPassword}
-                      onChange={(e) => setBasicPassword(e.target.value)}
-                      className={inputClass}
-                    />
-                  </label>
+                  <div>
+                    <label htmlFor="auth-basic-password" className="block text-xs text-zinc-400 font-medium">
+                      Password
+                    </label>
+                    <div className="mt-1.5">
+                      <SecretInput
+                        id="auth-basic-password"
+                        label="Password"
+                        value={basicPassword}
+                        onChange={setBasicPassword}
+                        hasStored={hasStoredBasicPassword}
+                        autoComplete="new-password"
+                        className={secretInputClass}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
             </fieldset>
@@ -584,17 +615,23 @@ export function ServerFormDialog({
                       className={`${inputClass} mt-1 font-mono text-xs`}
                     />
                   </label>
-                  <label className="block text-xs text-zinc-500">
-                    Value
-                    <input
-                      type="password"
-                      autoComplete="off"
-                      value={row.value}
-                      onChange={(e) => updateEnvRow(idx, { value: e.target.value })}
-                      placeholder="••••••••"
-                      className={`${inputClass} mt-1 font-mono text-xs`}
-                    />
-                  </label>
+                  <div>
+                    <label htmlFor={`stdio-env-value-${idx}`} className="block text-xs text-zinc-500">
+                      Value
+                    </label>
+                    <div className="mt-1">
+                      <SecretInput
+                        id={`stdio-env-value-${idx}`}
+                        label={row.key.trim() ? `value for ${row.key.trim()}` : 'value'}
+                        value={row.value}
+                        onChange={(value) => updateEnvRow(idx, { value })}
+                        storedKey={row.storedKey}
+                        hasStored={Boolean(row.storedKey)}
+                        placeholder="••••••••"
+                        className={`${secretInputClass} font-mono text-xs`}
+                      />
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeEnvRow(idx)}

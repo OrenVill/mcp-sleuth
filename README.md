@@ -247,6 +247,18 @@ Stdio servers run as a local subprocess on your machine. The explorer's Node ser
 
 Use the **✎** button next to a server to edit its name, transport settings, or description; **✕** removes it.
 
+### Editing a server never shows you its secrets
+
+A stored password, token, API key, or environment value is not put back into the edit form. The
+field shows `*****`, read-only, with **Change** to replace it and **Keep existing** to go back;
+leaving it blank after **Change** removes the credential. Saving a field you did not touch keeps
+what is already in the vault.
+
+This is deliberate. `type="password"` only draws dots, and the value behind them is readable from
+devtools, a browser extension, the primary selection on Linux, a password manager, and in some
+browsers an ordinary copy. Keeping the plaintext out of the page is the only version of this that
+actually holds. The same applies to the Agent Chat model-server API key.
+
 ## Agent Chat
 
 Every other trust surface in Sleuth — Permission Surface, Prompt Injection, Agent Readiness —
