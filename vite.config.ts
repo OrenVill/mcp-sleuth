@@ -8,6 +8,53 @@ import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
+import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
+
+/**
+ * The dev server exposes exactly the same intercepted endpoints as the CLI
+ * server, so it needs exactly the same provenance gate. Without it `npm run dev`
+ * would leave the stdio bridge and the MCP proxy open to any page the developer
+ * has in the same browser. The port is not pinned here because Vite picks it at
+ * runtime; the hostname rule is what stops DNS rebinding.
+ */
+function isInterceptedRequest(url: string): boolean {
+  return (
+    url === PROXY_PATH ||
+    url.startsWith(PROXY_PATH + '?') ||
+    isVaultStorageRequest(url) ||
+    isAppDataRequest(url) ||
+    isLlmProxyRequest(url) ||
+    url.startsWith(STDIO_BRIDGE_PREFIX)
+  );
+}
+
+function localEndpointGuard(req: IncomingMessage, res: ServerResponse, next: () => void) {
+  const url = req.url ?? '/';
+  if (!isInterceptedRequest(url)) {
+    next();
+    return;
+  }
+  const verdict = guardLocalRequest(req, { allowedHosts: allowedHostsFromEnv() });
+  if (!verdict.ok) {
+    console.error(`[mcp-sleuth] refused ${req.method} ${url.split('?')[0]} (${verdict.reason})`);
+    refuseLocalRequest(res);
+    return;
+  }
+  next();
+}
+
+function localEndpointGuardPlugin(): PluginOption {
+  return {
+    name: 'mcp-sleuth-local-endpoint-guard',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(localEndpointGuard);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(localEndpointGuard);
+    },
+  };
+}
 
 function vaultStorageMiddleware(
   req: IncomingMessage,
@@ -136,7 +183,15 @@ function mcpProxyPlugin(): PluginOption {
 }
 
 export default defineConfig({
-  plugins: [vaultStoragePlugin(), appDataPlugin(), llmProxyPlugin(), react(), tailwindcss(), mcpProxyPlugin()],
+  plugins: [
+    localEndpointGuardPlugin(),
+    vaultStoragePlugin(),
+    appDataPlugin(),
+    llmProxyPlugin(),
+    react(),
+    tailwindcss(),
+    mcpProxyPlugin(),
+  ],
   build: {
     rollupOptions: {
       output: {

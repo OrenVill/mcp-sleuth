@@ -39,7 +39,9 @@
     "app-data-handler.js",
     "app-data-handler.d.ts",
     "llm-proxy.js",
-    "llm-proxy.d.ts"
+    "llm-proxy.d.ts",
+    "request-guard.js",
+    "request-guard.d.ts"
   ],
   "scripts": {
     "dev": "vite",

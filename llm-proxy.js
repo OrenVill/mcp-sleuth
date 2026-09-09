@@ -1,5 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
+import { isSameOriginRequest } from './request-guard.js';
 
 export const LLM_PROXY_PATH = '/__llm_proxy';
 
@@ -38,26 +39,12 @@ export function isLlmProxyRequest(url) {
  * content-type dodges preflight, and we send no CORS headers to stop it),
  * reaching internal hosts at allowlisted paths.
  *
- * `Sec-Fetch-Site` is set by the browser and cannot be forged by page script,
- * so requiring same-origin is sufficient. It is absent for non-browser clients
- * such as curl and the unit tests, which are not the threat being modelled --
- * anything already running locally has more direct options than this proxy.
+ * This used to allow a request carrying neither `Sec-Fetch-Site` nor `Origin`,
+ * on the grounds that only non-browser clients omit both. A cross-origin
+ * no-cors GET omits both too on any engine predating Fetch Metadata, which made
+ * the gate a blind SSRF. It now fails closed; see request-guard.js.
  */
-export function isSameOriginRequest(req) {
-  const site = req.headers?.['sec-fetch-site'];
-  if (typeof site === 'string' && site !== 'same-origin') return false;
-
-  const origin = req.headers?.origin;
-  if (typeof origin === 'string' && origin.length > 0) {
-    const host = req.headers?.host;
-    try {
-      if (!host || new URL(origin).host !== host) return false;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-}
+export { isSameOriginRequest };
 
 export function isAllowedTarget(provider, targetUrl) {
   const patterns = ALLOWED_PATHS[provider];

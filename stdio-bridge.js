@@ -13,12 +13,19 @@ import {
   ToolListChangedNotificationSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 
+import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
+
 export const STDIO_BRIDGE_PREFIX = '/__mcp_stdio';
 const ID_RE = /^[a-zA-Z0-9_-]+$/;
 const MAX_BODY_BYTES = 1_048_576;
 export const sessions = new Map();
 
-/** Reject non-loopback clients — stdio bridge can spawn arbitrary processes. */
+/**
+ * Reject non-loopback clients. Necessary, and on its own nowhere near
+ * sufficient: a request the victim's browser makes for `https://evil.example`
+ * also arrives from 127.0.0.1, which made this endpoint a drive-by remote code
+ * execution. `guardStdioRequest` below is the check that actually matters.
+ */
 export function isLoopbackRequest(req) {
   const remote = req.socket?.remoteAddress;
   if (!remote) {
@@ -191,15 +198,35 @@ export async function startSession(serverId, { command, args, cwd, env }) {
   }
 }
 
+/**
+ * The gate on a route that names an executable and its argv.
+ *
+ * `/start` additionally demands `application/json`. Without it the request is a
+ * CORS simple request, dispatched with no preflight, so a hostile page could
+ * fire it and never need to read the reply — the process has already spawned.
+ */
+export function guardStdioRequest(req, action, options = {}) {
+  if (!isLoopbackRequest(req)) return { ok: false, reason: 'loopback' };
+  return guardLocalRequest(req, {
+    allowedHosts: allowedHostsFromEnv(),
+    ...options,
+    requireJson: action === 'start',
+  });
+}
+
 export async function handleStdioBridge(req, res) {
-  if (!isLoopbackRequest(req)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
-    res.end('Stdio bridge is only available on localhost');
+  const parsed = new URL(req.url ?? '/', 'http://placeholder.invalid');
+  const route = parseStdioPath(parsed.pathname);
+
+  const verdict = guardStdioRequest(req, route?.action);
+  if (!verdict.ok) {
+    console.error(
+      `[mcp-sleuth] refused ${req.method} ${STDIO_BRIDGE_PREFIX} (${verdict.reason})`,
+    );
+    refuseLocalRequest(res);
     return;
   }
 
-  const parsed = new URL(req.url ?? '/', 'http://placeholder.invalid');
-  const route = parseStdioPath(parsed.pathname);
   if (!route || !isValidServerId(route.serverId)) {
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('Not Found');

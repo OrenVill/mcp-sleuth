@@ -3,9 +3,21 @@
  * Default path: ~/.mcp-sleuth/vault.json
  * Override directory: MCP_SLEUTH_DATA_DIR=/path/to/dir (file will be vault.json inside it).
  */
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { getDataDir } from './data-dir.js';
+import { readFile, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { getDataDir, writePrivateFile } from './data-dir.js';
+
+/**
+ * A raw fs error names the data directory and therefore the account it belongs
+ * to. That belongs in the operator's log, not in a response body.
+ */
+function fail(res, err) {
+  console.error('[mcp-sleuth] vault storage:', err instanceof Error ? err.message : String(err));
+  if (!res.headersSent) {
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+  }
+  res.end('Internal Server Error');
+}
 
 export const VAULT_STORAGE_URL_PATH = '/__vault_storage';
 
@@ -46,8 +58,7 @@ export async function handleVaultStorage(req, res) {
         });
         res.end('null');
       } else {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end(err.message);
+        fail(res, err);
       }
     }
     return;
@@ -56,13 +67,11 @@ export async function handleVaultStorage(req, res) {
   if (method === 'PUT') {
     try {
       const body = await readBody(req);
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, body, 'utf8');
+      await writePrivateFile(filePath, body);
       res.writeHead(204);
       res.end();
     } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end(err.message);
+      fail(res, err);
     }
     return;
   }
@@ -72,8 +81,7 @@ export async function handleVaultStorage(req, res) {
       await unlink(filePath);
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end(err.message);
+        fail(res, err);
         return;
       }
     }
