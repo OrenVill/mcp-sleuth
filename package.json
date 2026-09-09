@@ -41,7 +41,11 @@
     "llm-proxy.js",
     "llm-proxy.d.ts",
     "request-guard.js",
-    "request-guard.d.ts"
+    "request-guard.d.ts",
+    "content-security-policy.js",
+    "content-security-policy.d.ts",
+    "llm-targets.js",
+    "llm-targets.d.ts"
   ],
   "scripts": {
     "dev": "vite",

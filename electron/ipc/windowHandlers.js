@@ -1,5 +1,6 @@
 import { ipcMain, screen } from 'electron';
 import { CHANNELS, fail, ok } from './channels.js';
+import { UNTRUSTED_SENDER_CODE, isTrustedSender } from './senderGuard.js';
 
 /** Bounds to return to when un-maximising, keyed by window id. */
 const restoreBounds = new Map();
@@ -191,7 +192,10 @@ export function isMaximized(win) {
 }
 
 function handle(channel, fn) {
-  ipcMain.handle(channel, async (_event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!isTrustedSender(event)) {
+      return fail(new Error('Untrusted sender'), UNTRUSTED_SENDER_CODE);
+    }
     try {
       return ok(await fn(...args));
     } catch (err) {

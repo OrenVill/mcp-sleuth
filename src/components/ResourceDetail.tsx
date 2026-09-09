@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ResourceContent, ResourceEntry, ResourceTemplate, ServerEntry } from '../types';
 import { MarkdownPreview } from './MarkdownPreview';
+import { InertHtmlPreview } from './InertHtmlPreview';
 import { readResource } from '../lib/mcpClient';
 import { extractUriTemplateVars, fillUriTemplate } from '../lib/uriTemplate';
 import { CodeBlock } from './CodeBlock';
@@ -108,13 +109,7 @@ function ContentBlock({ content }: { content: ResourceContent }) {
         {view === 'preview' && isMarkdown ? (
           <MarkdownPreview source={content.text} />
         ) : view === 'preview' && isHtml ? (
-          <iframe
-            srcDoc={content.text}
-            sandbox="allow-scripts"
-            title={content.uri}
-            className="w-full block"
-            style={{ minHeight: '320px', border: 'none' }}
-          />
+          <InertHtmlPreview html={content.text} title={content.uri} />
         ) : (
           <CodeBlock code={content.text} lang={lang} />
         )}

@@ -27,6 +27,8 @@ files:
   - app-data-handler.js
   - daemon-lock.js
   - data-dir.js
+  - content-security-policy.js
+  - llm-targets.js
   - package.json
   - '!**/*.test.js'
   - '!**/*.map'

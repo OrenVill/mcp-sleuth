@@ -10,6 +10,7 @@ import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
 import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
+import { CONTENT_SECURITY_POLICY, CSP_HEADER_NAME } from './content-security-policy.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultRoot = resolve(here, 'dist');
@@ -158,11 +159,20 @@ export function start({
 
     try {
       const data = await readFile(file);
+      const isHtml = file.endsWith('.html');
       res.writeHead(200, {
         'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
         'Cache-Control': file.endsWith('index.html')
           ? 'no-cache'
           : 'public, max-age=31536000, immutable',
+        // Only the document carries it; assets inherit the document's policy.
+        ...(isHtml
+          ? {
+              [CSP_HEADER_NAME]: CONTENT_SECURITY_POLICY,
+              'X-Content-Type-Options': 'nosniff',
+              'Referrer-Policy': 'no-referrer',
+            }
+          : {}),
       });
       res.end(data);
     } catch {

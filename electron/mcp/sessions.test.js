@@ -125,3 +125,72 @@ describe('sessionManager', () => {
     expect(closed).toEqual(['srv-1']);
   });
 });
+
+describe('stdio spawn parameter validation', () => {
+  function manager() {
+    const created = [];
+    const sessions = createSessionManager({
+      createClient: fakeClient,
+      createHttpTransport: () => ({ close: vi.fn(async () => undefined) }),
+      createStdioTransport: (params) => {
+        created.push(params);
+        return { close: vi.fn(async () => undefined) };
+      },
+    });
+    return { sessions, created };
+  }
+
+  it('spawns an ordinary configuration', async () => {
+    const { sessions, created } = manager();
+    await sessions.connectStdio('srv', { command: 'node', args: ['server.js'] }, { TOKEN: 'x' });
+    expect(created[0].command).toBe('node');
+    expect(created[0].args).toEqual(['server.js']);
+  });
+
+  it('refuses a command that is not a string', async () => {
+    const { sessions, created } = manager();
+    await expect(sessions.connectStdio('srv', { command: 123 }, {})).rejects.toThrow(/command/i);
+    expect(created).toEqual([]);
+  });
+
+  it('refuses args that are not an array of strings', async () => {
+    const { sessions } = manager();
+    await expect(
+      sessions.connectStdio('srv', { command: 'node', args: [{}] }, {}),
+    ).rejects.toThrow(/args/i);
+  });
+
+  it('refuses an environment that injects a code-loading variable', async () => {
+    // A renderer with script execution could otherwise turn any spawn of a
+    // legitimate binary into arbitrary code by preloading its own library.
+    const { sessions, created } = manager();
+    await expect(
+      sessions.connectStdio('srv', { command: 'node' }, { LD_PRELOAD: '/tmp/evil.so' }),
+    ).rejects.toThrow(/LD_PRELOAD/);
+    expect(created).toEqual([]);
+  });
+
+  it('refuses NODE_OPTIONS and the macOS loader variable too', async () => {
+    const { sessions } = manager();
+    await expect(
+      sessions.connectStdio('srv', { command: 'node' }, { NODE_OPTIONS: '--require /tmp/e.js' }),
+    ).rejects.toThrow(/NODE_OPTIONS/);
+    await expect(
+      sessions.connectStdio('srv', { command: 'node' }, { DYLD_INSERT_LIBRARIES: '/tmp/e.dylib' }),
+    ).rejects.toThrow(/DYLD_INSERT_LIBRARIES/);
+  });
+
+  it('matches a loader variable whatever its case', async () => {
+    const { sessions } = manager();
+    await expect(
+      sessions.connectStdio('srv', { command: 'node' }, { ld_preload: '/tmp/evil.so' }),
+    ).rejects.toThrow(/ld_preload/i);
+  });
+
+  it('refuses an environment value that is not a string', async () => {
+    const { sessions } = manager();
+    await expect(
+      sessions.connectStdio('srv', { command: 'node' }, { TOKEN: { toString: 1 } }),
+    ).rejects.toThrow(/environment/i);
+  });
+});

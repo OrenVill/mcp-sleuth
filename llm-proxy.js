@@ -1,6 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
 import { isSameOriginRequest } from './request-guard.js';
+import { isAllowedTarget } from './llm-targets.js';
 
 export const LLM_PROXY_PATH = '/__llm_proxy';
 
@@ -13,11 +14,7 @@ export const LLM_PROXY_PATH = '/__llm_proxy';
  * The host is intentionally unconstrained: Ollama, LM Studio, vLLM and every
  * other self-hosted OpenAI-compatible server lives on an arbitrary host.
  */
-const ALLOWED_PATHS = {
-  openai: [/\/chat\/completions$/, /\/models$/],
-  anthropic: [/\/messages$/, /\/models$/],
-  gemini: [/:generateContent$/, /:streamGenerateContent$/, /\/models$/],
-};
+/** The allowlist itself lives in llm-targets.js, shared with the desktop build. */
 
 /** Headers we never forward upstream. */
 const STRIPPED = new Set([
@@ -46,11 +43,7 @@ export function isLlmProxyRequest(url) {
  */
 export { isSameOriginRequest };
 
-export function isAllowedTarget(provider, targetUrl) {
-  const patterns = ALLOWED_PATHS[provider];
-  if (!patterns) return false;
-  return patterns.some((pattern) => pattern.test(targetUrl.pathname));
-}
+export { isAllowedTarget };
 
 function reject(res, message) {
   res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });

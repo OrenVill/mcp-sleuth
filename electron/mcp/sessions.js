@@ -16,6 +16,66 @@ export function isValidServerId(id) {
   return typeof id === 'string' && SERVER_ID.test(id);
 }
 
+/**
+ * Environment variables that make a process load code chosen by whoever set
+ * them. The renderer names the command to spawn, which is already the strongest
+ * thing this IPC channel does; without this list it could also turn a spawn of
+ * a perfectly ordinary binary into arbitrary code execution.
+ */
+export const LOADER_ENV_VARS = [
+  'LD_PRELOAD',
+  'LD_AUDIT',
+  'LD_LIBRARY_PATH',
+  'DYLD_INSERT_LIBRARIES',
+  'DYLD_LIBRARY_PATH',
+  'DYLD_FRAMEWORK_PATH',
+  'NODE_OPTIONS',
+  'BASH_ENV',
+  'ENV',
+  'PYTHONSTARTUP',
+  'PERL5OPT',
+];
+
+const LOADER_ENV_SET = new Set(LOADER_ENV_VARS);
+
+/**
+ * Validate what the renderer asked to spawn.
+ *
+ * The renderer holds the decrypted vault, so the main process cannot
+ * independently know which stdio servers the user actually configured — it
+ * cannot allowlist the commands. What it can do is refuse a payload that is not
+ * shaped like a server configuration at all, which is what a compromised
+ * renderer would send. Throws with the offending field named.
+ */
+export function assertSpawnable(stdio, env) {
+  if (!stdio || typeof stdio !== 'object') {
+    throw new Error('stdio configuration must be an object');
+  }
+  if (typeof stdio.command !== 'string' || stdio.command.trim().length === 0) {
+    throw new Error('stdio command must be a non-empty string');
+  }
+  if (stdio.args !== undefined) {
+    if (!Array.isArray(stdio.args) || stdio.args.some((a) => typeof a !== 'string')) {
+      throw new Error('stdio args must be an array of strings');
+    }
+  }
+  if (stdio.cwd !== undefined && typeof stdio.cwd !== 'string') {
+    throw new Error('stdio cwd must be a string');
+  }
+  if (env === undefined || env === null) return;
+  if (typeof env !== 'object' || Array.isArray(env)) {
+    throw new Error('stdio environment must be an object');
+  }
+  for (const [key, value] of Object.entries(env)) {
+    if (LOADER_ENV_SET.has(key.toUpperCase())) {
+      throw new Error(`stdio environment may not set ${key}`);
+    }
+    if (typeof value !== 'string') {
+      throw new Error(`stdio environment value for ${key} must be a string`);
+    }
+  }
+}
+
 /** UTF-8 safe Base64 for HTTP Basic credentials beyond Latin-1. */
 function utf8ToBase64(value) {
   return Buffer.from(value, 'utf8').toString('base64');
@@ -111,6 +171,7 @@ export function createSessionManager(deps = createDefaultDeps()) {
 
     async connectStdio(serverId, stdio, env) {
       requireId(serverId);
+      assertSpawnable(stdio, env);
       await release(serverId);
       await open(
         serverId,

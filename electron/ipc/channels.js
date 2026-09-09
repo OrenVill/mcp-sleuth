@@ -53,6 +53,42 @@ export const CHANNELS = {
   llmError: 'mcp:llmError',
 };
 
+/**
+ * True when an IPC message came from Sleuth's own renderer document.
+ *
+ * A sandboxed frame gets no preload and so cannot reach IPC at all, which makes
+ * this belt to that braces: it is here so that no future change — a relaxed
+ * sandbox, a second BrowserWindow, a webview — silently hands the main process
+ * a caller that can name a command to spawn or a URL to fetch.
+ *
+ * Origin equality, not a prefix: `app://mcp-sleuth.evil.example` starts with the
+ * app origin as a string and is a different origin entirely.
+ */
+export function isTrustedSenderUrl(url, { appOrigin, devUrl } = {}) {
+  if (typeof url !== 'string' || url.length === 0) return false;
+  let origin;
+  try {
+    origin = new URL(url).origin;
+  } catch {
+    return false;
+  }
+  // A custom scheme can serialise its origin as "null" depending on how it was
+  // registered, so fall back to comparing the origin-shaped prefix exactly.
+  const originOf = (candidate) => {
+    try {
+      const parsed = new URL(candidate);
+      return parsed.origin === 'null' ? `${parsed.protocol}//${parsed.host}` : parsed.origin;
+    } catch {
+      return null;
+    }
+  };
+  const actual = origin === 'null' ? originOf(url) : origin;
+  if (actual === null) return false;
+  if (appOrigin && actual === originOf(appOrigin)) return true;
+  if (devUrl && actual === originOf(devUrl)) return true;
+  return false;
+}
+
 export function ok(value) {
   return { ok: true, value };
 }

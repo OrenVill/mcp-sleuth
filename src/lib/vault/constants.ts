@@ -18,5 +18,16 @@ export const IDB_RECORD_KEY = 'encrypted-servers';
 
 export const FORMAT_VERSION = 'vault-v1' as const;
 
-/** Tunable; spec suggests ≥ 310k — balance UX on slow devices. */
-export const PBKDF2_ITERATIONS = 310_000;
+/**
+ * PBKDF2-HMAC-SHA256 iterations for a newly created vault.
+ *
+ * 600k is the current OWASP figure; this was 310k, which was the 2023 one. It
+ * matters on the browser and CLI path, where the user types the passphrase and
+ * `vault.json` is the artefact an attacker would carry off and grind offline.
+ * It is irrelevant on the desktop auto-unlock path, where the passphrase is 32
+ * random bytes.
+ *
+ * Only new vaults are affected: every envelope records the iteration count it
+ * was written with, and unlock uses that, so an existing vault keeps opening.
+ */
+export const PBKDF2_ITERATIONS = 600_000;
