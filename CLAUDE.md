@@ -54,6 +54,8 @@ src/
 │   ├── ToolList.tsx              # middle column: Tools / Resources / Prompts tabs + search
 │   ├── ToolDetail.tsx            # right column: tool form + result display
 │   ├── SchemaForm.tsx            # JSON Schema → auto-generated form (string, number, bool, enum, JSON)
+│   ├── SecretInput.tsx           # credential field: shows a mask for a stored secret, never its
+│   │                             #   value; Change / Keep existing
 │   ├── ResultPane.tsx            # renders MCP tool call results (text, images, structured JSON)
 │   ├── ResourceList.tsx          # MCP resources tab list
 │   ├── ResourceDetail.tsx        # MCP resource content viewer
@@ -126,6 +128,8 @@ src/
     ├── agentReadiness.ts         # score a server 0–100 for agent-readiness heuristics, plus
     │                             #   real findings from Agent Chat runs (agent/observations)
     ├── connectionErrorMessage.ts # user-facing error message formatter for connect failures
+    ├── secretFields.ts           # keeps stored credentials out of edit forms: a form gets a
+    │                             #   marker, shows a mask, and the caller resolves it back
     ├── stdioParse.ts             # parse/serialize stdio command, args, env; bridge URL prefix
     ├── stdioSession.ts           # start a stdio session against the local bridge
     ├── windowControls.ts         # frameless-window min/max/close; deliberately OUTSIDE Host —
@@ -358,7 +362,7 @@ open/closed flag:
 
 Use TDD for all new behavior in `src/lib/` and `electron/`. Vitest covers
 `src/**/*.test.ts`, `*.test.js` at the repo root, `electron/**/*.test.js`, and
-`scripts/**/*.test.js` (725 tests). Electron
+`scripts/**/*.test.js` (758 tests). Electron
 modules inject their dependencies (`fs`, the SDK, the dialog) precisely so they are testable
 without launching Electron — keep it that way when adding to that tree.
 
@@ -382,6 +386,12 @@ asar. `package.json` must never gain a `main` field (see the Tech stack note abo
 Never record authentication material in any debugging view or log. `protocolTrace.ts` redacts
 payloads by matching key names against
 `/authorization|api[-_]?key|token|secret|password|bearer/i`.
+
+Never put a stored credential into a form either. `type="password"` draws dots; it is not a
+boundary, and the value behind it is readable from devtools, an extension, the X11 primary
+selection, and a password manager. An edit form receives a marker from `secretFields.ts`, renders
+`SECRET_MASK` through `SecretInput`, and the caller resolves the marker against what is stored.
+Any new credential field follows that path.
 
 ### File focus
 
@@ -414,7 +424,7 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-26 spec files, 124 tests. Runs against the **built `dist/`** served by `server.js` at
+27 spec files, 127 tests. Runs against the **built `dist/`** served by `server.js` at
 `http://127.0.0.1:4173`. Playwright starts that server, the MCP fixture
 (`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001`, and the scripted OpenAI-compatible LLM
 fixture (`tests/fixtures/llm-server.mjs`) on `127.0.0.1:3003` itself — no manual setup.
@@ -453,9 +463,10 @@ Spec numbering maps directly to release checklist sections (`§3.N`):
 | `24-error-handling.spec.ts` | Unhandled rejections and uncaught errors are reported, app stays usable |
 | `25-update-notifier.spec.ts` | The desktop update notice is absent from the browser build |
 | `26-agent-chat.spec.ts` | Agent Chat against the scripted LLM fixture: approval, denial, capture |
+| `27-stored-secrets.spec.ts` | A stored credential never reaches an edit form; an untouched field keeps it |
 
 The numbers are a naming convention, not a mechanism — nothing enforces them — but they map to
-the `§3.N` sections of the release checklist, so the next spec added should be `27`. If you
+the `§3.N` sections of the release checklist, so the next spec added should be `28`. If you
 renumber one, update the `§` title inside it and the section list in `SKILL.md` in the same
 change.
 
