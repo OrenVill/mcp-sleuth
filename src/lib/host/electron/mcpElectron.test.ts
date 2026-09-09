@@ -46,6 +46,22 @@ describe('connect', () => {
       'srv-1',
       'https://example.com/mcp',
       undefined,
+      undefined,
+    );
+  });
+
+  it('forwards the self-signed waiver, which main applies per server', async () => {
+    const host = createElectronMcpHost(bridge);
+    await host.connect('srv-1', 'https://box.local/mcp', undefined, true, {
+      allowSelfSigned: true,
+    });
+
+    expect(bridge.invoke).toHaveBeenCalledWith(
+      'mcp:connect',
+      'srv-1',
+      'https://box.local/mcp',
+      undefined,
+      { allowSelfSigned: true },
     );
   });
 
@@ -53,8 +69,10 @@ describe('connect', () => {
     const host = createElectronMcpHost(bridge);
     await host.connect('srv-1', 'https://example.com/mcp', undefined, true);
 
+    // channel, id, url, auth, options — and no proxy flag among them.
     const args = bridge.invoke.mock.calls[0];
-    expect(args).toHaveLength(4);
+    expect(args).toHaveLength(5);
+    expect(args).not.toContain(true);
   });
 
   it('marks the server connected in the local mirror', async () => {

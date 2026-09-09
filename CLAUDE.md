@@ -54,6 +54,7 @@ src/
 │   ├── ToolList.tsx              # middle column: Tools / Resources / Prompts tabs + search
 │   ├── ToolDetail.tsx            # right column: tool form + result display
 │   ├── SchemaForm.tsx            # JSON Schema → auto-generated form (string, number, bool, enum, JSON)
+│   ├── InertHtmlPreview.tsx      # an HTML resource from the server, rendered with scripts off
 │   ├── SecretInput.tsx           # credential field: shows a mask for a stored secret, never its
 │   │                             #   value; Change / Keep existing
 │   ├── ResultPane.tsx            # renders MCP tool call results (text, images, structured JSON)
@@ -206,14 +207,21 @@ electron/
 │                                 #   still exist or the Edit roles/copy-paste stop working
 ├── externalLinks.js              # only http(s) may reach the OS — link targets can come from an
 │                                 #   untrusted MCP server's descriptions or resources
-├── ipc/                          # channels.js (contract, Electron-free), mcpHandlers.js,
+├── ipc/                          # channels.js (contract, Electron-free), senderGuard.js,
+│                                 #   mcpHandlers.js,
 │                                 #   nativeHandlers.js, windowHandlers.js, updateHandlers.js,
 │                                 #   llmHandlers.js (Agent Chat provider fetches; bodies are
 │                                 #   never logged).
 │                                 #   Handlers return envelopes, never throw: errors do not
 │                                 #   survive IPC intact
 ├── mcp/sessions.js               # the live MCP client sessions; SDK wiring is injected so this
-│                                 #   is testable without sockets or subprocesses
+│                                 #   is testable without sockets or subprocesses. Validates what
+│                                 #   the renderer asked to spawn (shape, and no loader env vars):
+│                                 #   the vault lives in the renderer, so main cannot allowlist
+│                                 #   commands, but it can refuse a payload that is not a config
+├── mcp/insecureFetch.js          # a fetch over node:https that accepts a self-signed certificate
+│                                 #   for ONE named host. Electron's net.fetch cannot do this —
+│                                 #   a session's certificate verify proc is not consulted for it
 ├── update/                       # update notifier: version.js (semver compare), feed.js (the
 │                                 #   GitHub /releases/latest fetch), store.js (update-state.json),
 │                                 #   service.js (the schedule and every skip/dismiss rule),
@@ -263,10 +271,13 @@ runtime dependencies** except `stdio-bridge.js`, which needs the MCP SDK.
 
 | File | Purpose |
 |------|---------|
-| `server.js` | Zero-dep static file server for `dist/`. Proper MIME types, immutable cache headers for hashed assets, SPA fallback. Intercepts `/__mcp_proxy`, `/__mcp_stdio`, `/__app_data`, `/__vault_storage`. |
-| `proxy.js` | Rewrites browser MCP requests to real MCP server URLs; adds CORS headers. Called by `server.js` and by the Vite dev middleware. |
+| `server.js` | Zero-dep static file server for `dist/`. Proper MIME types, immutable cache headers for hashed assets, SPA fallback, CSP on HTML. Intercepts `/__mcp_proxy`, `/__mcp_stdio`, `/__app_data`, `/__vault_storage` — **behind `request-guard.js`, applied once before dispatch**. |
+| `request-guard.js` | The provenance gate for every intercepted endpoint: browser-set `Sec-Fetch-Site`/`Origin` (fails closed when both are absent) plus a pinned `Host` (an IP literal, `localhost`, the bound host, or `MCP_SLEUTH_ALLOWED_HOSTS`). The socket address is **not** a check: a request the victim's browser makes for any page also arrives from 127.0.0.1. |
+| `content-security-policy.js` | The policy served with the app's own HTML, by `server.js` and by Electron's `app://` handler. A header, not a meta tag, so the Vite dev server's HMR client still works. |
+| `llm-targets.js` | The provider/path allowlist for Agent Chat, shared by `llm-proxy.js` and `electron/ipc/llmHandlers.js` so the two builds cannot drift. |
+| `proxy.js` | Rewrites browser MCP requests to real MCP server URLs. Emits **no** CORS headers: its only legitimate caller is same-origin, and reflecting an origin made it a readable open proxy. Self-gates on `request-guard.js` as well, since it forwards to any host the caller names. `insecureTls=1` waives certificate verification for one request. Called by `server.js` and by the Vite dev middleware. |
 | `llm-proxy.js` | Forwards Agent Chat's provider requests from the browser build so the page never calls a provider cross-origin. Deliberately narrower than `proxy.js`: the request names a configured provider and the proxy accepts only the paths that provider exposes, requires a same-origin `Sec-Fetch-Site`, and never logs request or response bodies. Registered beside the other interceptors in `server.js` and in `vite.config.ts`. The desktop app does not use it — Electron fetches providers from the main process. |
-| `stdio-bridge.js` | Spawns a stdio MCP subprocess and fronts it as a same-origin streamable-HTTP endpoint under `/__mcp_stdio/<id>`, so the browser build reuses one MCP client for both transports. The desktop app does not use it — Electron spawns stdio servers directly. |
+| `stdio-bridge.js` | Spawns a stdio MCP subprocess and fronts it as a same-origin streamable-HTTP endpoint under `/__mcp_stdio/<id>`, so the browser build reuses one MCP client for both transports. `/start` names an executable and its argv, so it self-gates and additionally requires `application/json` — without that it is a CORS simple request, dispatched with no preflight. The desktop app does not use it — Electron spawns stdio servers directly. |
 | `data-dir.js` | Resolves the data directory (`MCP_SLEUTH_DATA_DIR`, then the pre-rename `MCP_EXPLORER_DATA_DIR`, then `~/.mcp-sleuth`) and performs the one-time non-destructive migration from the pre-rename directory. Every other store asks this module for its path. |
 | `app-data-handler.js` | Reads/writes gzipped bookmarks + history + journals at `<data dir>/data.gz`, outside the browser sandbox. |
 | `vault-file-handler.js` | Reads/writes the encrypted vault blob at `<data dir>/vault.json`. |
@@ -289,7 +300,7 @@ CLI and the desktop app at once is last-write-wins.
 
 | Store | Mechanism | What lives there |
 |-------|-----------|-----------------|
-| Server list + credentials | Encrypted vault (AES-GCM, PBKDF2) → `<data dir>/vault.json`; IndexedDB `mcp-sleuth` when no file API is reachable | Server URLs, names, transport config, API keys, bearer tokens, Basic auth |
+| Server list + credentials | Encrypted vault (AES-GCM, PBKDF2, 600k iterations for new vaults) → `<data dir>/vault.json`, written 0600 inside a 0700 directory; IndexedDB `mcp-sleuth` when no file API is reachable | Server URLs, names, transport config, the self-signed TLS choice, API keys, bearer tokens, Basic auth |
 | Bookmarks | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Bookmarked tool call IDs |
 | Call history | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Ring buffer of recent tool calls |
 | Observation journals | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Trust notes, tool annotations, approve/reject decisions |
@@ -362,7 +373,7 @@ open/closed flag:
 
 Use TDD for all new behavior in `src/lib/` and `electron/`. Vitest covers
 `src/**/*.test.ts`, `*.test.js` at the repo root, `electron/**/*.test.js`, and
-`scripts/**/*.test.js` (758 tests). Electron
+`scripts/**/*.test.js` (838 tests). Electron
 modules inject their dependencies (`fs`, the SDK, the dialog) precisely so they are testable
 without launching Electron — keep it that way when adding to that tree.
 
@@ -380,6 +391,33 @@ helpers are enough. The server-side files have zero runtime dependencies apart f
 `stdio-bridge.js` — keep it that way. `electron` and `electron-builder` are **devDependencies**;
 anything the packaged main process needs at runtime must be a real dependency and must reach the
 asar. `package.json` must never gain a `main` field (see the Tech stack note above).
+
+### Local endpoints are for the page, not an API
+
+Every endpoint the local server intercepts goes through `request-guard.js`, applied once in
+`server.js` and once in the Vite dev middleware, before dispatch. Never add an intercepted path
+that bypasses it, and never treat `req.socket.remoteAddress` as evidence of anything: a request
+the victim's browser makes on behalf of `evil.example` arrives from 127.0.0.1 too. That is how
+`/__mcp_stdio/<id>/start` became a drive-by remote code execution.
+
+An endpoint that forwards or spawns also self-gates, so it cannot be mounted somewhere without
+the check. Non-browser clients are refused; that is deliberate, and tests that call these
+endpoints from Node have to send an `Origin` (see `tests/release/helpers.ts`).
+
+### Untrusted content from a connected server
+
+Tool names, descriptions, schemas, results, resource URIs and resource bodies are all attacker
+input. `markdown.ts` escapes raw HTML and allowlists URL schemes; an HTML resource renders through
+`InertHtmlPreview`, which is fully sandboxed — **never** add `allow-scripts` back. The frame
+holds, but a page that reproduces Sleuth's own vault-unlock panel does not need to escape it.
+`content-security-policy.js` is the backstop behind both.
+
+### The Electron IPC surface
+
+The bridge lets its caller name a command to spawn and a URL to fetch, so it is the escalation
+path from any renderer script execution. Every handler checks the sending frame's origin via
+`senderGuard.js`, validates its arguments in main, and the LLM channels enforce the same
+provider/path allowlist the browser proxy does. A new channel follows all three.
 
 ### Auth material
 
@@ -424,7 +462,7 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-27 spec files, 127 tests. Runs against the **built `dist/`** served by `server.js` at
+29 spec files, 135 tests. Runs against the **built `dist/`** served by `server.js` at
 `http://127.0.0.1:4173`. Playwright starts that server, the MCP fixture
 (`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001`, and the scripted OpenAI-compatible LLM
 fixture (`tests/fixtures/llm-server.mjs`) on `127.0.0.1:3003` itself — no manual setup.
@@ -464,15 +502,17 @@ Spec numbering maps directly to release checklist sections (`§3.N`):
 | `25-update-notifier.spec.ts` | The desktop update notice is absent from the browser build |
 | `26-agent-chat.spec.ts` | Agent Chat against the scripted LLM fixture: approval, denial, capture |
 | `27-stored-secrets.spec.ts` | A stored credential never reaches an edit form; an untouched field keeps it |
+| `28-untrusted-content.spec.ts` | The HTML preview runs no script, the CSP is served, local endpoints refuse an unattributed caller |
+| `29-self-signed-tls.spec.ts` | The per-server self-signed certificate option, against a TLS fixture |
 
 The numbers are a naming convention, not a mechanism — nothing enforces them — but they map to
-the `§3.N` sections of the release checklist, so the next spec added should be `28`. If you
+the `§3.N` sections of the release checklist, so the next spec added should be `30`. If you
 renumber one, update the `§` title inside it and the section list in `SKILL.md` in the same
 change.
 
 ### Electron suite — `tests/electron/`
 
-8 spec files, 49 tests, driven by `playwright.electron.config.ts` against the packaged main
+9 spec files, 52 tests, driven by `playwright.electron.config.ts` against the packaged main
 process. Needs a display: on a headless machine use `xvfb-run -a`.
 
 ```bash
@@ -489,6 +529,7 @@ npm run test:e2e:electron                 # or: xvfb-run -a npm run test:e2e:ele
 | `06-dialogs.spec.ts` | In-app dialogs — vault reset uses `ConfirmDialog`, not browser chrome |
 | `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failure |
 | `08-agent-chat.spec.ts` | Agent Chat provider traffic straight from the main process — no proxy |
+| `09-self-signed-tls.spec.ts` | The self-signed certificate option, applied in main and scoped to one host |
 
 ---
 

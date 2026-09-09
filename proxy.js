@@ -53,6 +53,20 @@ function filterRequestHeaders(headers) {
   return out;
 }
 
+/**
+ * Whether to accept a certificate no public CA signed, for this request.
+ *
+ * A development or intranet MCP endpoint commonly has a self-signed
+ * certificate, and the browser cannot be told to accept one, so the decision
+ * has to be made here where the upstream request is built. The page sets the
+ * flag per server; nothing else can, because the provenance gate above admits
+ * no other caller. Exactly `1`, so a stray truthy query value cannot disable
+ * certificate checking by accident.
+ */
+export function tlsOptionsFor(searchParams) {
+  return searchParams.get('insecureTls') === '1' ? { rejectUnauthorized: false } : {};
+}
+
 /** A target URL is loggable only without its query string: it can hold a token. */
 export function safeTargetLabel(target) {
   try {
@@ -128,6 +142,7 @@ export function handleMcpProxy(req, res) {
       path: targetUrl.pathname + targetUrl.search,
       method: req.method,
       headers: filterRequestHeaders(req.headers),
+      ...tlsOptionsFor(parsed.searchParams),
     },
     (upRes) => {
       res.writeHead(upRes.statusCode ?? 502, {

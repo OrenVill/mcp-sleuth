@@ -9,6 +9,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { createInsecureFetch } from './insecureFetch.js';
 
 const SERVER_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
@@ -100,11 +101,19 @@ export function headersFromAuth(auth) {
 export function createDefaultDeps() {
   return {
     createClient: () => new Client({ name: 'mcp-sleuth', version: '0.1.0' }, { capabilities: {} }),
-    createHttpTransport: (url, auth) => {
+    createHttpTransport: (url, auth, options = {}) => {
+      const parsed = new URL(url);
       const headers = headersFromAuth(auth);
+      const init = {};
+      if (headers) init.requestInit = { headers };
+      if (options.allowSelfSigned) {
+        // Only this server's transport gets it, and only for this hostname.
+        // See insecureFetch.js for why net.fetch could not do the job.
+        init.fetch = createInsecureFetch(parsed.hostname);
+      }
       return new StreamableHTTPClientTransport(
-        new URL(url),
-        headers ? { requestInit: { headers } } : undefined,
+        parsed,
+        Object.keys(init).length > 0 ? init : undefined,
       );
     },
     createStdioTransport: (params) => new StdioClientTransport(params),
@@ -163,10 +172,10 @@ export function createSessionManager(deps = createDefaultDeps()) {
   }
 
   return {
-    async connect(serverId, url, auth) {
+    async connect(serverId, url, auth, options) {
       requireId(serverId);
       await release(serverId);
-      await open(serverId, deps.createHttpTransport(url, auth));
+      await open(serverId, deps.createHttpTransport(url, auth, options));
     },
 
     async connectStdio(serverId, stdio, env) {

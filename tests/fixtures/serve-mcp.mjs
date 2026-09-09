@@ -5,6 +5,7 @@
  * per request, so there is no session state to leak between specs.
  */
 import { createServer } from 'node:http';
+import { createServer as createTlsServer } from 'node:https';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 
 async function readJsonBody(req) {
@@ -20,10 +21,10 @@ async function readJsonBody(req) {
 
 /**
  * @param {() => import('@modelcontextprotocol/sdk/server/mcp.js').McpServer} buildServer
- * @param {{ port: number, host?: string, label: string }} options
+ * @param {{ port: number, host?: string, label: string, tls?: {key: Buffer, cert: Buffer} }} options
  */
-export function serveMcp(buildServer, { port, host = '127.0.0.1', label }) {
-  const httpServer = createServer(async (req, res) => {
+export function serveMcp(buildServer, { port, host = '127.0.0.1', label, tls }) {
+  const handler = async (req, res) => {
     // Permissive CORS so the explorer works with its local proxy on or off.
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin ?? '*');
     res.setHeader('Access-Control-Allow-Headers', '*');
@@ -63,10 +64,13 @@ export function serveMcp(buildServer, { port, host = '127.0.0.1', label }) {
       }
       res.end(err instanceof Error ? err.message : String(err));
     }
-  });
+  };
+
+  const httpServer = tls ? createTlsServer(tls, handler) : createServer(handler);
+  const scheme = tls ? 'https' : 'http';
 
   httpServer.listen(port, host, () => {
-    console.log(`${label} listening on http://${host}:${port}/mcp`);
+    console.log(`${label} listening on ${scheme}://${host}:${port}/mcp`);
   });
 
   return httpServer;

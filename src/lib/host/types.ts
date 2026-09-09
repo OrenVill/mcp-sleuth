@@ -12,6 +12,19 @@ import type {
 } from '../../types';
 
 /**
+ * Per-connection transport options that are not credentials.
+ *
+ * `allowSelfSigned` waives certificate verification for one server, which the
+ * user asks for explicitly and per server — a development or intranet MCP
+ * endpoint commonly has a certificate no public CA signed. It is honoured by
+ * the local proxy in the browser build and by the main process in the desktop
+ * build; a direct browser connection cannot waive the browser's own checks.
+ */
+export interface McpConnectOptions {
+  allowSelfSigned?: boolean;
+}
+
+/**
  * Transport-level MCP operations. Implementations own the live client sessions.
  * Every method throws on failure; protocol tracing is applied by the caller
  * (`src/lib/mcpClient.ts`), never by an implementation.
@@ -23,6 +36,7 @@ export interface McpHost {
     url: string,
     auth: ServerAuth | undefined,
     proxyThroughLocal: boolean,
+    options?: McpConnectOptions,
   ): Promise<void>;
   /** Open a session against a local stdio subprocess. */
   connectStdio(

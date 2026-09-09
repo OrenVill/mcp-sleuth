@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EventEmitter } from 'node:events';
-import { handleMcpProxy, PROXY_PATH, safeTargetLabel } from './proxy.js';
+import { handleMcpProxy, PROXY_PATH, safeTargetLabel, tlsOptionsFor } from './proxy.js';
 
 /** Headers a request from Sleuth's own page carries; the gate now demands them. */
 const PAGE_HEADERS = { host: '127.0.0.1:4173', 'sec-fetch-site': 'same-origin' };
@@ -106,5 +106,24 @@ describe('request header filtering', () => {
     expect(upstream.getHeader('cookie')).toBeUndefined();
     expect(upstream.getHeader('authorization')).toBe('Bearer t');
     upstream.destroy();
+  });
+});
+
+describe('self-signed TLS targets', () => {
+  it('verifies certificates by default', () => {
+    expect(tlsOptionsFor(new URLSearchParams(''))).toEqual({});
+  });
+
+  it('waives verification only when the page asks for it', () => {
+    // The page is the only caller the provenance gate admits, so this cannot
+    // be turned on by anything else in the browser.
+    expect(tlsOptionsFor(new URLSearchParams('insecureTls=1'))).toEqual({
+      rejectUnauthorized: false,
+    });
+  });
+
+  it('ignores any other value', () => {
+    expect(tlsOptionsFor(new URLSearchParams('insecureTls=0'))).toEqual({});
+    expect(tlsOptionsFor(new URLSearchParams('insecureTls=true'))).toEqual({});
   });
 });

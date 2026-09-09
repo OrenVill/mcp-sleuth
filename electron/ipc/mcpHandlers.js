@@ -17,7 +17,9 @@ function handle(channel, code, fn) {
 }
 
 export function registerMcpHandlers(sessions, getWindow) {
-  handle(CHANNELS.connect, 'E_CONNECT', (id, url, auth) => sessions.connect(id, url, auth));
+  handle(CHANNELS.connect, 'E_CONNECT', (id, url, auth, options) =>
+    sessions.connect(id, url, auth, options),
+  );
   handle(CHANNELS.connectStdio, 'E_CONNECT_STDIO', (id, stdio, env) =>
     sessions.connectStdio(id, stdio, env),
   );

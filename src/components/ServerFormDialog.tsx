@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { ServerAuth, ServerStdioConfig, ServerTransport } from '../types';
 import { envRowsToMap, hasDuplicateEnvKeys, parseArgsLines } from '../lib/stdioParse';
 import { isKeptSecret } from '../lib/secretFields';
+import { isHttpsUrl } from '../lib/serverUrl';
 import { SecretInput } from './SecretInput';
 
 export interface ServerFormValues {
@@ -11,6 +12,7 @@ export interface ServerFormValues {
   /** Omitted when authentication is “None”. */
   auth?: ServerAuth;
   proxyThroughLocal: boolean;
+  allowSelfSigned: boolean;
   transport: ServerTransport;
   stdioCommand: string;
   stdioArgsText: string;
@@ -45,6 +47,9 @@ type AuthChoice = 'none' | 'oauth_access' | 'bearer' | 'api_key' | 'basic';
 type EnvRow = { key: string; value: string; storedKey?: string };
 
 const EMPTY_ENV_ROW: EnvRow = { key: '', value: '' };
+
+/** True in the desktop build, where MCP leaves the main process and there is no proxy. */
+const isDesktop = typeof window !== 'undefined' && 'mcpSleuth' in window;
 
 const AUTH_OPTIONS: {
   choice: AuthChoice;
@@ -107,6 +112,7 @@ export function ServerFormDialog({
   const initialTransport = initialValues?.transport ?? 'http';
   const initialUrl = initialValues?.url ?? 'http://localhost:8000/mcp';
   const initialProxyThroughLocal = initialValues?.proxyThroughLocal ?? true;
+  const initialAllowSelfSigned = initialValues?.allowSelfSigned ?? false;
   const initialStdioCommand = initialValues?.stdioCommand ?? '';
   const initialStdioArgsText = initialValues?.stdioArgsText ?? '';
   const initialStdioCwd = initialValues?.stdioCwd ?? '';
@@ -116,6 +122,7 @@ export function ServerFormDialog({
   const [pendingTransport, setPendingTransport] = useState<ServerTransport | null>(null);
   const [url, setUrl] = useState(() => initialUrl);
   const [proxyThroughLocal, setProxyThroughLocal] = useState(() => initialProxyThroughLocal);
+  const [allowSelfSigned, setAllowSelfSigned] = useState(() => initialAllowSelfSigned);
   const [description, setDescription] = useState(() => initialValues?.description ?? '');
   const [authChoice, setAuthChoice] = useState<AuthChoice>(() =>
     choiceFromAuth(initialValues?.auth),
@@ -175,6 +182,7 @@ export function ServerFormDialog({
   const httpFieldsEdited =
     url !== initialUrl ||
     proxyThroughLocal !== initialProxyThroughLocal ||
+    allowSelfSigned !== initialAllowSelfSigned ||
     authChoice !== initialAuthChoice ||
     bearerToken !== initialBearerToken ||
     apiKeyHeader !== initialApiKeyHeader ||
@@ -253,6 +261,7 @@ export function ServerFormDialog({
       description: description.trim() || undefined,
       auth: transport === 'http' ? buildAuthPayload() : undefined,
       proxyThroughLocal,
+      allowSelfSigned,
       transport,
       stdioCommand,
       stdioArgsText,
@@ -446,6 +455,32 @@ export function ServerFormDialog({
                 </span>
               </span>
             </label>
+
+            {isHttpsUrl(url) && (
+              <label className="flex items-start gap-2.5 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={allowSelfSigned}
+                  onChange={(e) => setAllowSelfSigned(e.target.checked)}
+                  className="mt-0.5 accent-amber-500 shrink-0"
+                />
+                <span>
+                  <span className="block text-sm text-zinc-200 leading-tight">
+                    Allow self-signed certificate
+                  </span>
+                  <span className="block text-[11px] text-zinc-500 leading-snug mt-1">
+                    Skips certificate verification for this server only. For a development or
+                    intranet endpoint whose certificate no public CA signed.
+                  </span>
+                  {allowSelfSigned && !proxyThroughLocal && !isDesktop && (
+                    <span className="block text-[11px] text-amber-500/90 leading-snug mt-1.5">
+                      Turn on “Proxy through local server” as well: a browser applies its own
+                      certificate checks to a direct connection and a page cannot waive them.
+                    </span>
+                  )}
+                </span>
+              </label>
+            )}
 
             <fieldset className="space-y-2 min-w-0">
               <legend className="text-xs text-zinc-400 font-medium">Authentication</legend>

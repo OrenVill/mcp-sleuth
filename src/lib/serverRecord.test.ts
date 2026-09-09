@@ -65,3 +65,27 @@ describe('makeId', () => {
     expect(makeId('A', new Set(['a', 'a-2', 'a-3']))).toBe('a-4');
   });
 });
+
+describe('self-signed certificate waiver', () => {
+  it('is off for a server stored before the option existed', () => {
+    const [entry] = fromStoredServers([
+      { id: 'a', name: 'A', url: 'https://box.local/mcp', custom: true },
+    ]);
+    expect(entry.allowSelfSigned).toBe(false);
+  });
+
+  it('round-trips when the user turned it on', () => {
+    const [entry] = fromStoredServers([
+      { id: 'a', name: 'A', url: 'https://box.local/mcp', custom: true, allowSelfSigned: true },
+    ]);
+    expect(entry.allowSelfSigned).toBe(true);
+    expect(toStoredServers([entry])[0].allowSelfSigned).toBe(true);
+  });
+
+  it('persists as false rather than undefined, so the vault records the choice', () => {
+    const stored = toStoredServers([
+      { id: 'a', name: 'A', url: 'https://x/mcp', status: 'disconnected' },
+    ]);
+    expect(stored[0].allowSelfSigned).toBe(false);
+  });
+});
