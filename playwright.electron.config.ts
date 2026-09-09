@@ -17,6 +17,14 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // TLS fixture for 09-self-signed-tls, with a certificate no CA signed.
+      // `port` not `url`: a URL health check would have to trust it.
+      command: 'node tests/fixtures/https-mcp-server.mjs 3004',
+      port: 3004,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
       // Scripted OpenAI-compatible model for 08-agent-chat.
       // 3003, not 3002: playwright.config.ts runs meta-mcp-server.mjs on 3002,
       // and `reuseExistingServer` would let this fixture silently stand in for it.

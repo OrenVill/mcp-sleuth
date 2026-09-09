@@ -27,9 +27,28 @@ export function isSecureBackend(safeStorage) {
   }
 }
 
+/**
+ * The vault is encrypted and the device key is sealed by the OS keychain, but a
+ * world-readable copy is exactly what lets another local account carry the vault
+ * away and grind it offline. Owner-only, directory included.
+ */
+const PRIVATE_DIR_MODE = 0o700;
+const PRIVATE_FILE_MODE = 0o600;
+
 export function createSecretsStore({ fs, safeStorage, vaultPath, devicePath }) {
   async function ensureDir(filePath) {
-    await fs.mkdir(dirname(filePath), { recursive: true });
+    await fs.mkdir(dirname(filePath), { recursive: true, mode: PRIVATE_DIR_MODE });
+  }
+
+  /** `mode` applies on creation only, so a file an older version left readable
+   *  is narrowed explicitly. Best-effort: Windows has no POSIX modes. */
+  async function writePrivate(filePath, data) {
+    await fs.writeFile(filePath, data, { mode: PRIVATE_FILE_MODE });
+    try {
+      await fs.chmod?.(filePath, PRIVATE_FILE_MODE);
+    } catch {
+      /* not every platform has them */
+    }
   }
 
   return {
@@ -44,7 +63,7 @@ export function createSecretsStore({ fs, safeStorage, vaultPath, devicePath }) {
 
     async saveEnvelope(envelope) {
       await ensureDir(vaultPath);
-      await fs.writeFile(vaultPath, Buffer.from(JSON.stringify(envelope), 'utf8'));
+      await writePrivate(vaultPath, Buffer.from(JSON.stringify(envelope), 'utf8'));
     },
 
     async deleteEnvelope() {
@@ -68,7 +87,7 @@ export function createSecretsStore({ fs, safeStorage, vaultPath, devicePath }) {
 
       const passphrase = randomBytes(32).toString('base64');
       await ensureDir(devicePath);
-      await fs.writeFile(devicePath, safeStorage.encryptString(passphrase));
+      await writePrivate(devicePath, safeStorage.encryptString(passphrase));
       return passphrase;
     },
   };

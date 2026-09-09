@@ -1,9 +1,13 @@
 import { ipcMain } from 'electron';
 import { CHANNELS, fail, ok } from './channels.js';
 import { openExternalUrl } from '../externalLinks.js';
+import { UNTRUSTED_SENDER_CODE, isTrustedSender } from './senderGuard.js';
 
 function handle(channel, code, fn) {
-  ipcMain.handle(channel, async (_event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!isTrustedSender(event)) {
+      return fail(new Error('Untrusted sender'), UNTRUSTED_SENDER_CODE);
+    }
     try {
       return ok(await fn(...args));
     } catch (err) {

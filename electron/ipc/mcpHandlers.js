@@ -1,9 +1,13 @@
 import { ipcMain } from 'electron';
 import { CHANNELS, fail, ok } from './channels.js';
+import { UNTRUSTED_SENDER_CODE, isTrustedSender } from './senderGuard.js';
 
 /** Wrap a handler so every rejection crosses IPC as a structured envelope. */
 function handle(channel, code, fn) {
-  ipcMain.handle(channel, async (_event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!isTrustedSender(event)) {
+      return fail(new Error('Untrusted sender'), UNTRUSTED_SENDER_CODE);
+    }
     try {
       return ok(await fn(...args));
     } catch (err) {
@@ -13,7 +17,9 @@ function handle(channel, code, fn) {
 }
 
 export function registerMcpHandlers(sessions, getWindow) {
-  handle(CHANNELS.connect, 'E_CONNECT', (id, url, auth) => sessions.connect(id, url, auth));
+  handle(CHANNELS.connect, 'E_CONNECT', (id, url, auth, options) =>
+    sessions.connect(id, url, auth, options),
+  );
   handle(CHANNELS.connectStdio, 'E_CONNECT_STDIO', (id, stdio, env) =>
     sessions.connectStdio(id, stdio, env),
   );

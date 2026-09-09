@@ -1,5 +1,7 @@
 import http from 'node:http';
 import https from 'node:https';
+import { isSameOriginRequest } from './request-guard.js';
+import { isAllowedTarget } from './llm-targets.js';
 
 export const LLM_PROXY_PATH = '/__llm_proxy';
 
@@ -12,11 +14,7 @@ export const LLM_PROXY_PATH = '/__llm_proxy';
  * The host is intentionally unconstrained: Ollama, LM Studio, vLLM and every
  * other self-hosted OpenAI-compatible server lives on an arbitrary host.
  */
-const ALLOWED_PATHS = {
-  openai: [/\/chat\/completions$/, /\/models$/],
-  anthropic: [/\/messages$/, /\/models$/],
-  gemini: [/:generateContent$/, /:streamGenerateContent$/, /\/models$/],
-};
+/** The allowlist itself lives in llm-targets.js, shared with the desktop build. */
 
 /** Headers we never forward upstream. */
 const STRIPPED = new Set([
@@ -38,32 +36,14 @@ export function isLlmProxyRequest(url) {
  * content-type dodges preflight, and we send no CORS headers to stop it),
  * reaching internal hosts at allowlisted paths.
  *
- * `Sec-Fetch-Site` is set by the browser and cannot be forged by page script,
- * so requiring same-origin is sufficient. It is absent for non-browser clients
- * such as curl and the unit tests, which are not the threat being modelled --
- * anything already running locally has more direct options than this proxy.
+ * This used to allow a request carrying neither `Sec-Fetch-Site` nor `Origin`,
+ * on the grounds that only non-browser clients omit both. A cross-origin
+ * no-cors GET omits both too on any engine predating Fetch Metadata, which made
+ * the gate a blind SSRF. It now fails closed; see request-guard.js.
  */
-export function isSameOriginRequest(req) {
-  const site = req.headers?.['sec-fetch-site'];
-  if (typeof site === 'string' && site !== 'same-origin') return false;
+export { isSameOriginRequest };
 
-  const origin = req.headers?.origin;
-  if (typeof origin === 'string' && origin.length > 0) {
-    const host = req.headers?.host;
-    try {
-      if (!host || new URL(origin).host !== host) return false;
-    } catch {
-      return false;
-    }
-  }
-  return true;
-}
-
-export function isAllowedTarget(provider, targetUrl) {
-  const patterns = ALLOWED_PATHS[provider];
-  if (!patterns) return false;
-  return patterns.some((pattern) => pattern.test(targetUrl.pathname));
-}
+export { isAllowedTarget };
 
 function reject(res, message) {
   res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });

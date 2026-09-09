@@ -10,6 +10,7 @@ export type StoredServer = Pick<
   | 'custom'
   | 'auth'
   | 'proxyThroughLocal'
+  | 'allowSelfSigned'
   | 'transport'
   | 'stdio'
   | 'stdioEnv'

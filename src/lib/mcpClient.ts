@@ -10,7 +10,7 @@ import type {
   ToolResult,
 } from '../types';
 import { getHost } from './host';
-import type { McpHost } from './host/types';
+import type { McpConnectOptions, McpHost } from './host/types';
 import { traceOptionalProtocolCall, traceProtocolCall } from './protocolTrace';
 
 function mcp(): McpHost {
@@ -32,11 +32,16 @@ export async function connect(
   url: string,
   auth?: ServerAuth,
   proxyThroughLocal = true,
+  options: McpConnectOptions = {},
 ): Promise<ToolDef[]> {
   const host = mcp();
   await traceProtocolCall(
-    { serverId, method: 'initialize', params: { url, proxyThroughLocal } },
-    () => host.connect(serverId, url, auth, proxyThroughLocal),
+    {
+      serverId,
+      method: 'initialize',
+      params: { url, proxyThroughLocal, allowSelfSigned: options.allowSelfSigned ?? false },
+    },
+    () => host.connect(serverId, url, auth, proxyThroughLocal, options),
   );
   return traceProtocolCall({ serverId, method: 'tools/list' }, () => host.listTools(serverId));
 }

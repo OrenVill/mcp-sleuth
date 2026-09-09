@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ToolContent, ToolResult } from '../types';
 import { CodeBlock } from './CodeBlock';
+import { InertHtmlPreview } from './InertHtmlPreview';
 import { MarkdownPreview } from './MarkdownPreview';
 import { detectLanguage, type SupportedLang } from '../lib/highlighter';
 
@@ -158,13 +159,7 @@ function ResourceBlock({ content }: { content: ToolContent }) {
       </div>
 
       {view === 'preview' && isHtml ? (
-        <iframe
-          srcDoc={text}
-          sandbox="allow-scripts"
-          title={uri}
-          className="w-full block"
-          style={{ minHeight: '320px', border: 'none' }}
-        />
+        <InertHtmlPreview html={text} title={uri} />
       ) : view === 'preview' && (isMarkdown || isSvg) ? (
         isMarkdown ? (
           <MarkdownPreview source={text} />

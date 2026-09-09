@@ -72,6 +72,7 @@ type ConnectOptions = {
   url?: string;
   auth?: ServerAuth;
   proxyThroughLocal?: boolean;
+  allowSelfSigned?: boolean;
   transport?: ServerTransport;
   stdio?: ServerStdioConfig;
   stdioEnv?: Record<string, string>;
@@ -184,6 +185,7 @@ export default function App() {
         const url = connection?.url ?? s?.url;
         const auth = connection !== undefined ? connection.auth : s?.auth;
         const proxyThroughLocal = connection?.proxyThroughLocal ?? s?.proxyThroughLocal ?? true;
+        const allowSelfSigned = connection?.allowSelfSigned ?? s?.allowSelfSigned ?? false;
         if (!url) {
           updateServer(id, {
             status: 'error',
@@ -191,7 +193,7 @@ export default function App() {
           });
           return;
         }
-        tools = await connect(id, url, auth, proxyThroughLocal);
+        tools = await connect(id, url, auth, proxyThroughLocal, { allowSelfSigned });
       }
       const metaTools = detectMetaTools(tools);
 
@@ -368,6 +370,7 @@ export default function App() {
         description: values.description,
         auth,
         proxyThroughLocal: isStdio ? undefined : values.proxyThroughLocal,
+        allowSelfSigned: isStdio ? undefined : values.allowSelfSigned,
         transport,
         stdio: values.stdio,
         stdioEnv,
@@ -388,6 +391,7 @@ export default function App() {
               url: values.url,
               auth,
               proxyThroughLocal: values.proxyThroughLocal,
+              allowSelfSigned: values.allowSelfSigned,
             },
       );
       return;
@@ -404,6 +408,7 @@ export default function App() {
         description: values.description,
         auth,
         proxyThroughLocal: isStdio ? undefined : values.proxyThroughLocal,
+        allowSelfSigned: isStdio ? undefined : values.allowSelfSigned,
         transport,
         stdio: values.stdio,
         stdioEnv,
@@ -421,6 +426,7 @@ export default function App() {
               url: values.url,
               auth,
               proxyThroughLocal: values.proxyThroughLocal,
+              allowSelfSigned: values.allowSelfSigned,
             },
       );
     }
@@ -478,6 +484,7 @@ export default function App() {
           description: editingServer.description,
           auth: maskAuthSecrets(editingServer.auth),
           proxyThroughLocal: editingServer.proxyThroughLocal ?? true,
+          allowSelfSigned: editingServer.allowSelfSigned ?? false,
           transport: editingServer.transport ?? 'http',
           stdioCommand: editingServer.stdio?.command ?? '',
           stdioArgsText: (editingServer.stdio?.args ?? []).join('\n'),

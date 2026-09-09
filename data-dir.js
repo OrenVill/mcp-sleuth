@@ -7,8 +7,42 @@
  * directory in place so a downgrade still works.
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { chmod, mkdir, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+
+/**
+ * The data directory holds the encrypted vault, the keychain-sealed device key,
+ * and the plaintext call history. The contents are encrypted or sealed, but a
+ * world-readable copy is exactly what lets another local account carry the vault
+ * away and attack it offline at leisure. Everything written here is owner-only.
+ */
+export const PRIVATE_DIR_MODE = 0o700;
+export const PRIVATE_FILE_MODE = 0o600;
+
+/** `mkdir -p` with an owner-only mode. */
+export async function mkdirPrivate(dir, deps = {}) {
+  const mkdirImpl = deps.mkdir ?? mkdir;
+  await mkdirImpl(dir, { recursive: true, mode: PRIVATE_DIR_MODE });
+}
+
+/**
+ * Write a data file owner-only, creating its directory the same way.
+ *
+ * The `mode` on `writeFile` applies only when the file is created, so a file
+ * left world-readable by an earlier version is narrowed explicitly. That chmod
+ * is best-effort: it is meaningless on Windows and must not fail a write.
+ */
+export async function writePrivateFile(filePath, data, deps = {}) {
+  await mkdirPrivate(dirname(filePath), deps);
+  const writeImpl = deps.writeFile ?? writeFile;
+  await writeImpl(filePath, data, { mode: PRIVATE_FILE_MODE });
+  try {
+    await (deps.chmod ?? chmod)(filePath, PRIVATE_FILE_MODE);
+  } catch {
+    /* best-effort: not every platform has POSIX modes */
+  }
+}
 
 export const DATA_DIR_NAME = '.mcp-sleuth';
 /** The pre-rename directory. Must NOT track DATA_DIR_NAME — it names data

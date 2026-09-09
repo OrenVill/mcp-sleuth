@@ -48,6 +48,7 @@ The explorer auto-connects, lists all available tools, and generates input forms
   environment value shows as `*****`, with **Change** to replace it
 - Stdio bridge for local command-based MCP servers (requires `mcp-sleuth` or `npm run dev`)
 - Local proxy mode for HTTP MCP servers that do not expose browser CORS headers
+- Per-server option to accept a self-signed TLS certificate, for development and intranet endpoints
 - Auto-discovered tool list via `tools/list`
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
 - Protocol Inspector timeline for debugging MCP calls, results, errors, and durations
