@@ -1,7 +1,7 @@
 /**
  * The directory holding the vault, app data, daemon lock, and window state.
  *
- * The product was renamed from MCP Explorer → Sleuth → MCP Detective. Existing
+ * The product was renamed from MCP Explorer through prior releases to MCP Detective. Existing
  * installs keep their data under older directory names, including encrypted
  * vaults that cannot be recreated, so this module migrates once — non-destructively,
  * leaving old directories in place so a downgrade still works.
@@ -104,7 +104,7 @@ export function migrateLegacyDataDir({
 }
 
 /**
- * Migrate from each predecessor directory in order (Sleuth, then Explorer).
+ * Migrate from each predecessor directory in order (prior release, then Explorer).
  */
 export function migrateAllLegacyDataDirs({
   dataDir = getDataDir(),

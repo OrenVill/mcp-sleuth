@@ -89,24 +89,45 @@ function loadFromLocalStorage(): AppData {
   }
 }
 
-function hasLegacyLocalStorage(): boolean {
+function hasAnyPreRenameLocalStorage(): boolean {
   try {
-    return (
-      readKey(LS_BOOKMARKS, PRE_RENAME_KEYS.bookmarks) !== null ||
-      readKey(LS_HISTORY, PRE_RENAME_KEYS.history) !== null
-    );
+    for (const group of Object.values(PRE_RENAME_KEYS)) {
+      for (const key of group) {
+        if (localStorage.getItem(key) !== null) return true;
+      }
+    }
+    return false;
   } catch {
     return false;
   }
 }
 
-function clearLegacyLocalStorage(): void {
+function clearPreRenameLocalStorage(): void {
   try {
-    localStorage.removeItem(LS_BOOKMARKS);
-    localStorage.removeItem(LS_HISTORY);
-    for (const key of PRE_RENAME_KEYS.bookmarks) localStorage.removeItem(key);
-    for (const key of PRE_RENAME_KEYS.history) localStorage.removeItem(key);
+    for (const group of Object.values(PRE_RENAME_KEYS)) {
+      for (const key of group) {
+        localStorage.removeItem(key);
+      }
+    }
   } catch { /* ignore */ }
+}
+
+/** Move legacy localStorage keys into the current store (file or unified key). */
+async function forwardLocalStorageIfNeeded(data: AppData): Promise<void> {
+  if (!hasAnyPreRenameLocalStorage()) return;
+  let fileOk = false;
+  try {
+    await persistToFile(data);
+    fileOk = true;
+  } catch { /* static build or server unavailable */ }
+  if (!fileOk) {
+    persistToLocalStorage(data);
+    try {
+      localStorage.removeItem(LS_BOOKMARKS);
+      localStorage.removeItem(LS_HISTORY);
+    } catch { /* ignore */ }
+  }
+  clearPreRenameLocalStorage();
 }
 
 async function persistToFile(data: AppData): Promise<void> {
@@ -146,19 +167,13 @@ export async function initAppData(): Promise<void> {
     const migrated = loadFromLocalStorage();
     cache = migrated;
     initialized = true;
-    if (hasLegacyLocalStorage()) {
-      let persistedOk = false;
-      try {
-        await persistToFile(cache);
-        persistedOk = true;
-      } catch { /* keep legacy keys as fallback */ }
-      if (persistedOk) clearLegacyLocalStorage();
-    }
+    await forwardLocalStorageIfNeeded(cache);
     return;
   } catch { /* fall through to localStorage */ }
 
   cache = loadFromLocalStorage();
   initialized = true;
+  await forwardLocalStorageIfNeeded(cache);
 }
 
 export function getAppData(): AppData {

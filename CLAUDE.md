@@ -311,10 +311,10 @@ Writes always use the current names.
 | Fallback | Where | Note |
 |----------|-------|------|
 | `~/.mcp-sleuth/` | `data-dir.js` | Copied into `~/.mcp-detective/` on first run. Copied, not moved, so a downgrade still works. |
-| `~/.mcp-explorer/` | `data-dir.js` | Copied into `~/.mcp-detective/` on first run after any Sleuth-era copy. Copied, not moved. |
+| `~/.mcp-explorer/` | `data-dir.js` | Copied into `~/.mcp-detective/` on first run after any prior-release copy. Copied, not moved. |
 | `MCP_SLEUTH_DATA_DIR` | `data-dir.js` | Still honoured as an override. |
 | `MCP_EXPLORER_DATA_DIR` | `data-dir.js` | Still honoured as an override. |
-| IndexedDB `mcp-sleuth` | `vault/constants.ts` (`LEGACY_SLEUTH_IDB_NAME`) | Read once so an existing browser vault is not orphaned. |
+| IndexedDB `mcp-sleuth` | `vault/constants.ts` (`PRIOR_IDB_NAME`) | Read once so an existing browser vault is not orphaned. |
 | IndexedDB `mcp-explorer` | `vault/constants.ts` (`LEGACY_IDB_NAME`) | Read once so an existing browser vault is not orphaned. |
 | `mcp-sleuth:bookmarks` / `:call-history` / `:app-data` | `appData.ts` (`PRE_RENAME_KEYS`) | Read-only; writes use the `mcp-detective:` keys. |
 | `mcp-explorer:bookmarks` / `:call-history` / `:app-data` | `appData.ts` (`PRE_RENAME_KEYS`) | Read-only; writes use the `mcp-detective:` keys. |

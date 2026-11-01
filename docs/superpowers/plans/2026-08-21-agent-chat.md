@@ -2255,7 +2255,7 @@ function llmProxyMiddleware(
 
 function llmProxyPlugin(): PluginOption {
   return {
-    name: 'mcp-sleuth-llm-proxy',
+    name: 'mcp-detective-llm-proxy',
     enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(llmProxyMiddleware);
@@ -4243,7 +4243,7 @@ import {
 } from '../lib/agent/types';
 
 const SYSTEM_PROMPT = [
-  'You are connected to one or more MCP servers through Sleuth, a tool for investigating them.',
+  'You are connected to one or more MCP servers through MCP Detective, a tool for investigating them.',
   'Use the provided tools to answer the user. Prefer a tool over guessing.',
   'The user reviews and may refuse any tool call. If a call is refused, read the reason and adapt',
   'rather than retrying the same call unchanged.',

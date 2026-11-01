@@ -11,8 +11,8 @@ export const LEGACY_SERVERS_STORAGE_KEY = 'mcp-explorer.servers.v1';
 export const VAULT_HTTP_PATH = '/__vault_storage';
 
 export const IDB_NAME = 'mcp-detective';
-/** Sleuth-era database, read once so an existing browser vault is not orphaned. */
-export const LEGACY_SLEUTH_IDB_NAME = 'mcp-sleuth';
+/** IndexedDB name for the prior major release (read-only migration source). */
+export const PRIOR_IDB_NAME = 'mcp-sleuth';
 /** Explorer-era database, read once so an existing browser vault is not orphaned. */
 export const LEGACY_IDB_NAME = 'mcp-explorer';
 export const IDB_STORE = 'vault';

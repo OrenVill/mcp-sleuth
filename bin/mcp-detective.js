@@ -90,8 +90,13 @@ function openBrowser(url) {
   }
 }
 
-// Carry a pre-rename ~/.mcp-detective vault across, once. Non-destructive.
-migrateAllLegacyDataDirs();
+// Carry predecessor data dirs across, once. Non-destructive.
+const migratedOnStart = migrateAllLegacyDataDirs();
+if (migratedOnStart.length > 0 && process.stdout.isTTY) {
+  console.log(
+    paint('2', `  migrated ${migratedOnStart.join(', ')} into ~/.mcp-detective/`),
+  );
+}
 
 const args = process.argv.slice(2);
 

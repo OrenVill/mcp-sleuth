@@ -217,7 +217,7 @@ describe('resolveFeedUrl', () => {
     );
   });
 
-  it('still honours the Sleuth-era update feed env var', () => {
+  it('still honours the prior-release update feed env var', () => {
     expect(resolveFeedUrl({ MCP_SLEUTH_UPDATE_FEED_URL: 'http://127.0.0.1:4599/latest' })).toBe(
       'http://127.0.0.1:4599/latest',
     );

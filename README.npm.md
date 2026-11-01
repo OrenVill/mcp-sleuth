@@ -12,11 +12,12 @@ The `-g` flag installs globally, making the `mcp-detective` command available an
 
 **Requirements:** Node.js 20 or later (`node --version`).
 
-> **Upgrading from an older install?** If you previously used `npm install -g mcp-detective` or `npm install -g github:OrenVill/mcp-detective`, uninstall first:
+> **Upgrading from `@orenvill/mcp-sleuth`?** Uninstall the old global package, then install MCP Detective. Your data under `~/.mcp-sleuth/` is copied automatically into `~/.mcp-detective/` the first time you run `mcp-detective` (or the desktop app):
 > ```bash
 > npm uninstall -g mcp-sleuth @orenvill/mcp-sleuth
 > npm install -g @orenvill/mcp-detective
 > ```
+> The `mcp-sleuth` command still works as an alias on the new package.
 
 ## Run
 

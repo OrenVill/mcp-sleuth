@@ -36,6 +36,19 @@ describe('appData (localStorage fallback path)', () => {
     expect(getAppData().bookmarks).toEqual(['s::t']);
   });
 
+  it('initAppData falls back to a prior-release bookmark key', async () => {
+    store['mcp-sleuth:bookmarks'] = JSON.stringify(['s::legacy']);
+    await initAppData();
+    expect(getAppData().bookmarks).toEqual(['s::legacy']);
+  });
+
+  it('initAppData forwards prior-release localStorage into the unified key', async () => {
+    store['mcp-sleuth:bookmarks'] = JSON.stringify(['s::legacy']);
+    await initAppData();
+    expect(store['mcp-detective:app-data']).toBeTruthy();
+    expect(store['mcp-sleuth:bookmarks']).toBeUndefined();
+  });
+
   it('initAppData loads from localStorage history key', async () => {
     const rec = { id: 'r1', timestamp: 1, serverId: 's', serverName: 'S', toolName: 't', args: {} };
     store['mcp-detective:call-history'] = JSON.stringify([rec]);

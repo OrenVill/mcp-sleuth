@@ -9,6 +9,7 @@ import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
+import { migrateAllLegacyDataDirs } from './data-dir.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultRoot = resolve(here, 'dist');
@@ -46,6 +47,13 @@ export function start({
   port = Number(process.env.PORT ?? 4173),
   host = process.env.HOST ?? '127.0.0.1',
 } = {}) {
+  const migratedOnDisk = migrateAllLegacyDataDirs();
+  if (migratedOnDisk.length > 0) {
+    console.log(
+      `  ${c('2', 'migrated')} ${migratedOnDisk.join(', ')} ${c('2', 'into ~/.mcp-detective/')}`,
+    );
+  }
+
   if (!existsSync(root)) {
     throw new Error(
       `mcp-detective: ${root} does not exist. Run "npm run build" (or "mcp-detective") first.`,

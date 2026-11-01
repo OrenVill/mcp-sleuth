@@ -18,7 +18,7 @@ describe('getDataDir', () => {
     expect(getDataDir({ MCP_DETECTIVE_DATA_DIR: '/a' })).toBe('/a');
   });
 
-  it('still honours the Sleuth env var', () => {
+  it('still honours the prior-release DATA_DIR env var', () => {
     expect(getDataDir({ MCP_SLEUTH_DATA_DIR: '/a' })).toBe('/a');
   });
 
@@ -37,7 +37,7 @@ describe('getDataDir', () => {
     ).toBe('/a');
   });
 
-  it('prefers Sleuth over Explorer when Detective is unset', () => {
+  it('prefers prior release over Explorer when Detective is unset', () => {
     expect(getDataDir({ MCP_SLEUTH_DATA_DIR: '/a', MCP_EXPLORER_DATA_DIR: '/b' })).toBe('/a');
   });
 
