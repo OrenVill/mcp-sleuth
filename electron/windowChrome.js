@@ -14,6 +14,12 @@ export const WINDOW_BACKGROUND = '#09090b';
 export const WINDOWS_OVERLAY_SYMBOL = '#a1a1aa';
 
 /**
+ * Right-hand strip reserved for native min/max/close when using titleBarOverlay.
+ * Must stay in sync with `src/index.css` (Windows title bar rules).
+ */
+export const WINDOWS_CAPTION_RESERVE_PX = 140;
+
+/**
  * Chrome-related `BrowserWindow` constructor options for the given platform.
  *
  * @param {NodeJS.Platform} platform

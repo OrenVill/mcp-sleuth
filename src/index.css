@@ -139,10 +139,34 @@ body::before {
   app-region: drag;
 }
 
-/* Windows draws native min/max/close in titleBarOverlay; keep header content clear. */
+/* Windows: native caption buttons live in titleBarOverlay on the right.
+   The header must not be a drag region there — drag over the overlay blocks
+   clicks on the native min/max/close buttons (Electron #76). */
 [data-host='electron'][data-platform='win32'] .app-header,
 [data-host='electron'][data-platform='win32'] .app-titlebar {
+  position: relative;
   padding-right: 140px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+[data-host='electron'][data-platform='win32'] .app-header::before,
+[data-host='electron'][data-platform='win32'] .app-titlebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 140px;
+  bottom: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
+  z-index: 0;
+}
+
+[data-host='electron'][data-platform='win32'] .app-header > *,
+[data-host='electron'][data-platform='win32'] .app-titlebar > * {
+  position: relative;
+  z-index: 1;
 }
 
 /* `label` is in this list because a checkbox pill is mostly label: without it
