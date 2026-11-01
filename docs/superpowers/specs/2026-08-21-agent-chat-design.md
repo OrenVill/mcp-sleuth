@@ -13,7 +13,7 @@ and Agent Readiness.
 
 ## Why
 
-Every trust surface Sleuth ships today — Permission Surface, Prompt Injection, Agent
+Every trust surface MCP Detective ships today — Permission Surface, Prompt Injection, Agent
 Readiness — infers risk from schemas and descriptions. None of them observe an agent. A
 chat closes that loop: Agent Readiness stops being a heuristic and gains real evidence, and
 the Observation Journal gets the automated source of findings it currently lacks.

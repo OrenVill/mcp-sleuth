@@ -13,14 +13,14 @@ const PAYLOAD = {
   tag_name: 'v1.2.0',
   name: 'v1.2.0',
   body: '### Features\n\n* stdio reconnect ([#41](https://github.com/x/y/pull/41))',
-  html_url: 'https://github.com/OrenVill/mcp-sleuth/releases/tag/v1.2.0',
+  html_url: 'https://github.com/OrenVill/mcp-detective/releases/tag/v1.2.0',
   published_at: '2026-08-21T10:00:00Z',
   draft: false,
   prerelease: false,
   assets: [
-    { name: 'Sleuth-1.2.0-arm64.dmg', state: 'uploaded' },
-    { name: 'Sleuth-1.2.0-x64.exe', state: 'uploaded' },
-    { name: 'Sleuth-1.2.0-amd64.deb', state: 'uploaded' },
+    { name: 'Detective-1.2.0-arm64.dmg', state: 'uploaded' },
+    { name: 'Detective-1.2.0-x64.exe', state: 'uploaded' },
+    { name: 'Detective-1.2.0-amd64.deb', state: 'uploaded' },
   ],
 };
 
@@ -88,11 +88,11 @@ describe('parseRelease', () => {
  */
 describe('hasInstallerAsset', () => {
   it.each([
-    ['a dmg', 'Sleuth-1.2.0-arm64.dmg'],
-    ['an exe', 'Sleuth-1.2.0-x64.exe'],
-    ['an AppImage', 'Sleuth-1.2.0-x86_64.AppImage'],
-    ['a deb', 'Sleuth-1.2.0-amd64.deb'],
-    ['a zip', 'Sleuth-1.2.0-arm64-mac.zip'],
+    ['a dmg', 'Detective-1.2.0-arm64.dmg'],
+    ['an exe', 'Detective-1.2.0-x64.exe'],
+    ['an AppImage', 'Detective-1.2.0-x86_64.AppImage'],
+    ['a deb', 'Detective-1.2.0-amd64.deb'],
+    ['a zip', 'Detective-1.2.0-arm64-mac.zip'],
   ])('accepts %s', (_label, name) => {
     expect(hasInstallerAsset({ assets: [{ name, state: 'uploaded' }] })).toBe(true);
   });
@@ -112,13 +112,13 @@ describe('hasInstallerAsset', () => {
 
   it('ignores an asset still uploading', () => {
     expect(
-      hasInstallerAsset({ assets: [{ name: 'Sleuth-1.2.0-x64.exe', state: 'starter' }] }),
+      hasInstallerAsset({ assets: [{ name: 'Detective-1.2.0-x64.exe', state: 'starter' }] }),
     ).toBe(false);
   });
 
   it('accepts a partial matrix — one platform failing still helps the others', () => {
     expect(
-      hasInstallerAsset({ assets: [{ name: 'Sleuth-1.2.0-amd64.deb', state: 'uploaded' }] }),
+      hasInstallerAsset({ assets: [{ name: 'Detective-1.2.0-amd64.deb', state: 'uploaded' }] }),
     ).toBe(true);
   });
 });
@@ -131,7 +131,7 @@ describe('fetchLatestRelease', () => {
     expect(fetchFn).toHaveBeenCalledTimes(1);
     const [url, init] = fetchFn.mock.calls[0];
     expect(url).toBe(DEFAULT_FEED_URL);
-    expect(init.headers['User-Agent']).toMatch(/sleuth/i);
+    expect(init.headers['User-Agent']).toMatch(/detective/i);
     expect(init.headers.Accept).toBe('application/vnd.github+json');
     expect(init.credentials).toBe('omit');
     expect(Object.keys(init.headers)).not.toContain('Authorization');
@@ -208,16 +208,22 @@ describe('fetchLatestRelease', () => {
 describe('resolveFeedUrl', () => {
   it('defaults to the project repository', () => {
     expect(resolveFeedUrl({})).toBe(DEFAULT_FEED_URL);
-    expect(DEFAULT_FEED_URL).toContain('OrenVill/mcp-sleuth');
+    expect(DEFAULT_FEED_URL).toContain('OrenVill/mcp-detective');
   });
 
-  it('honours MCP_SLEUTH_UPDATE_FEED_URL, for the e2e fixture and for forks', () => {
+  it('honours MCP_DETECTIVE_UPDATE_FEED_URL, for the e2e fixture and for forks', () => {
+    expect(resolveFeedUrl({ MCP_DETECTIVE_UPDATE_FEED_URL: 'http://127.0.0.1:4599/latest' })).toBe(
+      'http://127.0.0.1:4599/latest',
+    );
+  });
+
+  it('still honours the prior-release update feed env var', () => {
     expect(resolveFeedUrl({ MCP_SLEUTH_UPDATE_FEED_URL: 'http://127.0.0.1:4599/latest' })).toBe(
       'http://127.0.0.1:4599/latest',
     );
   });
 
   it('ignores a blank override', () => {
-    expect(resolveFeedUrl({ MCP_SLEUTH_UPDATE_FEED_URL: '   ' })).toBe(DEFAULT_FEED_URL);
+    expect(resolveFeedUrl({ MCP_DETECTIVE_UPDATE_FEED_URL: '   ' })).toBe(DEFAULT_FEED_URL);
   });
 });

@@ -7,7 +7,7 @@
   "include-component-in-tag": false,
   "packages": {
     ".": {
-      "package-name": "mcp-sleuth",
+      "package-name": "mcp-detective",
       "changelog-path": "CHANGELOG.md",
       "changelog-sections": [
         {

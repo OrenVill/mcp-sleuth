@@ -19,7 +19,7 @@ interface WindowBridge {
 
 function bridge(): WindowBridge | null {
   if (typeof window === 'undefined') return null;
-  const candidate = (window as unknown as { mcpSleuth?: WindowBridge }).mcpSleuth;
+  const candidate = (window as unknown as { mcpDetective?: WindowBridge }).mcpDetective;
   return candidate && typeof candidate.invoke === 'function' ? candidate : null;
 }
 

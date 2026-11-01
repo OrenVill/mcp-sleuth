@@ -31,7 +31,9 @@ export function registerNativeHandlers({ secrets, appData, getWindow }) {
     // directory. Never in a packaged app: the branch skips the save dialog,
     // which is the only consent gate on a renderer-driven file write, and it
     // used to accept `../` in the renderer-supplied filename.
-    const e2eDir = app.isPackaged ? undefined : process.env.MCP_SLEUTH_E2E_SAVE_DIR;
+    const e2eDir = app.isPackaged
+      ? undefined
+      : (process.env.MCP_DETECTIVE_E2E_SAVE_DIR ?? process.env.MCP_SLEUTH_E2E_SAVE_DIR);
     if (e2eDir) {
       const root = resolve(e2eDir);
       const target = resolve(join(root, filename));

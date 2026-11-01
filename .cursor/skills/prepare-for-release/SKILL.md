@@ -1,9 +1,9 @@
 ---
 name: prepare-for-release
-description: Pre-release checklist for mcp-sleuth. Run before merging the release-please PR or triggering npm publish. Covers build, tests, lint, the automated Playwright release suite, the Electron E2E suite, and desktop packaging.
+description: Pre-release checklist for mcp-detective. Run before merging the release-please PR or triggering npm publish. Covers build, tests, lint, the automated Playwright release suite, the Electron E2E suite, and desktop packaging.
 ---
 
-# Pre-Release Checklist — mcp-sleuth
+# Pre-Release Checklist — mcp-detective
 
 Use this skill before merging the release-please PR or publishing to npm.
 Work through every section in order. Do not mark the release ready until all sections pass.
@@ -31,21 +31,21 @@ The release ships two artefacts from one repo — the npm CLI package and the de
 Start the built output the way an end-user would (not the Vite dev server):
 
 ```bash
-mcp-sleuth --no-open   # or: node bin/mcp-sleuth.js --no-open
+mcp-detective --no-open   # or: node bin/mcp-detective.js --no-open
 ```
 
 Confirm:
 - The process starts without error.
-- It prints the ready line: `mcp-sleuth  ➜  http://127.0.0.1:4173/`
+- It prints the ready line: `mcp-detective  ➜  http://127.0.0.1:4173/`
 - `curl -s http://127.0.0.1:4173/ | head -5` returns HTML (not an error page).
 
 Then test the stop subcommand:
 
 ```bash
-mcp-sleuth stop
+mcp-detective stop
 ```
 
-Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-sleuth.js` for the lock path).
+Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-detective.js` for the lock path).
 
 **Why this matters:** The daemon/lock-file and stop subcommand were added in v0.6.0. If either is broken, the CLI is the user's primary entry point and the release is a regression.
 
@@ -112,12 +112,12 @@ any tool-capable model is enough, and needs no key:
 
 ```bash
 ollama serve            # then: ollama pull <a tool-capable model>
-npm run dev             # or: mcp-sleuth
+npm run dev             # or: mcp-detective
 ```
 
 With the fixture server (or any real server) connected, click **Chat** in the toolbar, add an LLM
 server (Type *OpenAI-compatible*, Base URL `http://127.0.0.1:11434/v1`, no API key), and confirm
-Sleuth lists that server's models rather than leaving the model box empty. Then, in order:
+MCP Detective lists that server's models rather than leaving the model box empty. Then, in order:
 
 1. **The header status line reads the state correctly** — "N tools exposed" once a model and at
    least one server are selected; "No model selected" / "No connected MCP server" / "No server in
@@ -182,7 +182,7 @@ are the manual-only ones.
 **§3.27 — Stored secrets never reach an edit form (manual pass):** A saved credential must not
 be recoverable from the UI that edits it. `type="password"` only draws dots; the value behind
 them is readable from devtools, a browser extension, the X11 primary selection on Linux, a
-password manager, and in some browsers an ordinary copy. So Sleuth never hands a stored
+password manager, and in some browsers an ordinary copy. So MCP Detective never hands a stored
 credential to a form: the field shows `*****` read-only, with **Change** to replace it and
 **Keep existing** to go back.
 
@@ -296,7 +296,7 @@ hand before a release, because it is the path real users take:
 
 ```bash
 node scripts/fake-release-feed.mjs &
-MCP_SLEUTH_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
+MCP_DETECTIVE_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
 ```
 
 Confirm, in order: the banner appears within ~10s of unlocking the vault and names the announced
@@ -307,7 +307,7 @@ writes `autoCheck: false` to `<data dir>/update-state.json`. Then run it with `-
 confirm a background check stays silent while **Check now** reports the rate limit.
 
 **A release with no installers must stay silent.** `release.yml` publishes the GitHub Release
-about ten minutes before the three-OS matrix finishes uploading installers. Sleuth refuses to
+about ten minutes before the three-OS matrix finishes uploading installers. MCP Detective refuses to
 announce a release until at least one installer is attached, so nobody is sent to an empty release
 page. Check it with `node scripts/fake-release-feed.mjs --building`: no banner, and **Check now**
 says the release is still being built. **After cutting a real release, confirm the installers
@@ -340,7 +340,7 @@ Then confirm the packaged binary actually launches, against a throwaway data dir
 check cannot touch a real vault:
 
 ```bash
-MCP_SLEUTH_DATA_DIR=$(mktemp -d) xvfb-run -a ./release/linux-unpacked/mcp-sleuth &
+MCP_DETECTIVE_DATA_DIR=$(mktemp -d) xvfb-run -a ./release/linux-unpacked/mcp-detective &
 sleep 6
 ```
 
@@ -354,7 +354,7 @@ node -e "if (require('./package.json').main) throw new Error('main must stay uns
 ```
 
 `files` in `package.json` is an allowlist too, so no Electron file should appear in the tarball,
-and `main` must stay unset or `require('@orenvill/mcp-sleuth')` would boot an Electron window.
+and `main` must stay unset or `require('@orenvill/mcp-detective')` would boot an Electron window.
 
 Full installers (`npm run package:linux`, or the 3-OS matrix in CI) are not required locally —
 the release workflow builds them. Run them locally only when debugging a CI packaging failure.
@@ -380,8 +380,8 @@ All of the above pass → merge the release-please PR. The GitHub Action will:
 4. Run the `desktop` job — a macOS / Windows / Linux matrix that packages the app and uploads the installers to the same tag
 
 After the Action completes, verify:
-- `https://www.npmjs.com/package/@orenvill/mcp-sleuth` shows the new version, and the README displayed is the npm-focused one (starts with install instructions, not the Layout section).
-- In a clean shell: `npm install -g @orenvill/mcp-sleuth@latest` → `mcp-sleuth` → confirms it opens the browser correctly.
-- The GitHub Release carries installers from all three platforms: `Sleuth-<version>-arm64.dmg` and `-x64.dmg` plus the matching `.zip`s, `Sleuth-<version>-x64.exe`, and `Sleuth-<version>-x64.AppImage` / `.deb`. The matrix uses `fail-fast: false`, so a missing platform means that one job failed while the others succeeded — check the run before announcing the release.
+- `https://www.npmjs.com/package/@orenvill/mcp-detective` shows the new version, and the README displayed is the npm-focused one (starts with install instructions, not the Layout section).
+- In a clean shell: `npm install -g @orenvill/mcp-detective@latest` → `mcp-detective` → confirms it opens the browser correctly.
+- The GitHub Release carries installers from all three platforms: `Detective-<version>-arm64.dmg` and `-x64.dmg` plus the matching `.zip`s, `Detective-<version>-x64.exe`, and `Detective-<version>-x64.AppImage` / `.deb`. The matrix uses `fail-fast: false`, so a missing platform means that one job failed while the others succeeded — check the run before announcing the release.
 
 The installers are unsigned and there is no auto-update, so users must be told to download manually. Confirm `README.md` still carries the unsigned-install click-through steps for all three platforms — a release that drops them turns into a bug report.

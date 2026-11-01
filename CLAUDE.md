@@ -1,8 +1,8 @@
-# Sleuth — Agent Rules
+# MCP Detective — Agent Rules
 
 ## What This Project Is
 
-Sleuth is a **Vite + React + TypeScript app** that connects to MCP (Model Context Protocol)
+MCP Detective is a **Vite + React + TypeScript app** that connects to MCP (Model Context Protocol)
 servers over streamable HTTP or stdio. Users add any MCP endpoint; the app auto-connects, lists
 all tools, and generates input forms so you can invoke any tool interactively. It also exposes
 prompts, resources, and a suite of developer tooling (Protocol Inspector, Schema Lab, Replay
@@ -11,7 +11,7 @@ Suites, Scenario Runner, Agent Readiness scoring, trust evaluators).
 The same renderer ships three ways:
 
 1. **Browser, from source** — `npm run dev`.
-2. **CLI** — the npm package `@orenvill/mcp-sleuth`. `bin/mcp-sleuth.js` runs a zero-dep Node
+2. **CLI** — the npm package `@orenvill/mcp-detective`. `bin/mcp-detective.js` runs a zero-dep Node
    static server (`server.js`) and opens the browser. A local proxy (`proxy.js`) rewrites browser
    MCP requests to bypass CORS, `stdio-bridge.js` fronts stdio subprocesses over same-origin
    HTTP, and two IPC-style file handlers (`vault-file-handler.js`, `app-data-handler.js`) are
@@ -237,7 +237,7 @@ electron/
 `src/lib/mcpClient.ts` keeps its public API and owns **all** protocol tracing; it delegates
 transport to a `Host`. The browser host runs the MCP SDK in the renderer; the Electron host
 forwards every operation over the preload bridge so the SDK runs in the main process instead.
-`getHost()` picks between them by detecting the preload bridge (`window.mcpSleuth`) at first use.
+`getHost()` picks between them by detecting the preload bridge (`window.mcpDetective`) at first use.
 
 Consequences for new code: put transport-level behavior behind `McpHost` so both builds get it,
 never put tracing inside a host implementation, and remember that a host method must be
@@ -278,10 +278,10 @@ runtime dependencies** except `stdio-bridge.js`, which needs the MCP SDK.
 | `proxy.js` | Rewrites browser MCP requests to real MCP server URLs. Emits **no** CORS headers: its only legitimate caller is same-origin, and reflecting an origin made it a readable open proxy. Self-gates on `request-guard.js` as well, since it forwards to any host the caller names. `insecureTls=1` waives certificate verification for one request. Called by `server.js` and by the Vite dev middleware. |
 | `llm-proxy.js` | Forwards Agent Chat's provider requests from the browser build so the page never calls a provider cross-origin. Deliberately narrower than `proxy.js`: the request names a configured provider and the proxy accepts only the paths that provider exposes, requires a same-origin `Sec-Fetch-Site`, and never logs request or response bodies. Registered beside the other interceptors in `server.js` and in `vite.config.ts`. The desktop app does not use it — Electron fetches providers from the main process. |
 | `stdio-bridge.js` | Spawns a stdio MCP subprocess and fronts it as a same-origin streamable-HTTP endpoint under `/__mcp_stdio/<id>`, so the browser build reuses one MCP client for both transports. `/start` names an executable and its argv, so it self-gates and additionally requires `application/json` — without that it is a CORS simple request, dispatched with no preflight. The desktop app does not use it — Electron spawns stdio servers directly. |
-| `data-dir.js` | Resolves the data directory (`MCP_SLEUTH_DATA_DIR`, then the pre-rename `MCP_EXPLORER_DATA_DIR`, then `~/.mcp-sleuth`) and performs the one-time non-destructive migration from the pre-rename directory. Every other store asks this module for its path. |
+| `data-dir.js` | Resolves the data directory (`MCP_DETECTIVE_DATA_DIR`, then `MCP_SLEUTH_DATA_DIR`, then `MCP_EXPLORER_DATA_DIR`, then `~/.mcp-detective`) and performs one-time non-destructive migration from predecessor directories (`~/.mcp-sleuth`, then `~/.mcp-explorer`). Every other store asks this module for its path. |
 | `app-data-handler.js` | Reads/writes gzipped bookmarks + history + journals at `<data dir>/data.gz`, outside the browser sandbox. |
 | `vault-file-handler.js` | Reads/writes the encrypted vault blob at `<data dir>/vault.json`. |
-| `bin/mcp-sleuth.js` | CLI entry: builds if needed → starts `server.js` as a daemon → opens browser → handles `mcp-sleuth stop`. |
+| `bin/mcp-detective.js` | CLI entry: builds if needed → starts `server.js` as a daemon → opens browser → handles `mcp-detective stop`. |
 | `daemon-lock.js` | PID lock-file management (`<data dir>/daemon.json`) for the CLI daemon process. |
 
 These are also the files `electron-builder.yml` must list explicitly: `electron/main.js` and
@@ -293,14 +293,14 @@ and dies on launch — `node scripts/check-packaged-imports.mjs` exists to catch
 
 ## Persistence Model
 
-Everything on disk lives in one directory, `~/.mcp-sleuth/`, shared by the CLI and the desktop
-app. Override it with `MCP_SLEUTH_DATA_DIR`; `MCP_EXPLORER_DATA_DIR` is still honoured for
+Everything on disk lives in one directory, `~/.mcp-detective/`, shared by the CLI and the desktop
+app. Override it with `MCP_DETECTIVE_DATA_DIR`; `MCP_SLEUTH_DATA_DIR` and `MCP_EXPLORER_DATA_DIR` are still honoured for
 pre-rename scripts. Because both builds use the same files and nothing locks them, running the
 CLI and the desktop app at once is last-write-wins.
 
 | Store | Mechanism | What lives there |
 |-------|-----------|-----------------|
-| Server list + credentials | Encrypted vault (AES-GCM, PBKDF2, 600k iterations for new vaults) → `<data dir>/vault.json`, written 0600 inside a 0700 directory; IndexedDB `mcp-sleuth` when no file API is reachable | Server URLs, names, transport config, the self-signed TLS choice, API keys, bearer tokens, Basic auth |
+| Server list + credentials | Encrypted vault (AES-GCM, PBKDF2, 600k iterations for new vaults) → `<data dir>/vault.json`, written 0600 inside a 0700 directory; IndexedDB `mcp-detective` when no file API is reachable | Server URLs, names, transport config, the self-signed TLS choice, API keys, bearer tokens, Basic auth |
 | Bookmarks | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Bookmarked tool call IDs |
 | Call history | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Ring buffer of recent tool calls |
 | Observation journals | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Trust notes, tool annotations, approve/reject decisions |
@@ -321,10 +321,14 @@ Writes always use the current names.
 
 | Fallback | Where | Note |
 |----------|-------|------|
-| `~/.mcp-explorer/` | `data-dir.js` | Copied into `~/.mcp-sleuth/` on first run. Copied, not moved, so a downgrade still works. |
+| `~/.mcp-sleuth/` | `data-dir.js` | Copied into `~/.mcp-detective/` on first run. Copied, not moved, so a downgrade still works. |
+| `~/.mcp-explorer/` | `data-dir.js` | Copied into `~/.mcp-detective/` on first run after any prior-release copy. Copied, not moved. |
+| `MCP_SLEUTH_DATA_DIR` | `data-dir.js` | Still honoured as an override. |
 | `MCP_EXPLORER_DATA_DIR` | `data-dir.js` | Still honoured as an override. |
+| IndexedDB `mcp-sleuth` | `vault/constants.ts` (`PRIOR_IDB_NAME`) | Read once so an existing browser vault is not orphaned. |
 | IndexedDB `mcp-explorer` | `vault/constants.ts` (`LEGACY_IDB_NAME`) | Read once so an existing browser vault is not orphaned. |
-| `mcp-explorer:bookmarks` / `:call-history` / `:app-data` | `appData.ts` (`PRE_RENAME_KEYS`) | Read-only; writes use the `mcp-sleuth:` keys. |
+| `mcp-sleuth:bookmarks` / `:call-history` / `:app-data` | `appData.ts` (`PRE_RENAME_KEYS`) | Read-only; writes use the `mcp-detective:` keys. |
+| `mcp-explorer:bookmarks` / `:call-history` / `:app-data` | `appData.ts` (`PRE_RENAME_KEYS`) | Read-only; writes use the `mcp-detective:` keys. |
 | `mcp-explorer.servers.v1` | `vault/constants.ts` (`LEGACY_SERVERS_STORAGE_KEY`) | The pre-vault plaintext server list. **Deliberately NOT renamed** — it names data written by older versions, so renaming it would match nothing and silently drop the migration. |
 
 **Rule:** Keep persisted secrets inside the encrypted vault flow. Do not add new plaintext

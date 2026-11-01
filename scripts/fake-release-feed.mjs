@@ -3,11 +3,11 @@
  * A pretend GitHub "latest release" endpoint, for seeing the update notifier
  * without publishing a release.
  *
- * The notifier reads MCP_SLEUTH_UPDATE_FEED_URL when it is set, so pointing the
+ * The notifier reads MCP_DETECTIVE_UPDATE_FEED_URL when it is set, so pointing the
  * app at this server is the whole trick:
  *
  *   node scripts/fake-release-feed.mjs &
- *   MCP_SLEUTH_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
+ *   MCP_DETECTIVE_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
  *
  * By default it announces one minor version above whatever package.json says, so
  * the running app always sees an update. Flags:
@@ -49,22 +49,22 @@ const release = {
   name: `v${version}`,
   draft: false,
   prerelease: false,
-  html_url: `https://github.com/OrenVill/mcp-sleuth/releases/tag/v${version}`,
+  html_url: `https://github.com/OrenVill/mcp-detective/releases/tag/v${version}`,
   published_at: new Date().toISOString(),
-  // Sleuth refuses to announce a release with no installers attached, because
+  // MCP Detective refuses to announce a release with no installers attached, because
   // release.yml publishes the release ~10 minutes before the matrix uploads
   // them. Pass --building to see that state.
   assets: process.argv.includes('--building')
     ? []
     : [
-        { name: `Sleuth-${version}-arm64.dmg`, state: 'uploaded' },
-        { name: `Sleuth-${version}-x64.exe`, state: 'uploaded' },
-        { name: `Sleuth-${version}-amd64.deb`, state: 'uploaded' },
+        { name: `Detective-${version}-arm64.dmg`, state: 'uploaded' },
+        { name: `Detective-${version}-x64.exe`, state: 'uploaded' },
+        { name: `Detective-${version}-amd64.deb`, state: 'uploaded' },
       ],
   body: [
     '### Features',
     '',
-    '* **updates:** tell the user when a new version is out ([#42](https://github.com/OrenVill/mcp-sleuth/pull/42))',
+    '* **updates:** tell the user when a new version is out ([#42](https://github.com/OrenVill/mcp-detective/pull/42))',
     '* **stdio:** reconnect a subprocess that exits mid-session',
     '',
     '### Bug Fixes',
@@ -87,5 +87,5 @@ createServer((req, res) => {
   console.log(`fake-release-feed: ${req.url} -> v${version}`);
 }).listen(port, '127.0.0.1', () => {
   console.log(`fake-release-feed: announcing v${version} (installed: v${pkg.version})`);
-  console.log(`  MCP_SLEUTH_UPDATE_FEED_URL=http://127.0.0.1:${port}/releases/latest`);
+  console.log(`  MCP_DETECTIVE_UPDATE_FEED_URL=http://127.0.0.1:${port}/releases/latest`);
 });

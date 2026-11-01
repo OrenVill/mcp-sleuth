@@ -54,7 +54,7 @@ export function VersionPill({ update }: { update: UpdateController }) {
         data-testid="version-pill"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        title={available ? `Sleuth ${status.latestVersion} is available` : 'Version'}
+        title={available ? `Detective ${status.latestVersion} is available` : 'Version'}
         className={`text-xs px-2 py-0.5 rounded-full border transition-colors font-mono ${
           available
             ? 'bg-violet-950/60 border-violet-700/70 text-violet-200 hover:border-violet-500'
@@ -69,7 +69,7 @@ export function VersionPill({ update }: { update: UpdateController }) {
           data-testid="version-popover"
           className="absolute left-0 top-full mt-2 z-50 w-64 rounded-lg border border-zinc-800 bg-zinc-950 shadow-xl shadow-black/40 p-3 text-xs"
         >
-          <div className="text-zinc-200 font-medium">Sleuth {status.currentVersion}</div>
+          <div className="text-zinc-200 font-medium">Detective {status.currentVersion}</div>
 
           <div className="mt-1 text-zinc-500">
             {available ? (

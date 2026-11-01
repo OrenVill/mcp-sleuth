@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-    console.error('sleuth: render failed', error, info.componentStack);
+    console.error('detective: render failed', error, info.componentStack);
   }
 
   private reset = () => this.setState({ error: null });

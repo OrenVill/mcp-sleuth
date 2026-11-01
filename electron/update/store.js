@@ -3,7 +3,7 @@
  * answered for.
  *
  * A sibling of window-state.json in the shared data directory, so
- * MCP_SLEUTH_DATA_DIR keeps working and no new directory is invented. Not the
+ * MCP_DETECTIVE_DATA_DIR keeps working and no new directory is invented. Not the
  * vault — there is no secret here — and not data.gz, which is renderer-owned and
  * unreachable until the vault is unlocked. The check runs before that.
  *

@@ -6,7 +6,7 @@ const RELEASE = {
   version: '1.2.0',
   name: 'v1.2.0',
   notes: '### Features\n* stdio reconnect',
-  url: 'https://github.com/OrenVill/mcp-sleuth/releases/tag/v1.2.0',
+  url: 'https://github.com/OrenVill/mcp-detective/releases/tag/v1.2.0',
   publishedAt: '2026-08-21T10:00:00Z',
 };
 

@@ -177,7 +177,7 @@ export function AgentModelPicker({
               {editing ? 'Edit LLM server' : 'Add an LLM server'}
             </h3>
             <p className="text-[11px] text-zinc-500">
-              Point Sleuth at a server and it will ask which models that server has. Credentials
+              Point MCP Detective at a server and it will ask which models that server has. Credentials
               are stored in the encrypted vault, alongside your MCP servers.
             </p>
           </div>

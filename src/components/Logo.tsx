@@ -4,7 +4,7 @@ interface Props {
   title?: string;
 }
 
-export function Logo({ size = 28, className, title = 'Sleuth' }: Props) {
+export function Logo({ size = 28, className, title = 'Detective' }: Props) {
   return (
     <svg
       width={size}

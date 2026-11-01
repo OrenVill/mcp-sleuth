@@ -99,7 +99,7 @@ async function readJsonBody(req) {
 export function createFacadeServer(stdioClient) {
   const capabilities = stdioClient.getServerCapabilities() ?? {};
   const facade = new Server(
-    { name: 'mcp-sleuth-stdio-bridge', version: '0.1.0' },
+    { name: 'mcp-detective-stdio-bridge', version: '0.1.0' },
     { capabilities },
   );
 
@@ -161,7 +161,7 @@ export async function startSession(serverId, { command, args, cwd, env }) {
     env: mergeEnv(env),
     stderr: 'pipe',
   });
-  const stdioClient = new Client({ name: 'mcp-sleuth', version: '0.1.0' }, { capabilities: {} });
+  const stdioClient = new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: {} });
 
   let facade;
   let httpTransport;

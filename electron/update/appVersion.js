@@ -4,7 +4,7 @@
  * `app.getVersion()` is not enough on its own. Electron reads it from the app's
  * package.json only when that file has a `main` field, and this project's
  * package.json deliberately has none — it is published as a CLI, and a `main`
- * pointing at electron/main.js would make `require('@orenvill/mcp-sleuth')` boot
+ * pointing at electron/main.js would make `require('@orenvill/mcp-detective')` boot
  * a window. electron-builder injects `main` into the *packaged* copy via
  * `extraMetadata`, so a packaged app answers correctly while `electron
  * electron/main.js` answers with Electron's own version (43.4.1), which would

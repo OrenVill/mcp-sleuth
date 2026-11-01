@@ -28,7 +28,7 @@ import {
 import { getVaultFilePath } from '../vault-file-handler.js';
 import { getAppDataFilePath } from '../app-data-handler.js';
 import { isAlive, readLock } from '../daemon-lock.js';
-import { migrateLegacyDataDir } from '../data-dir.js';
+import { migrateAllLegacyDataDirs } from '../data-dir.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const distRoot = resolve(here, '..', 'dist');
@@ -45,11 +45,11 @@ protocol.registerSchemesAsPrivileged([
 // and nothing on screen. Log it and keep running: the MCP sessions and the
 // user's unsaved vault state are worth more than a clean exit.
 process.on('uncaughtException', (err) => {
-  console.error('sleuth: uncaught exception in main', err);
+  console.error('detective: uncaught exception in main', err);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('sleuth: unhandled rejection in main', reason);
+  console.error('detective: unhandled rejection in main', reason);
 });
 
 let mainWindow = null;
@@ -97,11 +97,10 @@ if (!app.requestSingleInstanceLock()) {
 
     // safeStorage must not be touched before the app is ready, so the stores are
     // built here rather than at module top level.
-    // Carry a pre-rename ~/.mcp-sleuth vault across, once, before anything
-    // resolves a path. Non-destructive and never throws.
-    const migrated = migrateLegacyDataDir();
+    // Carry predecessor data dirs across, once, before anything resolves a path.
+    const migrated = migrateAllLegacyDataDirs();
     if (migrated.length > 0) {
-      console.log(`sleuth: migrated ${migrated.join(', ')} from ~/.mcp-sleuth`);
+      console.log(`detective: migrated ${migrated.join(', ')} into ~/.mcp-detective`);
     }
 
     const vaultPath = getVaultFilePath();
@@ -131,7 +130,7 @@ if (!app.requestSingleInstanceLock()) {
 
     // Replaces Electron's default menu, which carries Reload / Force Reload.
     applyApplicationMenu(process.platform, {
-      devMode: Boolean(process.env.MCP_SLEUTH_DEV_URL),
+      devMode: Boolean(process.env.MCP_DETECTIVE_DEV_URL ?? process.env.MCP_SLEUTH_DEV_URL),
     });
 
     const windowState = createWindowStateStore({
@@ -146,31 +145,31 @@ if (!app.requestSingleInstanceLock()) {
     // The renderer can be killed by an OOM or a GPU fault. Without this the
     // window goes blank with no explanation and no way back.
     mainWindow.webContents.on('render-process-gone', (_event, details) => {
-      console.error(`sleuth: renderer gone (${details.reason})`);
+      console.error(`detective: renderer gone (${details.reason})`);
       if (details.reason !== 'clean-exit' && mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.reload();
       }
     });
 
     mainWindow.webContents.on('unresponsive', () => {
-      console.warn('sleuth: renderer unresponsive');
+      console.warn('detective: renderer unresponsive');
     });
     attachWindowState(mainWindow, windowState);
 
-    const devUrl = process.env.MCP_SLEUTH_DEV_URL;
+    const devUrl = process.env.MCP_DETECTIVE_DEV_URL ?? process.env.MCP_SLEUTH_DEV_URL;
     void mainWindow.loadURL(devUrl ?? `${APP_ORIGIN}/index.html`);
 
     // Schedules its own first check; nothing happens if the user switched
     // checking off, and a failure is logged rather than surfaced.
     void updateService.start();
 
-    // The CLI daemon shares ~/.mcp-sleuth/ and last write wins. Running both is
+    // The CLI daemon shares ~/.mcp-detective/ and last write wins. Running both is
     // legitimate, just lossy, so warn rather than block.
     const lock = await readLock();
     if (lock && isAlive(lock.pid)) {
       console.warn(
-        `mcp-sleuth: the CLI daemon is running on port ${lock.port} and shares ` +
-          `~/.mcp-sleuth/. Changes may overwrite each other. Run "mcp-sleuth stop" first.`,
+        `mcp-detective: the CLI daemon is running on port ${lock.port} and shares ` +
+          `~/.mcp-detective/. Changes may overwrite each other. Run "mcp-detective stop" first.`,
       );
     }
 

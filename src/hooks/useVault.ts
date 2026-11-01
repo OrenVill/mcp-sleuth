@@ -91,7 +91,7 @@ export function useVault({ servers, setServers, onCleared }: Options): Vault {
       const key = aesKeyRef.current;
       if (phaseRef.current !== 'ready' || !key) return;
       void saveVault(key, toStoredServers(serversRef.current), llmConfigsRef.current).catch((err: unknown) => {
-        console.error('sleuth: vault background save failed', err);
+        console.error('detective: vault background save failed', err);
       });
     }
 
