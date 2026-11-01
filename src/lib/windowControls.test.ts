@@ -36,10 +36,12 @@ describe('hasCustomWindowControls', () => {
     expect(hasCustomWindowControls()).toBe(false);
   });
 
-  it('is true on Windows and Linux, where the window is frameless', () => {
+  it('is false on Windows, which uses native caption buttons in titleBarOverlay', () => {
     installBridge('win32');
-    expect(hasCustomWindowControls()).toBe(true);
-    vi.unstubAllGlobals();
+    expect(hasCustomWindowControls()).toBe(false);
+  });
+
+  it('is true on Linux, where the window is transparent and frameless', () => {
     installBridge('linux');
     expect(hasCustomWindowControls()).toBe(true);
   });
