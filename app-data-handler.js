@@ -5,9 +5,18 @@
  */
 import { gzip, gunzip } from 'node:zlib';
 import { promisify } from 'node:util';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import { getDataDir } from './data-dir.js';
+import { readFile, unlink } from 'node:fs/promises';
+import { join } from 'node:path';
+import { getDataDir, writePrivateFile } from './data-dir.js';
+
+/** As in vault-file-handler.js: fs errors name the user's home directory. */
+function fail(res, err) {
+  console.error('[mcp-sleuth] app data:', err instanceof Error ? err.message : String(err));
+  if (!res.headersSent) {
+    res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+  }
+  res.end('Internal Server Error');
+}
 
 const gzipAsync = promisify(gzip);
 const gunzipAsync = promisify(gunzip);
@@ -51,8 +60,7 @@ export async function handleAppData(req, res) {
         });
         res.end('null');
       } else {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end(err.message);
+        fail(res, err);
       }
     }
     return;
@@ -62,13 +70,11 @@ export async function handleAppData(req, res) {
     try {
       const body = await readBody(req);
       const compressed = await gzipAsync(Buffer.from(body, 'utf8'));
-      await mkdir(dirname(filePath), { recursive: true });
-      await writeFile(filePath, compressed);
+      await writePrivateFile(filePath, compressed);
       res.writeHead(204);
       res.end();
     } catch (err) {
-      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-      res.end(err.message);
+      fail(res, err);
     }
     return;
   }
@@ -78,8 +84,7 @@ export async function handleAppData(req, res) {
       await unlink(filePath);
     } catch (err) {
       if (err.code !== 'ENOENT') {
-        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        res.end(err.message);
+        fail(res, err);
         return;
       }
     }

@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 758 tests
+npm test             # vitest run — 838 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -69,21 +69,22 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 127 tests across 27 spec files must pass. Any failure blocks the release.
+All 135 tests across 29 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.27 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.29 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
 Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + echo
 tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
-Journal), error handling, the absence of the desktop update notice, Agent Chat, and stored
-secrets never reaching an edit form.
+Journal), error handling, the absence of the desktop update notice, Agent Chat, stored
+secrets never reaching an edit form, untrusted content from a connected server, and the
+self-signed certificate option.
 
 **Fixture content is load-bearing.** `http-mcp-server.mjs` documents which spec depends
 on each tool, resource, and prompt it registers — read that header before changing it.
@@ -210,7 +211,53 @@ Automated: `tests/release/27-stored-secrets.spec.ts`, covering all three surface
 end-to-end proof that an untouched stdio environment value still reaches the spawned process.
 The unit tests for the marker logic are `src/lib/secretFields.test.ts`.
 
-> Spec numbers map to the `§3.N` sections above. The next spec added should be `28`.
+**§3.28 — Untrusted content from a connected server (manual pass):** Everything a connected
+server sends is hostile input, so two defences have to hold.
+
+1. **The HTML resource preview does not run script.** Open the fixture server's `page.html`
+   resource, click **Read**, then **Preview**. The frame shows the rendered markup under an
+   "Untrusted preview · scripts and forms disabled" strip, and the fixture's `<script>` beacon
+   produces no request for `script-ran.png` in the network tab. A preview that executes server
+   script blocks release: the frame is sandboxed, but a page that reproduces Sleuth's own
+   vault-unlock panel does not need to escape the sandbox to collect a passphrase.
+2. **The page carries a Content-Security-Policy.** `curl -sI http://127.0.0.1:4173/ | grep -i
+   content-security-policy` must show one including `script-src 'self'`. It is served as a header
+   rather than a meta tag so the Vite dev server's HMR client still works — check the built CLI
+   server, not `npm run dev`.
+
+Then confirm the local endpoints refuse a caller that is not the page. From a terminal, so the
+request carries neither `Sec-Fetch-Site` nor a matching `Origin`:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:4173/__vault_storage   # 403
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -X POST -H 'Content-Type: text/plain' \
+  --data '{"command":"/bin/echo","args":["x"]}' \
+  http://127.0.0.1:4173/__mcp_stdio/probe/start                                   # 403
+```
+
+Anything other than 403 blocks release: that second request used to spawn the named process, and
+any page in the user's browser could send it. Automated:
+`tests/release/28-untrusted-content.spec.ts`.
+
+**§3.29 — Self-signed certificate option (manual pass):** Start the TLS fixture with
+`node tests/fixtures/https-mcp-server.mjs 3004` and add a server at
+`https://localhost:3004/mcp`. It must fail to connect. Edit it, tick **Allow self-signed
+certificate**, save, and it connects and lists `echo_secure`. Check three things beyond that:
+
+- The checkbox is offered only when the URL is `https`. Change the scheme to `http` in the form
+  and it disappears.
+- The choice survives a reload — it is stored in the vault with the rest of the server.
+- In the **browser build with proxying off**, the form warns that local proxying is needed. A
+  browser applies its own certificate checks to a direct connection and no page can waive them,
+  so the option genuinely cannot work there.
+
+**Release blocker:** the waiver applying to any server other than the one it was ticked on.
+Automated: `tests/release/29-self-signed-tls.spec.ts` and, for the desktop path,
+`tests/electron/09-self-signed-tls.spec.ts` — which also asserts that a second server on a
+different hostname with the same untrusted certificate still fails.
+
+> Spec numbers map to the `§3.N` sections above. The next spec added should be `30`.
 
 ---
 
@@ -224,7 +271,7 @@ npm run test:e2e:electron          # needs a display
 xvfb-run -a npm run test:e2e:electron   # headless machine / CI
 ```
 
-All 49 tests across 8 spec files must pass:
+All 52 tests across 9 spec files must pass:
 
 | Spec | Area |
 |------|------|
@@ -236,6 +283,7 @@ All 49 tests across 8 spec files must pass:
 | `06-dialogs.spec.ts` | In-app dialogs — vault reset confirm/cancel/Escape, no browser chrome |
 | `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failed check |
 | `08-agent-chat.spec.ts` | Agent Chat — provider requests leave the main process directly, no `/__llm_proxy` |
+| `09-self-signed-tls.spec.ts` | The self-signed certificate option, applied in main and scoped to one host |
 
 **Agent Chat egress (manual pass).** The desktop build has no proxy in the path, so this is a
 different code path from §3.26, not a repeat of it. With a local model running, open **Chat**, add

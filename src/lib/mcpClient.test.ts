@@ -42,8 +42,31 @@ describe('connect', () => {
     const { connect } = await import('./mcpClient');
     const tools = await connect('srv-1', 'https://example.com/mcp', undefined, true);
 
-    expect(mcp.connect).toHaveBeenCalledWith('srv-1', 'https://example.com/mcp', undefined, true);
+    expect(mcp.connect).toHaveBeenCalledWith(
+      'srv-1',
+      'https://example.com/mcp',
+      undefined,
+      true,
+      {},
+    );
     expect(tools).toEqual([{ name: 'echo', description: 'Echo' }]);
+  });
+
+  it('passes the self-signed waiver down to the host', async () => {
+    const { connect } = await import('./mcpClient');
+    await connect('srv-1', 'https://box.local/mcp', undefined, true, { allowSelfSigned: true });
+
+    expect(mcp.connect).toHaveBeenCalledWith('srv-1', 'https://box.local/mcp', undefined, true, {
+      allowSelfSigned: true,
+    });
+  });
+
+  it('records the waiver in the trace, so the Inspector shows it', async () => {
+    const { connect } = await import('./mcpClient');
+    await connect('srv-1', 'https://box.local/mcp', undefined, true, { allowSelfSigned: true });
+
+    const initialize = getProtocolTraces().find((e) => e.method === 'initialize');
+    expect(initialize?.params).toMatchObject({ allowSelfSigned: true });
   });
 
   it('traces initialize then tools/list', async () => {

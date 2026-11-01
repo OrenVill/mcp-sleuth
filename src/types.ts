@@ -32,6 +32,15 @@ export interface ServerEntry {
   auth?: ServerAuth;
   /** Route browser MCP traffic through the local static server proxy. Defaults to true. */
   proxyThroughLocal?: boolean;
+  /**
+   * Accept an HTTPS certificate no public CA signed, for this server only.
+   *
+   * Off unless the user asks. In the browser build it is honoured by the local
+   * proxy, so it needs proxying on; a direct browser connection cannot waive the
+   * browser's own certificate checks. The desktop app applies it in the main
+   * process, scoped to this server's hostname.
+   */
+  allowSelfSigned?: boolean;
   transport?: ServerTransport;
   stdio?: ServerStdioConfig;
   stdioEnv?: Record<string, string>;

@@ -7,12 +7,15 @@ type Envelope<T> = { ok: true; value: T } | { ok: false; error: { message: strin
 export interface LlmBridge {
   llmChatStart(payload: {
     requestId: string;
+    /** Names which allowlist main checks the URL against. */
+    provider: string;
     url: string;
     headers: Record<string, string>;
     body: unknown;
   }): Promise<Envelope<boolean>>;
   llmChatAbort(requestId: string): Promise<Envelope<boolean>>;
   llmListModels(payload: {
+    provider: string;
     url: string;
     headers: Record<string, string>;
   }): Promise<Envelope<unknown>>;
@@ -78,7 +81,9 @@ export function createLlmElectron(bridge: LlmBridge): LlmHost {
       signal.addEventListener('abort', onAbort);
 
       try {
-        unwrap(await bridge.llmChatStart({ requestId, url, headers, body }));
+        unwrap(
+          await bridge.llmChatStart({ requestId, provider: req.config.provider, url, headers, body }),
+        );
         for (;;) {
           while (queue.length > 0) yield queue.shift() as LlmStreamEvent;
           if (failure) throw failure;
@@ -98,7 +103,9 @@ export function createLlmElectron(bridge: LlmBridge): LlmHost {
     async listModels(config: LlmConfig): Promise<string[]> {
       const provider = getProvider(config.provider);
       const { url, headers } = provider.modelsRequest(config);
-      const payload = unwrap(await bridge.llmListModels({ url, headers }));
+      const payload = unwrap(
+        await bridge.llmListModels({ provider: config.provider, url, headers }),
+      );
       return provider.parseModels(payload);
     },
   };

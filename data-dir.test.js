@@ -8,6 +8,8 @@ import {
   getDataDir,
   getLegacyDataDir,
   getPreviousDataDir,
+  mkdirPrivate,
+  writePrivateFile,
   isDefaultDataDir,
   migrateAllLegacyDataDirs,
   migrateLegacyDataDir,
@@ -206,5 +208,59 @@ describe('migrateAllLegacyDataDirs', () => {
 
     expect(names).toEqual(['vault.json', 'data.gz']);
     expect(growing.copied).toHaveLength(2);
+  });
+});
+
+describe('private file modes', () => {
+  it('creates the data directory owner-only', async () => {
+    const calls = [];
+    await mkdirPrivate('/tmp/x/y', {
+      mkdir: async (dir, opts) => calls.push([dir, opts]),
+    });
+    expect(calls).toEqual([['/tmp/x/y', { recursive: true, mode: 0o700 }]]);
+  });
+
+  it('writes a data file owner-only', async () => {
+    // The vault is encrypted, but a world-readable copy is what makes an
+    // offline attack on it available to every other account on the box.
+    const calls = [];
+    await writePrivateFile('/tmp/x/vault.json', 'blob', {
+      mkdir: async () => {},
+      writeFile: async (file, data, opts) => calls.push([file, data, opts]),
+      chmod: async () => {},
+    });
+    expect(calls).toEqual([['/tmp/x/vault.json', 'blob', { mode: 0o600 }]]);
+  });
+
+  it('narrows a file an older version left world-readable', async () => {
+    const chmods = [];
+    await writePrivateFile('/tmp/x/vault.json', 'blob', {
+      mkdir: async () => {},
+      writeFile: async () => {},
+      chmod: async (file, mode) => chmods.push([file, mode]),
+    });
+    expect(chmods).toEqual([['/tmp/x/vault.json', 0o600]]);
+  });
+
+  it('does not fail a write when the platform has no POSIX modes', async () => {
+    await expect(
+      writePrivateFile('/tmp/x/vault.json', 'blob', {
+        mkdir: async () => {},
+        writeFile: async () => {},
+        chmod: async () => {
+          throw new Error('ENOTSUP');
+        },
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('creates the parent directory before writing', async () => {
+    const order = [];
+    await writePrivateFile('/tmp/x/data.gz', Buffer.from('z'), {
+      mkdir: async () => order.push('mkdir'),
+      writeFile: async () => order.push('write'),
+      chmod: async () => {},
+    });
+    expect(order).toEqual(['mkdir', 'write']);
   });
 });

@@ -1,9 +1,10 @@
-import { app, ipcMain, net, protocol, safeStorage } from 'electron';
+import { app, ipcMain, net, protocol, safeStorage, session } from 'electron';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import * as nodeFs from 'node:fs/promises';
 import * as nodeFsSync from 'node:fs';
 import { APP_ORIGIN, APP_SCHEME, resolveAppPath } from './protocol.js';
+import { CONTENT_SECURITY_POLICY, CSP_HEADER_NAME } from '../content-security-policy.js';
 import { createSessionManager } from './mcp/sessions.js';
 import { registerMcpHandlers } from './ipc/mcpHandlers.js';
 import { registerNativeHandlers } from './ipc/nativeHandlers.js';
@@ -66,11 +67,27 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
-    protocol.handle(APP_SCHEME, (request) => {
+    protocol.handle(APP_SCHEME, async (request) => {
       const filePath = resolveAppPath(request.url, distRoot);
       if (!filePath) return new Response('Not Found', { status: 404 });
-      return net.fetch(pathToFileURL(filePath).toString());
+      const response = await net.fetch(pathToFileURL(filePath).toString());
+      if (!filePath.endsWith('.html')) return response;
+      // The document carries the policy; every asset inherits it. Same policy
+      // as the CLI server sends, so both builds are backstopped identically.
+      const headers = new Headers(response.headers);
+      headers.set(CSP_HEADER_NAME, CONTENT_SECURITY_POLICY);
+      headers.set('Referrer-Policy', 'no-referrer');
+      return new Response(response.body, { status: response.status, headers });
     });
+
+    // Electron grants every permission request when no handler is registered.
+    // Nothing in Sleuth needs a camera, a microphone, the clipboard or a
+    // notification, and the renderer displays content from a server that is the
+    // thing under investigation, so the answer is always no.
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => {
+      callback(false);
+    });
+    session.defaultSession.setPermissionCheckHandler(() => false);
 
     registerMcpHandlers(sessions, () => mainWindow);
 

@@ -12,9 +12,22 @@ export const UNREACHABLE_URL = 'http://localhost:9999/mcp';
  */
 export const AWESOME_URL = 'http://localhost:3002/mcp';
 
-/** Delete the server-side vault file so the next page load shows the Create vault screen. */
+export const APP_ORIGIN = 'http://127.0.0.1:4173';
+
+/**
+ * Delete the server-side vault file so the next page load shows the Create
+ * vault screen.
+ *
+ * The `Origin` header is not decoration. The local endpoints only answer
+ * requests that came from Sleuth's own page, and this call is made from Node
+ * rather than the browser, so it has to identify itself the same way the page
+ * does. A test that drops it gets a 403, which is the correct behaviour.
+ */
 export async function resetVaultStorage(): Promise<void> {
-  await fetch('http://127.0.0.1:4173/__vault_storage', { method: 'DELETE' });
+  await fetch(`${APP_ORIGIN}/__vault_storage`, {
+    method: 'DELETE',
+    headers: { Origin: APP_ORIGIN },
+  });
 }
 
 export async function setupVault(page: Page): Promise<void> {
