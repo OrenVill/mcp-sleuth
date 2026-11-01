@@ -59,6 +59,7 @@ const AgentChatPanel = lazy(() =>
   import('./components/AgentChatPanel').then((m) => ({ default: m.AgentChatPanel })),
 );
 import { loadHistory } from './lib/history';
+import { refreshConnectedServerTools } from './lib/serverRefresh';
 import type {
   DiscoveryRun,
   MetaToolBinding,
@@ -66,6 +67,7 @@ import type {
   ServerEntry,
   ServerStdioConfig,
   ServerTransport,
+  ToolDef,
 } from './types';
 
 type ConnectOptions = {
@@ -93,6 +95,8 @@ export default function App() {
   const [devToolsInitialTab, setDevToolsInitialTab] = useState<DevToolsTab>('protocol');
   const [scenarioRunnerOpen, setScenarioRunnerOpen] = useState(false);
   const [agentChatOpen, setAgentChatOpen] = useState(false);
+  const [refreshingServerIds, setRefreshingServerIds] = useState<Set<string>>(() => new Set());
+  const refreshingServerIdsRef = useRef<Set<string>>(new Set());
   const discoveryControllersRef = useRef<Map<string, AbortController>>(new Map());
   /** Discovery runs for up to 30s; it reads current servers rather than a stale closure. */
   const serversRef = useRef<ServerEntry[]>(servers);
@@ -153,6 +157,10 @@ export default function App() {
     () => (editingId ? servers.find((s) => s.id === editingId) ?? null : null),
     [servers, editingId],
   );
+
+  function applyServerTools(id: string, tools: ToolDef[]) {
+    updateServer(id, { tools, metaTools: detectMetaTools(tools) });
+  }
 
   function updateServer(id: string, patch: Partial<ServerEntry>) {
     setServers((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
@@ -219,13 +227,35 @@ export default function App() {
         error: undefined,
       });
       onToolsChanged(id, () => {
-        void refetchTools(id).then((next) => {
-          const nextMeta = detectMetaTools(next);
-          updateServer(id, { tools: next, metaTools: nextMeta });
-        });
+        void refetchTools(id).then((next) => applyServerTools(id, next));
       });
     } catch (e) {
       updateServer(id, { status: 'error', error: formatConnectionError(e) });
+    }
+  }
+
+  async function handleRefresh(id: string) {
+    const server = serversRef.current.find((s) => s.id === id);
+    if (!server || server.status !== 'connected') return;
+    if (refreshingServerIdsRef.current.has(id)) return;
+
+    refreshingServerIdsRef.current.add(id);
+    setRefreshingServerIds(new Set(refreshingServerIdsRef.current));
+    updateServer(id, { error: undefined });
+
+    try {
+      const discoveryRuns = serversRef.current.find((s) => s.id === id)?.discoveryRuns;
+      await refreshConnectedServerTools(id, discoveryRuns, {
+        refetchTools,
+        applyTools: applyServerTools,
+        clearDiscovered: (sid) => updateServer(sid, { discovered: [] }),
+        runDiscover: (sid, metaToolName) => handleDiscover(sid, metaToolName),
+      });
+    } catch (e) {
+      updateServer(id, { error: formatConnectionError(e) });
+    } finally {
+      refreshingServerIdsRef.current.delete(id);
+      setRefreshingServerIds(new Set(refreshingServerIdsRef.current));
     }
   }
 
@@ -687,11 +717,13 @@ export default function App() {
       <UpdateBanner update={update} />
       <div className="flex-1 flex min-h-0">
         <ServerList
-              servers={servers}
+          servers={servers}
           selectedId={selectedId}
+          refreshingIds={refreshingServerIds}
           onSelect={handleSelect}
           onConnect={handleConnect}
           onDisconnect={handleDisconnect}
+          onRefresh={handleRefresh}
           onEdit={handleEditClick}
           onRemove={handleRemove}
           onAddClick={handleAddClick}

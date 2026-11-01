@@ -69,22 +69,32 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 135 tests across 29 spec files must pass. Any failure blocks the release.
+All 140 tests across 30 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.29 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.30 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
 Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + echo
 tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
 Journal), error handling, the absence of the desktop update notice, Agent Chat, stored
-secrets never reaching an edit form, untrusted content from a connected server, and the
-self-signed certificate option.
+secrets never reaching an edit form, untrusted content from a connected server, the
+self-signed certificate option, and per-server refresh of tools (without disconnecting).
+
+**§3.30 — Per-server refresh (manual pass):** With the fixture server connected, click **Refresh**
+beside **Disconnect** in the server list. The row shows **Refreshing…** briefly, stays green
+(connected), and the tool count is unchanged when the server did not change. Open Dev Tools →
+Protocol Inspector and confirm a `tools/list` entry whose params include `"refresh": true`. Stop
+or block the fixture (`Ctrl+C` on the fixture process, or block the MCP URL in devtools), click
+**Refresh** again: an error appears on the row and the server stays connected with its previous
+tool list. On a server where meta-tool discovery has already run (see §3.12), **Refresh** from
+the list re-runs discovery without disconnecting. Automated:
+`tests/release/30-refresh-server-tools.spec.ts`.
 
 **Fixture content is load-bearing.** `http-mcp-server.mjs` documents which spec depends
 on each tool, resource, and prompt it registers — read that header before changing it.
@@ -256,8 +266,6 @@ certificate**, save, and it connects and lists `echo_secure`. Check three things
 Automated: `tests/release/29-self-signed-tls.spec.ts` and, for the desktop path,
 `tests/electron/09-self-signed-tls.spec.ts` — which also asserts that a second server on a
 different hostname with the same untrusted certificate still fails.
-
-> Spec numbers map to the `§3.N` sections above. The next spec added should be `30`.
 
 ---
 
