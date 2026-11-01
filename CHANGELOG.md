@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/OrenVill/mcp-detective/compare/v2.0.0...v2.0.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **release:** publish v2.0.0 artifacts and stabilize release-please ([#68](https://github.com/OrenVill/mcp-detective/issues/68)) ([32749e2](https://github.com/OrenVill/mcp-detective/commit/32749e20c0c6f1c2ce9e098a9957a6e850c7fd60))
+
 ## [2.0.0](https://github.com/OrenVill/mcp-detective/compare/v1.3.0...v2.0.0) (2026-11-01)
 
 
