@@ -139,6 +139,36 @@ body::before {
   app-region: drag;
 }
 
+/* Windows: native caption buttons live in titleBarOverlay on the right.
+   The header must not be a drag region there — drag over the overlay blocks
+   clicks on the native min/max/close buttons (Electron #76). */
+[data-host='electron'][data-platform='win32'] .app-header,
+[data-host='electron'][data-platform='win32'] .app-titlebar {
+  position: relative;
+  padding-right: 140px;
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+[data-host='electron'][data-platform='win32'] .app-header::before,
+[data-host='electron'][data-platform='win32'] .app-titlebar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 140px;
+  bottom: 0;
+  -webkit-app-region: drag;
+  app-region: drag;
+  z-index: 0;
+}
+
+[data-host='electron'][data-platform='win32'] .app-header > *,
+[data-host='electron'][data-platform='win32'] .app-titlebar > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* `label` is in this list because a checkbox pill is mostly label: without it
    the input is clickable but the text beside it drags the window instead of
    toggling. Same reasoning for any interactive wrapper added here later. */
@@ -155,10 +185,12 @@ body::before {
 }
 
 /* ── Desktop window chrome ────────────────────────────────────────────────
-   The Electron window is transparent and frameless, so the app paints its own
-   rounded shell. html/body stay see-through and #root supplies the surface,
-   which is what turns a full-bleed web page into something window-shaped.
-   Squared off when maximised, where rounded corners would clip the display. */
+   Linux: the Electron window is transparent and frameless, so the app paints
+   its own rounded shell. Windows uses an opaque window with titleBarOverlay
+   (see electron/windowChrome.js). html/body stay see-through on Linux and
+   #root supplies the surface, which is what turns a full-bleed web page into
+   something window-shaped. Squared off when maximised, where rounded corners
+   would clip the display. */
 [data-host='electron'] html,
 [data-host='electron'] body {
   background-color: transparent;
