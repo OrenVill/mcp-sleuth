@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/OrenVill/mcp-sleuth/compare/v1.3.0...v1.3.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **security:** close twelve review findings, and allow self-signed TLS per server ([#65](https://github.com/OrenVill/mcp-sleuth/issues/65)) ([f20a6c8](https://github.com/OrenVill/mcp-sleuth/commit/f20a6c8314f654fe49d9c143a94d4340a1f4f130))
+* **security:** never put a stored credential into an edit form ([#63](https://github.com/OrenVill/mcp-sleuth/issues/63)) ([7c30e78](https://github.com/OrenVill/mcp-sleuth/commit/7c30e7842cc829eb4f0c4669d0fb3b606d47e169))
+
 ## [1.3.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.2.0...v1.3.0) (2026-08-28)
 
 
