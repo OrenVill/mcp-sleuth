@@ -34,8 +34,8 @@ const INVOKE = [
 
 const api = {
   kind: 'electron',
-  // macOS keeps native traffic lights, so the renderer only draws its own
-  // window controls on the other platforms.
+  // macOS keeps native traffic lights; Windows uses titleBarOverlay caption
+  // buttons; Linux draws custom controls in the renderer.
   platform: process.platform,
   invoke(channel, ...args) {
     if (!INVOKE.includes(channel)) {

@@ -12,11 +12,11 @@ import {
   MIN_WIDTH,
   resolveRestoredBounds,
 } from './windowState.js';
+import { resolveWindowChromeOptions, TITLE_BAR_HEIGHT } from './windowChrome.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-/** Must match the app header's height so the window controls sit inside it. */
-export const TITLE_BAR_HEIGHT = 55;
+export { TITLE_BAR_HEIGHT };
 
 /**
  * Window icon for the taskbar.
@@ -50,22 +50,10 @@ export function createWindow({ windowState = null } = {}) {
     minWidth: MIN_WIDTH,
     minHeight: MIN_HEIGHT,
     icon: windowIcon(),
-    // Transparent windows must not paint an opaque colour underneath; the page's
-    // own background provides it.
-    ...(process.platform === 'darwin' ? { backgroundColor: '#09090b' } : {}),
     show: false,
-    // macOS keeps its native traffic lights, which sit cleanly over the content
-    // and draw no border.
-    //
-    // Everywhere else the window is fully frameless AND transparent. Transparency
-    // is the only setting that removes Chromium's light 1px client-side border —
-    // `frame: false`, `titleBarStyle: 'hidden'`, `hasShadow: false`, and
-    // `thickFrame: false` all still draw it. The cost is that the native
-    // titleBarOverlay controls are unavailable, so the renderer draws its own
-    // (see src/components/WindowControls.tsx) and routes them back over IPC.
-    ...(process.platform === 'darwin'
-      ? { titleBarStyle: 'hiddenInset' }
-      : { frame: false, transparent: true }),
+    // Per-platform chrome: see windowChrome.js (macOS traffic lights, Windows
+    // thick frame + titleBarOverlay for Aero Snap, Linux transparent frameless).
+    ...resolveWindowChromeOptions(process.platform),
     // The menu (see menu.js) keeps Ctrl+C/V and friends registered; the bar itself
     // stays out of sight.
     autoHideMenuBar: true,
