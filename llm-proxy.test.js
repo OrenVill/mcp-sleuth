@@ -7,6 +7,9 @@ import {
   isSameOriginRequest,
 } from './llm-proxy.js';
 
+/** Headers a request from Sleuth's own page carries; the gate now demands them. */
+const SAME_ORIGIN = { 'sec-fetch-site': 'same-origin', host: '127.0.0.1:4173' };
+
 /** Minimal ServerResponse stand-in that records what the handler wrote. */
 function fakeRes() {
   return {
@@ -76,7 +79,7 @@ describe('isAllowedTarget', () => {
 describe('handleLlmProxy rejections', () => {
   it('rejects a missing target', async () => {
     const res = fakeRes();
-    await handleLlmProxy({ method: 'POST', url: `${LLM_PROXY_PATH}?provider=openai`, headers: {} }, res);
+    await handleLlmProxy({ method: 'POST', url: `${LLM_PROXY_PATH}?provider=openai`, headers: SAME_ORIGIN }, res);
     expect(res.statusCode).toBe(400);
     expect(res.body).toMatch(/target/i);
   });
@@ -84,7 +87,7 @@ describe('handleLlmProxy rejections', () => {
   it('rejects a missing provider', async () => {
     const res = fakeRes();
     const url = `${LLM_PROXY_PATH}?target=${encodeURIComponent('https://api.openai.com/v1/chat/completions')}`;
-    await handleLlmProxy({ method: 'POST', url, headers: {} }, res);
+    await handleLlmProxy({ method: 'POST', url, headers: SAME_ORIGIN }, res);
     expect(res.statusCode).toBe(400);
     expect(res.body).toMatch(/provider/i);
   });
@@ -92,14 +95,14 @@ describe('handleLlmProxy rejections', () => {
   it('rejects a non-http target', async () => {
     const res = fakeRes();
     const url = `${LLM_PROXY_PATH}?provider=openai&target=${encodeURIComponent('file:///etc/passwd')}`;
-    await handleLlmProxy({ method: 'POST', url, headers: {} }, res);
+    await handleLlmProxy({ method: 'POST', url, headers: SAME_ORIGIN }, res);
     expect(res.statusCode).toBe(400);
   });
 
   it('rejects a target the provider does not own', async () => {
     const res = fakeRes();
     const url = `${LLM_PROXY_PATH}?provider=openai&target=${encodeURIComponent('http://169.254.169.254/latest/meta-data')}`;
-    await handleLlmProxy({ method: 'POST', url, headers: {} }, res);
+    await handleLlmProxy({ method: 'POST', url, headers: SAME_ORIGIN }, res);
     expect(res.statusCode).toBe(400);
     expect(res.body).toMatch(/not a recognised/i);
   });
@@ -132,8 +135,10 @@ describe('isSameOriginRequest', () => {
     ).toBe(true);
   });
 
-  it('accepts a non-browser client that sends neither header', () => {
-    expect(isSameOriginRequest({ headers: {} })).toBe(true);
+  it('refuses a client that sends neither header', () => {
+    // A cross-origin no-cors GET sends no Origin, and no Sec-Fetch-Site on any
+    // engine predating Fetch Metadata. Allowing that was a blind SSRF.
+    expect(isSameOriginRequest({ headers: { host: '127.0.0.1:4173' } })).toBe(false);
   });
 });
 

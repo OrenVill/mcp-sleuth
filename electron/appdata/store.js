@@ -21,8 +21,19 @@ export function createAppDataStore({ fs, filePath }) {
     },
 
     async write(data) {
-      await fs.mkdir(dirname(filePath), { recursive: true });
-      await fs.writeFile(filePath, await gzipAsync(Buffer.from(JSON.stringify(data), 'utf8')));
+      // Call history holds tool arguments and results in the clear, so this is
+      // owner-only like the vault beside it.
+      await fs.mkdir(dirname(filePath), { recursive: true, mode: 0o700 });
+      await fs.writeFile(
+        filePath,
+        await gzipAsync(Buffer.from(JSON.stringify(data), 'utf8')),
+        { mode: 0o600 },
+      );
+      try {
+        await fs.chmod?.(filePath, 0o600);
+      } catch {
+        /* not every platform has POSIX modes */
+      }
     },
   };
 }

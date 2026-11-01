@@ -1,10 +1,14 @@
-import { dialog, ipcMain } from 'electron';
+import { app, dialog, ipcMain } from 'electron';
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { CHANNELS, fail, ok } from './channels.js';
+import { UNTRUSTED_SENDER_CODE, isTrustedSender } from './senderGuard.js';
 
 function handle(channel, code, fn) {
-  ipcMain.handle(channel, async (_event, ...args) => {
+  ipcMain.handle(channel, async (event, ...args) => {
+    if (!isTrustedSender(event)) {
+      return fail(new Error('Untrusted sender'), UNTRUSTED_SENDER_CODE);
+    }
     try {
       return ok(await fn(...args));
     } catch (err) {
@@ -23,10 +27,17 @@ export function registerNativeHandlers({ secrets, appData, getWindow }) {
   handle(CHANNELS.writeAppData, 'E_APPDATA_WRITE', (data) => appData.write(data));
 
   handle(CHANNELS.saveFile, 'E_SAVE_FILE', async (filename, content) => {
-    // Playwright cannot drive a native dialog, so E2E writes to a fixed directory.
-    const e2eDir = process.env.MCP_SLEUTH_E2E_SAVE_DIR;
+    // Playwright cannot drive a native dialog, so E2E writes to a fixed
+    // directory. Never in a packaged app: the branch skips the save dialog,
+    // which is the only consent gate on a renderer-driven file write, and it
+    // used to accept `../` in the renderer-supplied filename.
+    const e2eDir = app.isPackaged ? undefined : process.env.MCP_SLEUTH_E2E_SAVE_DIR;
     if (e2eDir) {
-      const target = join(e2eDir, filename);
+      const root = resolve(e2eDir);
+      const target = resolve(join(root, filename));
+      if (target !== root && !target.startsWith(root + sep)) {
+        throw new Error('Refusing to write outside the E2E save directory');
+      }
       await writeFile(target, content, 'utf8');
       return target;
     }

@@ -55,10 +55,12 @@ export function createElectronMcpHost(bridge: ElectronBridge): McpHost {
   }
 
   return {
-    async connect(serverId, url, auth: ServerAuth | undefined) {
+    async connect(serverId, url, auth: ServerAuth | undefined, _proxyThroughLocal, options) {
       // proxyThroughLocal is intentionally dropped: main issues the request from
       // Node, so there is no CORS problem and nothing to proxy.
-      await call<void>('mcp:connect', serverId, url, auth);
+      // There is no proxy in the desktop build, so proxyThroughLocal is moot;
+      // the TLS waiver is not, and main applies it per server.
+      await call<void>('mcp:connect', serverId, url, auth, options);
       connected.add(serverId);
     },
 

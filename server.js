@@ -9,6 +9,8 @@ import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
+import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
+import { CONTENT_SECURITY_POLICY, CSP_HEADER_NAME } from './content-security-policy.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultRoot = resolve(here, 'dist');
@@ -53,7 +55,14 @@ export function start({
   }
 
   async function resolveFile(urlPath) {
-    const clean = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
+    // decodeURIComponent throws on a malformed escape such as `/%`. Unguarded,
+    // that rejection escaped the async request handler and killed the daemon.
+    let clean;
+    try {
+      clean = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
+    } catch {
+      return null;
+    }
     const filePath = resolve(join(root, clean));
     if (filePath !== root && !filePath.startsWith(root + '/')) return null;
     try {
@@ -70,46 +79,71 @@ export function start({
     return null;
   }
 
-  const server = createServer(async (req, res) => {
+  const bound = { host, port, allowedHosts: allowedHostsFromEnv() };
+
+  /**
+   * The four intercepted endpoints exist only for this server's own page. They
+   * are gated together, before dispatch, so a new one cannot be added without
+   * the check. See request-guard.js for why the socket address is not enough.
+   */
+  function isInterceptedRequest(url) {
+    return (
+      url === PROXY_PATH ||
+      url.startsWith(PROXY_PATH + '?') ||
+      isVaultStorageRequest(url) ||
+      isAppDataRequest(url) ||
+      isLlmProxyRequest(url) ||
+      url.startsWith(STDIO_BRIDGE_PREFIX)
+    );
+  }
+
+  /** Errors reach the log, never the caller: they carry filesystem paths. */
+  function failRequest(res, err, context) {
+    console.error(`[mcp-sleuth] ${context}:`, err instanceof Error ? err.message : String(err));
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+    }
+    res.end('Internal Server Error');
+  }
+
+  const server = createServer((req, res) => {
+    // Nothing may escape as an unhandled rejection: that terminates the daemon,
+    // and the CLI does not restart it.
+    handleRequest(req, res).catch((err) => failRequest(res, err, 'request'));
+  });
+
+  async function handleRequest(req, res) {
     const url = req.url ?? '/';
+
+    if (isInterceptedRequest(url)) {
+      const verdict = guardLocalRequest(req, bound);
+      if (!verdict.ok) {
+        console.error(
+          `[mcp-sleuth] refused ${req.method} ${url.split('?')[0]} (${verdict.reason})`,
+        );
+        refuseLocalRequest(res);
+        return;
+      }
+    }
+
     if (url === PROXY_PATH || url.startsWith(PROXY_PATH + '?')) {
       handleMcpProxy(req, res);
       return;
     }
     if (isVaultStorageRequest(url)) {
-      handleVaultStorage(req, res).catch((err) => {
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        }
-        res.end(err instanceof Error ? err.message : String(err));
-      });
+      handleVaultStorage(req, res).catch((err) => failRequest(res, err, 'vault storage'));
       return;
     }
     if (isAppDataRequest(url)) {
-      handleAppData(req, res).catch((err) => {
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        }
-        res.end(err instanceof Error ? err.message : String(err));
-      });
+      handleAppData(req, res).catch((err) => failRequest(res, err, 'app data'));
       return;
     }
     if (isLlmProxyRequest(url)) {
-      handleLlmProxy(req, res).catch((err) => {
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        }
-        res.end(err instanceof Error ? err.message : String(err));
-      });
+      handleLlmProxy(req, res).catch((err) => failRequest(res, err, 'llm proxy'));
       return;
     }
     if (url.startsWith(STDIO_BRIDGE_PREFIX)) {
-      handleStdioBridge(req, res).catch((err) => {
-        if (!res.headersSent) {
-          res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
-        }
-        res.end(err instanceof Error ? err.message : String(err));
-      });
+      handleStdioBridge(req, res).catch((err) => failRequest(res, err, 'stdio bridge'));
       return;
     }
     let file = await resolveFile(url);
@@ -125,18 +159,27 @@ export function start({
 
     try {
       const data = await readFile(file);
+      const isHtml = file.endsWith('.html');
       res.writeHead(200, {
         'Content-Type': MIME[extname(file)] ?? 'application/octet-stream',
         'Cache-Control': file.endsWith('index.html')
           ? 'no-cache'
           : 'public, max-age=31536000, immutable',
+        // Only the document carries it; assets inherit the document's policy.
+        ...(isHtml
+          ? {
+              [CSP_HEADER_NAME]: CONTENT_SECURITY_POLICY,
+              'X-Content-Type-Options': 'nosniff',
+              'Referrer-Policy': 'no-referrer',
+            }
+          : {}),
       });
       res.end(data);
     } catch {
       res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Internal Server Error');
     }
-  });
+  }
 
   return new Promise((resolvePromise, rejectPromise) => {
     server.on('error', (err) => {

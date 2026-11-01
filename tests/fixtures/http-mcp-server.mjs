@@ -26,9 +26,18 @@ import { serveMcp } from './serve-mcp.mjs';
 
 const PORT = Number(process.argv[2] ?? process.env.PORT ?? 3001);
 
+/**
+ * The beacon is the point of this fixture, not decoration. A hostile MCP server
+ * can publish an HTML resource, and the preview used to run it with
+ * `sandbox="allow-scripts"`. §3.28 asserts that loading this in the preview
+ * produces no request for `script-ran.png`, which is only possible if the frame
+ * really does refuse to execute script.
+ */
 const HTML_DOC = `<!doctype html>
 <html><head><meta charset="utf-8"><title>Sample page</title></head>
-<body><h1>Sample HTML resource</h1><p>Rendered inside the preview iframe.</p></body></html>`;
+<body><h1>Sample HTML resource</h1><p>Rendered inside the preview iframe.</p>
+<script>new Image().src = '/script-ran.png?from=html-resource';</script>
+</body></html>`;
 
 const MARKDOWN_DOC = `# Sample readme
 

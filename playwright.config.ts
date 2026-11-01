@@ -53,6 +53,15 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
+      // TLS fixture for §3.29, with a certificate no CA signed. `port` not
+      // `url`: a URL health check would have to trust that certificate, which
+      // is the very thing the spec is about.
+      command: 'node tests/fixtures/https-mcp-server.mjs 3004',
+      port: 3004,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
       // Scripted OpenAI-compatible model for §3.26. Real models are
       // non-deterministic and need a paid key, so the agent-chat spec could not
       // assert on a run without this. 3003 deliberately: 3002 is the meta

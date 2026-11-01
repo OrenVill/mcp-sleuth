@@ -9,11 +9,72 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { createInsecureFetch } from './insecureFetch.js';
 
 const SERVER_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 export function isValidServerId(id) {
   return typeof id === 'string' && SERVER_ID.test(id);
+}
+
+/**
+ * Environment variables that make a process load code chosen by whoever set
+ * them. The renderer names the command to spawn, which is already the strongest
+ * thing this IPC channel does; without this list it could also turn a spawn of
+ * a perfectly ordinary binary into arbitrary code execution.
+ */
+export const LOADER_ENV_VARS = [
+  'LD_PRELOAD',
+  'LD_AUDIT',
+  'LD_LIBRARY_PATH',
+  'DYLD_INSERT_LIBRARIES',
+  'DYLD_LIBRARY_PATH',
+  'DYLD_FRAMEWORK_PATH',
+  'NODE_OPTIONS',
+  'BASH_ENV',
+  'ENV',
+  'PYTHONSTARTUP',
+  'PERL5OPT',
+];
+
+const LOADER_ENV_SET = new Set(LOADER_ENV_VARS);
+
+/**
+ * Validate what the renderer asked to spawn.
+ *
+ * The renderer holds the decrypted vault, so the main process cannot
+ * independently know which stdio servers the user actually configured — it
+ * cannot allowlist the commands. What it can do is refuse a payload that is not
+ * shaped like a server configuration at all, which is what a compromised
+ * renderer would send. Throws with the offending field named.
+ */
+export function assertSpawnable(stdio, env) {
+  if (!stdio || typeof stdio !== 'object') {
+    throw new Error('stdio configuration must be an object');
+  }
+  if (typeof stdio.command !== 'string' || stdio.command.trim().length === 0) {
+    throw new Error('stdio command must be a non-empty string');
+  }
+  if (stdio.args !== undefined) {
+    if (!Array.isArray(stdio.args) || stdio.args.some((a) => typeof a !== 'string')) {
+      throw new Error('stdio args must be an array of strings');
+    }
+  }
+  if (stdio.cwd !== undefined && typeof stdio.cwd !== 'string') {
+    throw new Error('stdio cwd must be a string');
+  }
+  if (env === undefined || env === null) return;
+  if (typeof env !== 'object' || Array.isArray(env)) {
+    throw new Error('stdio environment must be an object');
+  }
+  for (const [key, value] of Object.entries(env)) {
+    if (LOADER_ENV_SET.has(key.toUpperCase())) {
+      throw new Error(`stdio environment may not set ${key}`);
+    }
+    if (typeof value !== 'string') {
+      throw new Error(`stdio environment value for ${key} must be a string`);
+    }
+  }
 }
 
 /** UTF-8 safe Base64 for HTTP Basic credentials beyond Latin-1. */
@@ -40,11 +101,19 @@ export function headersFromAuth(auth) {
 export function createDefaultDeps() {
   return {
     createClient: () => new Client({ name: 'mcp-sleuth', version: '0.1.0' }, { capabilities: {} }),
-    createHttpTransport: (url, auth) => {
+    createHttpTransport: (url, auth, options = {}) => {
+      const parsed = new URL(url);
       const headers = headersFromAuth(auth);
+      const init = {};
+      if (headers) init.requestInit = { headers };
+      if (options.allowSelfSigned) {
+        // Only this server's transport gets it, and only for this hostname.
+        // See insecureFetch.js for why net.fetch could not do the job.
+        init.fetch = createInsecureFetch(parsed.hostname);
+      }
       return new StreamableHTTPClientTransport(
-        new URL(url),
-        headers ? { requestInit: { headers } } : undefined,
+        parsed,
+        Object.keys(init).length > 0 ? init : undefined,
       );
     },
     createStdioTransport: (params) => new StdioClientTransport(params),
@@ -103,14 +172,15 @@ export function createSessionManager(deps = createDefaultDeps()) {
   }
 
   return {
-    async connect(serverId, url, auth) {
+    async connect(serverId, url, auth, options) {
       requireId(serverId);
       await release(serverId);
-      await open(serverId, deps.createHttpTransport(url, auth));
+      await open(serverId, deps.createHttpTransport(url, auth, options));
     },
 
     async connectStdio(serverId, stdio, env) {
       requireId(serverId);
+      assertSpawnable(stdio, env);
       await release(serverId);
       await open(
         serverId,

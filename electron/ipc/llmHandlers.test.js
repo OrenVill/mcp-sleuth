@@ -24,6 +24,8 @@ function streamingFetch(pieces, init = {}) {
 
 const payload = {
   requestId: 'r1',
+  // The provider names which allowlist main checks this URL against.
+  provider: 'openai',
   url: 'http://127.0.0.1:11434/v1/chat/completions',
   headers: { 'Content-Type': 'application/json' },
   body: { model: 'qwen3' },
@@ -78,7 +80,83 @@ describe('createLlmService', () => {
     const service = createLlmService({
       fetchImpl: streamingFetch(['{"data":[{"id":"a"}]}']),
     });
-    const result = await service.listModels({ url: 'http://x/v1/models', headers: {} });
+    const result = await service.listModels({ provider: 'openai', url: 'http://x/v1/models', headers: {} });
     expect(result).toEqual({ data: [{ id: 'a' }] });
+  });
+});
+
+describe('provider target enforcement', () => {
+  function service(fetchImpl) {
+    return createLlmService({ fetchImpl });
+  }
+
+  const sender = { send: () => {} };
+
+  it('fetches a legitimate provider endpoint', async () => {
+    const seen = [];
+    const svc = service(async (url) => {
+      seen.push(url);
+      return { ok: true, body: null, status: 200, statusText: 'OK', text: async () => '' };
+    });
+    await svc.start(sender, {
+      requestId: 'r1',
+      provider: 'openai',
+      url: 'https://api.openai.com/v1/chat/completions',
+      headers: {},
+      body: {},
+    });
+    expect(seen).toEqual(['https://api.openai.com/v1/chat/completions']);
+  });
+
+  it('never fetches a URL outside the provider paths', async () => {
+    // The browser build has always constrained this. The desktop build took
+    // whatever URL the renderer sent, which made it a full SSRF from main.
+    const seen = [];
+    const errors = [];
+    const svc = service(async (url) => {
+      seen.push(url);
+      return { ok: true, body: null, status: 200, statusText: 'OK', text: async () => '' };
+    });
+    await svc.start(
+      { send: (_channel, payload) => errors.push(payload) },
+      {
+        requestId: 'r2',
+        provider: 'openai',
+        url: 'http://169.254.169.254/latest/meta-data/',
+        headers: {},
+        body: {},
+      },
+    );
+    expect(seen).toEqual([]);
+    expect(errors.at(-1).message).toMatch(/not one the openai provider exposes/i);
+  });
+
+  it('refuses an unknown provider', async () => {
+    const seen = [];
+    const errors = [];
+    const svc = service(async (url) => {
+      seen.push(url);
+      return { ok: true, body: null, status: 200, statusText: 'OK', text: async () => '' };
+    });
+    await svc.start(
+      { send: (_channel, payload) => errors.push(payload) },
+      { requestId: 'r3', provider: 'evil', url: 'http://internal/v1/models', headers: {}, body: {} },
+    );
+    expect(seen).toEqual([]);
+    expect(errors.at(-1).message).toMatch(/not a recognised model provider/i);
+  });
+
+  it('applies the same rule to the model listing', async () => {
+    const svc = service(async () => ({ ok: true, json: async () => ({}) }));
+    await expect(
+      svc.listModels({ provider: 'openai', url: 'http://127.0.0.1:9/admin', headers: {} }),
+    ).rejects.toThrow(/not one the openai provider exposes/i);
+  });
+
+  it('refuses a non-http scheme', async () => {
+    const svc = service(async () => ({ ok: true, json: async () => ({}) }));
+    await expect(
+      svc.listModels({ provider: 'openai', url: 'file:///etc/models', headers: {} }),
+    ).rejects.toThrow(/http and https/i);
   });
 });
