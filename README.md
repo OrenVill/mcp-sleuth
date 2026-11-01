@@ -17,6 +17,7 @@ Three ways to run it:
 - **Auto-connect on add** — registers the server and immediately connects (streamable HTTP for HTTP servers; local stdio bridge for stdio servers).
 - **Stdio transport** — spawn local MCP subprocesses (`command`, `args`, optional `cwd` and env vars); same tool UI as HTTP. In the browser build this goes through a Node-side bridge, so it requires **`npm run dev`** or the **`mcp-sleuth` CLI** (not plain static `dist/index.html`); the desktop app spawns them directly.
 - **Embedded local proxy mode** — optionally routes HTTP MCP requests through Sleuth's localhost server so HTTP MCP servers do not need browser CORS support.
+- **Self-signed certificates, per server** — tick a box to reach an `https` endpoint whose certificate no public CA signed, without disabling verification anywhere else.
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).
 - **Live tool invocation** with text + structured result display.
@@ -408,6 +409,42 @@ The browser sends MCP requests with headers such as `Mcp-Session-Id` and `Mcp-Pr
 You can disable the checkbox for a server when its HTTP endpoint already supports browser clients directly. In direct mode, the MCP server must allow those MCP headers in `Access-Control-Allow-Headers` and expose `Mcp-Session-Id` via `Access-Control-Expose-Headers`.
 
 None of this applies to the desktop app: requests originate in the Electron main process, not a browser origin, so there is no CORS to work around and no proxy in the path.
+
+## Self-signed certificates
+
+A development or intranet MCP endpoint often serves TLS with a certificate no public CA signed.
+For an `https` server the add/edit form offers **Allow self-signed certificate**, which turns off
+certificate verification for that one server.
+
+- **Desktop app** — applied in the main process, scoped to that server's hostname. Another server
+  on a different host still has its certificate checked, even with the same certificate.
+- **CLI and `npm run dev`** — applied by the local proxy, so the server also needs **Proxy through
+  local server** on. A browser applies its own certificate checks to a direct connection and no
+  page can waive them; the form says so when the combination cannot work.
+
+The choice is stored in the vault with the rest of the server, is off unless you turn it on, and
+never applies to any other server.
+
+## Local endpoints
+
+The CLI server and the dev server both expose a few same-origin endpoints: the MCP proxy, the
+stdio bridge, the vault file, app data, and the Agent Chat provider forwarder. They exist for
+Sleuth's own page and answer nothing else.
+
+A request is served only when the browser reports it as same-origin and the `Host` header names
+this server — a loopback literal, another IP literal, `localhost`, or the host it was bound to.
+Both checks are needed: the origin check stops any other page in your browser from driving these
+endpoints, and pinning `Host` is what stops DNS rebinding, which would otherwise make an
+attacker's own domain look same-origin.
+
+If you front Sleuth under a hostname of your own, list it:
+
+```bash
+MCP_SLEUTH_ALLOWED_HOSTS=sleuth.internal,sleuth.example.com mcp-sleuth
+```
+
+Requests from `curl` and other non-browser clients are refused too, since they carry no
+provenance. That is deliberate: these endpoints are not an API.
 
 ## Releases
 

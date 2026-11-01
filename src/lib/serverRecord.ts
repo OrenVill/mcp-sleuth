@@ -15,6 +15,9 @@ export function fromStoredServers(stored: StoredServer[]): ServerEntry[] {
     description: s.description,
     auth: s.auth,
     proxyThroughLocal: s.proxyThroughLocal ?? true,
+    // Off unless it was explicitly stored: waiving certificate checks is never
+    // a default.
+    allowSelfSigned: s.allowSelfSigned ?? false,
     transport: s.transport ?? 'http',
     stdio: s.stdio,
     stdioEnv: s.stdioEnv,
@@ -34,6 +37,7 @@ export function toStoredServers(servers: ServerEntry[]): StoredServer[] {
     custom: server.custom,
     auth: server.auth,
     proxyThroughLocal: server.proxyThroughLocal ?? true,
+    allowSelfSigned: server.allowSelfSigned ?? false,
     transport: server.transport,
     stdio: server.stdio,
     stdioEnv: server.stdioEnv,

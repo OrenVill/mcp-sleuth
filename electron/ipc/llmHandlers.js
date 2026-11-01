@@ -6,6 +6,9 @@
  * pattern in electron/mcp/sessions.js. Bodies are never logged: they carry the
  * API key's traffic and raw output from the server under investigation.
  */
+import { requireAllowedTarget } from '../../llm-targets.js';
+import { UNTRUSTED_SENDER_CODE, isTrustedSender } from './senderGuard.js';
+
 export function createLlmService({ fetchImpl = fetch, channels = {
   chunk: 'chunk',
   done: 'done',
@@ -13,7 +16,17 @@ export function createLlmService({ fetchImpl = fetch, channels = {
 } } = {}) {
   const inflight = new Map();
 
-  async function start(sender, { requestId, url, headers, body }) {
+  async function start(sender, { requestId, provider, url, headers, body }) {
+    // The renderer names the provider; main decides whether that URL is one the
+    // provider exposes. Without this the channel forwards any URL, with any
+    // headers, from outside the renderer's origin and CORS rules.
+    try {
+      requireAllowedTarget(provider, url);
+    } catch (err) {
+      sender.send(channels.error, { requestId, message: err.message });
+      return;
+    }
+
     const controller = new AbortController();
     inflight.set(requestId, controller);
     try {
@@ -65,7 +78,8 @@ export function createLlmService({ fetchImpl = fetch, channels = {
     inflight.delete(requestId);
   }
 
-  async function listModels({ url, headers }) {
+  async function listModels({ provider, url, headers }) {
+    requireAllowedTarget(provider, url);
     const res = await fetchImpl(url, { headers });
     if (!res.ok) {
       const detail = (await res.text().catch(() => '')).trim().slice(0, 300);
@@ -89,19 +103,24 @@ export function registerLlmHandlers(ipcMain, CHANNELS, ok, fail) {
     },
   });
 
+  const untrusted = () => fail(new Error('Untrusted sender'), UNTRUSTED_SENDER_CODE);
+
   ipcMain.handle(CHANNELS.llmChatStart, async (event, payload) => {
+    if (!isTrustedSender(event)) return untrusted();
     // Deliberately not awaited: the reply must return immediately so the
     // renderer can start listening while chunks stream in.
     void service.start(event.sender, payload);
     return ok(true);
   });
 
-  ipcMain.handle(CHANNELS.llmChatAbort, async (_event, requestId) => {
+  ipcMain.handle(CHANNELS.llmChatAbort, async (event, requestId) => {
+    if (!isTrustedSender(event)) return untrusted();
     service.abort(requestId);
     return ok(true);
   });
 
-  ipcMain.handle(CHANNELS.llmListModels, async (_event, payload) => {
+  ipcMain.handle(CHANNELS.llmListModels, async (event, payload) => {
+    if (!isTrustedSender(event)) return untrusted();
     try {
       return ok(await service.listModels(payload));
     } catch (err) {

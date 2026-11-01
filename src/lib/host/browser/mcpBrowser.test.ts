@@ -51,6 +51,29 @@ describe('transportUrlForServer', () => {
     );
   });
 
+  it('asks the proxy to accept a self-signed certificate when told to', () => {
+    const url = transportUrlForServer(
+      'https://box.local:8443/mcp',
+      true,
+      'http://127.0.0.1:4173',
+      { allowSelfSigned: true },
+    );
+
+    expect(url.searchParams.get('target')).toBe('https://box.local:8443/mcp');
+    expect(url.searchParams.get('insecureTls')).toBe('1');
+  });
+
+  it('does not mention TLS at all when the option is off', () => {
+    const url = transportUrlForServer(
+      'https://example.com/mcp',
+      true,
+      'http://127.0.0.1:4173',
+      { allowSelfSigned: false },
+    );
+
+    expect(url.searchParams.has('insecureTls')).toBe(false);
+  });
+
   it('uses the real server URL when local proxying is disabled', () => {
     const url = transportUrlForServer(
       'https://example.com/mcp',

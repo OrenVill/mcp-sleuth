@@ -19,15 +19,25 @@ import type { McpHost } from '../types';
 const clients = new Map<string, Client>();
 const transports = new Map<string, StreamableHTTPClientTransport>();
 
+/**
+ * Where the SDK actually sends requests for a server.
+ *
+ * `allowSelfSigned` only reaches the local proxy. A direct browser connection
+ * is subject to the browser's own certificate checks and no page can waive
+ * them, which is why the form says the option needs local proxying.
+ */
 export function transportUrlForServer(
   target: string,
   proxyThroughLocal = true,
   baseOrigin?: string,
+  options: { allowSelfSigned?: boolean } = {},
 ): URL {
   if (!proxyThroughLocal) return new URL(target);
 
   const base = baseOrigin ?? window.location.origin;
-  return new URL(`/__mcp_proxy?target=${encodeURIComponent(target)}`, base);
+  const url = new URL(`/__mcp_proxy?target=${encodeURIComponent(target)}`, base);
+  if (options.allowSelfSigned) url.searchParams.set('insecureTls', '1');
+  return url;
 }
 
 /** UTF-8 safe Base64 (for HTTP Basic credentials beyond Latin-1). */
@@ -98,10 +108,11 @@ async function openHttpSession(
   url: string,
   auth: ServerAuth | undefined,
   proxyThroughLocal: boolean,
+  options: { allowSelfSigned?: boolean } = {},
 ): Promise<void> {
   const requestInit = requestInitFromAuth(auth);
   const transport = new StreamableHTTPClientTransport(
-    transportUrlForServer(url, proxyThroughLocal),
+    transportUrlForServer(url, proxyThroughLocal, undefined, options),
     requestInit ? { requestInit } : undefined,
   );
   const client = new Client({ name: 'mcp-sleuth', version: '0.1.0' }, { capabilities: {} });
@@ -118,10 +129,10 @@ function requireClient(serverId: string): Client {
 }
 
 export const browserMcpHost: McpHost = {
-  async connect(serverId, url, auth, proxyThroughLocal) {
+  async connect(serverId, url, auth, proxyThroughLocal, options) {
     await releaseHttpConnection(serverId);
     await stopStdioSession(serverId);
-    await openHttpSession(serverId, url, auth, proxyThroughLocal);
+    await openHttpSession(serverId, url, auth, proxyThroughLocal, options);
   },
 
   async connectStdio(serverId, stdio: ServerStdioConfig, env) {
