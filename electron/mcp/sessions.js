@@ -100,7 +100,7 @@ export function headersFromAuth(auth) {
 
 export function createDefaultDeps() {
   return {
-    createClient: () => new Client({ name: 'mcp-sleuth', version: '0.1.0' }, { capabilities: {} }),
+    createClient: () => new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: {} }),
     createHttpTransport: (url, auth, options = {}) => {
       const parsed = new URL(url);
       const headers = headersFromAuth(auth);

@@ -5,7 +5,7 @@
 
 ## Goal
 
-Tell the user when a newer Sleuth has been released, and give them a one-click route to it.
+Tell the user when a newer MCP Detective has been released, and give them a one-click route to it.
 Today the desktop app never mentions updates at all, so a user who installed 1.0.1 stays on
 1.0.1 until they happen to revisit the GitHub releases page.
 
@@ -28,7 +28,7 @@ The alternative is pretending to auto-update and silently failing on macOS.
 - Downloading the installer in-app, with or without checksum verification.
 - `electron-updater`, `latest*.yml`, or any electron-builder publish provider.
 - Code signing or notarization. Unchanged, and still the blocker for real auto-update.
-- Any update notice in the browser / CLI build. `npm i -g @orenvill/mcp-sleuth@latest` remains
+- Any update notice in the browser / CLI build. `npm i -g @orenvill/mcp-detective@latest` remains
   how the CLI updates, as `README.npm.md` documents.
 - Delta updates, update channels, rollback, telemetry of any kind.
 
@@ -141,7 +141,7 @@ which already restricts schemes to http(s) and handles WSL's broken `xdg-open`.
 ```
 app ready -> window loaded -> 5s -> service.check()
                                       |
-                                      |  GET api.github.com/repos/OrenVill/mcp-sleuth/releases/latest
+                                      |  GET api.github.com/repos/OrenVill/mcp-detective/releases/latest
                                       |  Electron net.fetch, no auth, User-Agent only, 10s timeout
                                       v
                               compareVersions(latest, app.getVersion())
@@ -172,7 +172,7 @@ this design already refused for the Download link.
 *manual* check surfaces the failure inline in the popover ("Couldn't reach GitHub"), because the
 user asked and deserves an answer.
 
-**Testability hook:** the feed URL comes from `MCP_SLEUTH_UPDATE_FEED_URL` when set, otherwise
+**Testability hook:** the feed URL comes from `MCP_DETECTIVE_UPDATE_FEED_URL` when set, otherwise
 the GitHub API. This is what the Playwright Electron spec points at a fixture, what the manual
 demo uses, and incidentally an escape hatch for a fork.
 
@@ -224,7 +224,7 @@ TDD, unit tests first.
 
 End to end, per the release gate in `CLAUDE.md`:
 
-- `tests/electron/07-updates.spec.ts` — launch with `MCP_SLEUTH_UPDATE_FEED_URL` pointed at a
+- `tests/electron/07-updates.spec.ts` — launch with `MCP_DETECTIVE_UPDATE_FEED_URL` pointed at a
   fixture serving a newer release. Assert the banner appears, Skip persists into
   `update-state.json`, and the pill shows the current version when the feed says up to date.
 - `tests/release/25-update-notifier.spec.ts` — the negative case: the browser build renders
@@ -247,7 +247,7 @@ the installed one. Run the desktop app against it to see the real banner, badge,
 
 ```bash
 node scripts/fake-release-feed.mjs &          # serves the fake release on 127.0.0.1:4599
-MCP_SLEUTH_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
+MCP_DETECTIVE_UPDATE_FEED_URL=http://127.0.0.1:4599/releases/latest npm run electron:start
 ```
 
 Dev dependency `nodemon` plus `npm run electron:watch` restarts the main process on edit while

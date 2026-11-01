@@ -115,7 +115,7 @@ async function openHttpSession(
     transportUrlForServer(url, proxyThroughLocal, undefined, options),
     requestInit ? { requestInit } : undefined,
   );
-  const client = new Client({ name: 'mcp-sleuth', version: '0.1.0' }, { capabilities: {} });
+  const client = new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: {} });
 
   await client.connect(transport);
   clients.set(serverId, client);

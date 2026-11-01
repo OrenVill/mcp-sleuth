@@ -19,20 +19,26 @@ const DEFAULT: AppData = {
   observationJournals: {},
   agentRuns: {},
 };
-const LS_BOOKMARKS = 'mcp-sleuth:bookmarks';
-const LS_HISTORY = 'mcp-sleuth:call-history';
-const LS_APP_DATA = 'mcp-sleuth:app-data';
-// Written under the old product name; read so a rename does not drop anyone's
+const LS_BOOKMARKS = 'mcp-detective:bookmarks';
+const LS_HISTORY = 'mcp-detective:call-history';
+const LS_APP_DATA = 'mcp-detective:app-data';
+// Written under older product names; read so a rename does not drop anyone's
 // bookmarks or history. Writes only ever use the keys above.
 const PRE_RENAME_KEYS = {
-  bookmarks: 'mcp-explorer:bookmarks',
-  history: 'mcp-explorer:call-history',
-  appData: 'mcp-explorer:app-data',
+  bookmarks: ['mcp-sleuth:bookmarks', 'mcp-explorer:bookmarks'],
+  history: ['mcp-sleuth:call-history', 'mcp-explorer:call-history'],
+  appData: ['mcp-sleuth:app-data', 'mcp-explorer:app-data'],
 } as const;
 
-function readKey(current: string, preRename: string): string | null {
+function readKey(current: string, preRename: readonly string[]): string | null {
   try {
-    return localStorage.getItem(current) ?? localStorage.getItem(preRename);
+    const direct = localStorage.getItem(current);
+    if (direct !== null) return direct;
+    for (const key of preRename) {
+      const legacy = localStorage.getItem(key);
+      if (legacy !== null) return legacy;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -83,24 +89,45 @@ function loadFromLocalStorage(): AppData {
   }
 }
 
-function hasLegacyLocalStorage(): boolean {
+function hasAnyPreRenameLocalStorage(): boolean {
   try {
-    return (
-      readKey(LS_BOOKMARKS, PRE_RENAME_KEYS.bookmarks) !== null ||
-      readKey(LS_HISTORY, PRE_RENAME_KEYS.history) !== null
-    );
+    for (const group of Object.values(PRE_RENAME_KEYS)) {
+      for (const key of group) {
+        if (localStorage.getItem(key) !== null) return true;
+      }
+    }
+    return false;
   } catch {
     return false;
   }
 }
 
-function clearLegacyLocalStorage(): void {
+function clearPreRenameLocalStorage(): void {
   try {
-    localStorage.removeItem(LS_BOOKMARKS);
-    localStorage.removeItem(LS_HISTORY);
-    localStorage.removeItem(PRE_RENAME_KEYS.bookmarks);
-    localStorage.removeItem(PRE_RENAME_KEYS.history);
+    for (const group of Object.values(PRE_RENAME_KEYS)) {
+      for (const key of group) {
+        localStorage.removeItem(key);
+      }
+    }
   } catch { /* ignore */ }
+}
+
+/** Move legacy localStorage keys into the current store (file or unified key). */
+async function forwardLocalStorageIfNeeded(data: AppData): Promise<void> {
+  if (!hasAnyPreRenameLocalStorage()) return;
+  let fileOk = false;
+  try {
+    await persistToFile(data);
+    fileOk = true;
+  } catch { /* static build or server unavailable */ }
+  if (!fileOk) {
+    persistToLocalStorage(data);
+    try {
+      localStorage.removeItem(LS_BOOKMARKS);
+      localStorage.removeItem(LS_HISTORY);
+    } catch { /* ignore */ }
+  }
+  clearPreRenameLocalStorage();
 }
 
 async function persistToFile(data: AppData): Promise<void> {
@@ -140,19 +167,13 @@ export async function initAppData(): Promise<void> {
     const migrated = loadFromLocalStorage();
     cache = migrated;
     initialized = true;
-    if (hasLegacyLocalStorage()) {
-      let persistedOk = false;
-      try {
-        await persistToFile(cache);
-        persistedOk = true;
-      } catch { /* keep legacy keys as fallback */ }
-      if (persistedOk) clearLegacyLocalStorage();
-    }
+    await forwardLocalStorageIfNeeded(cache);
     return;
   } catch { /* fall through to localStorage */ }
 
   cache = loadFromLocalStorage();
   initialized = true;
+  await forwardLocalStorageIfNeeded(cache);
 }
 
 export function getAppData(): AppData {

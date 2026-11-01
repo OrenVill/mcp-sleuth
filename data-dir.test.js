@@ -3,17 +3,24 @@ import { join } from 'node:path';
 import {
   DATA_DIR_NAME,
   LEGACY_DATA_DIR_NAME,
+  PREVIOUS_DATA_DIR_NAME,
   filesToMigrate,
   getDataDir,
   getLegacyDataDir,
+  getPreviousDataDir,
   mkdirPrivate,
   writePrivateFile,
   isDefaultDataDir,
+  migrateAllLegacyDataDirs,
   migrateLegacyDataDir,
 } from './data-dir.js';
 
 describe('getDataDir', () => {
   it('prefers the current env var', () => {
+    expect(getDataDir({ MCP_DETECTIVE_DATA_DIR: '/a' })).toBe('/a');
+  });
+
+  it('still honours the prior-release DATA_DIR env var', () => {
     expect(getDataDir({ MCP_SLEUTH_DATA_DIR: '/a' })).toBe('/a');
   });
 
@@ -22,30 +29,42 @@ describe('getDataDir', () => {
     expect(getDataDir({ MCP_EXPLORER_DATA_DIR: '/b' })).toBe('/b');
   });
 
-  it('prefers the current var when both are set', () => {
+  it('prefers the current var when several are set', () => {
+    expect(
+      getDataDir({
+        MCP_DETECTIVE_DATA_DIR: '/a',
+        MCP_SLEUTH_DATA_DIR: '/b',
+        MCP_EXPLORER_DATA_DIR: '/c',
+      }),
+    ).toBe('/a');
+  });
+
+  it('prefers prior release over Explorer when Detective is unset', () => {
     expect(getDataDir({ MCP_SLEUTH_DATA_DIR: '/a', MCP_EXPLORER_DATA_DIR: '/b' })).toBe('/a');
   });
 
   it('falls back to a home directory', () => {
-    expect(getDataDir({})).toMatch(/\.mcp-sleuth$/);
+    expect(getDataDir({})).toMatch(/\.mcp-detective$/);
   });
 });
 
 describe('directory names', () => {
-  // The rest of this suite injects both paths, so it cannot catch the real
-  // defaults being wrong. A rename that rewrote LEGACY_DATA_DIR_NAME to match
-  // DATA_DIR_NAME made migration a silent no-op and every other test still passed.
-  it('keeps the pre-rename directory distinct from the current one', () => {
+  it('keeps predecessor directories distinct from the current one', () => {
+    expect(PREVIOUS_DATA_DIR_NAME).not.toBe(DATA_DIR_NAME);
     expect(LEGACY_DATA_DIR_NAME).not.toBe(DATA_DIR_NAME);
+    expect(PREVIOUS_DATA_DIR_NAME).not.toBe(LEGACY_DATA_DIR_NAME);
   });
 
   it('names the directories the shipped versions actually used', () => {
-    expect(DATA_DIR_NAME).toBe('.mcp-sleuth');
+    expect(DATA_DIR_NAME).toBe('.mcp-detective');
+    expect(PREVIOUS_DATA_DIR_NAME).toBe('.mcp-sleuth');
     expect(LEGACY_DATA_DIR_NAME).toBe('.mcp-explorer');
   });
 
-  it('resolves the two to different absolute paths', () => {
+  it('resolves legacy paths to different absolute paths', () => {
+    expect(getPreviousDataDir()).not.toBe(getDataDir({}));
     expect(getLegacyDataDir()).not.toBe(getDataDir({}));
+    expect(getPreviousDataDir().endsWith('.mcp-sleuth')).toBe(true);
     expect(getLegacyDataDir().endsWith('.mcp-explorer')).toBe(true);
   });
 });
@@ -55,7 +74,8 @@ describe('isDefaultDataDir', () => {
     expect(isDefaultDataDir({})).toBe(true);
   });
 
-  it('is false when either override is set', () => {
+  it('is false when any override is set', () => {
+    expect(isDefaultDataDir({ MCP_DETECTIVE_DATA_DIR: '/x' })).toBe(false);
     expect(isDefaultDataDir({ MCP_SLEUTH_DATA_DIR: '/x' })).toBe(false);
     expect(isDefaultDataDir({ MCP_EXPLORER_DATA_DIR: '/x' })).toBe(false);
   });
@@ -125,8 +145,6 @@ describe('migrateLegacyDataDir', () => {
   });
 
   it('does not migrate into an explicitly overridden directory', () => {
-    // An override means "use exactly this directory". Migrating into it would
-    // also drag a developer's real vault into a throwaway test directory.
     const fs = fakeFs({ '/legacy': ['vault.json'] });
     const names = migrateLegacyDataDir({
       dataDir: '/custom',
@@ -155,6 +173,41 @@ describe('migrateLegacyDataDir', () => {
     };
     expect(() => migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs })).not.toThrow();
     expect(migrateLegacyDataDir({ dataDir: '/new', legacyDir: '/legacy', isDefault: true, fs })).toEqual([]);
+  });
+});
+
+describe('migrateAllLegacyDataDirs', () => {
+  it('migrates from both predecessor directories without overwriting', () => {
+    const tree = {
+      '/sleuth': ['vault.json'],
+      '/explorer': ['data.gz'],
+    };
+    const growing = fakeFs(tree);
+    const originalExists = growing.existsSync;
+    growing.existsSync = (p) => {
+      if (p === '/new' && tree['/new']) return true;
+      return originalExists(p);
+    };
+    growing.readdirSync = (p) => {
+      if (p === '/new') return tree['/new'] ?? [];
+      return tree[p] ?? [];
+    };
+    growing.copyFileSync = (from, to) => {
+      growing.copied.push([from, to]);
+      const name = from.split('/').pop();
+      tree['/new'] = [...(tree['/new'] ?? []), name];
+    };
+
+    const names = migrateAllLegacyDataDirs({
+      dataDir: '/new',
+      previousDir: '/sleuth',
+      explorerDir: '/explorer',
+      isDefault: true,
+      fs: growing,
+    });
+
+    expect(names).toEqual(['vault.json', 'data.gz']);
+    expect(growing.copied).toHaveLength(2);
   });
 });
 

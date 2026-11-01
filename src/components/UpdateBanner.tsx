@@ -31,7 +31,7 @@ export function UpdateBanner({ update }: { update: UpdateController }) {
           />
         </svg>
         <span>
-          <strong className="font-semibold">Sleuth {status.latestVersion}</strong> is available
+          <strong className="font-semibold">Detective {status.latestVersion}</strong> is available
           <span className="text-violet-300/70"> — you have {status.currentVersion}</span>
         </span>
 

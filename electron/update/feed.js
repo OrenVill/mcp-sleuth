@@ -13,7 +13,7 @@
 import { parseVersion } from './version.js';
 
 export const DEFAULT_FEED_URL =
-  'https://api.github.com/repos/OrenVill/mcp-sleuth/releases/latest';
+  'https://api.github.com/repos/OrenVill/mcp-detective/releases/latest';
 
 /** The notes render inside a banner, not a document viewer. */
 export const MAX_NOTES_LENGTH = 2000;
@@ -56,7 +56,7 @@ export function hasInstallerAsset(payload) {
  * The feed URL, overridable for the e2e fixture, the manual demo, and forks.
  */
 export function resolveFeedUrl(env = process.env) {
-  const override = env.MCP_SLEUTH_UPDATE_FEED_URL;
+  const override = env.MCP_DETECTIVE_UPDATE_FEED_URL ?? env.MCP_SLEUTH_UPDATE_FEED_URL;
   if (typeof override === 'string' && override.trim() !== '') return override.trim();
   return DEFAULT_FEED_URL;
 }
@@ -142,7 +142,7 @@ export async function fetchLatestRelease({
       credentials: 'omit',
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'mcp-sleuth-update-check',
+        'User-Agent': 'mcp-detective-update-check',
       },
       signal: controller.signal,
     });

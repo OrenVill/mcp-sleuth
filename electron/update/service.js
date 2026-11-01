@@ -78,7 +78,7 @@ export function createUpdateService({
       try {
         listener(next);
       } catch (err) {
-        logger.warn?.('sleuth: update listener failed', err);
+        logger.warn?.('detective: update listener failed', err);
       }
     }
   }
@@ -114,7 +114,7 @@ export function createUpdateService({
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       lastError = manual ? message : null;
-      logger.warn?.(`sleuth: update check failed — ${message}`);
+      logger.warn?.(`detective: update check failed — ${message}`);
       return buildStatus(await store.update({ lastCheckedAt: now() }));
     }
 

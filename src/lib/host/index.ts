@@ -10,12 +10,12 @@ let detected: Host | null = null;
 
 declare global {
   interface Window {
-    mcpSleuth?: ElectronBridge;
+    mcpDetective?: ElectronBridge;
   }
 }
 
 function detect(): Host {
-  const bridge = typeof window !== 'undefined' ? window.mcpSleuth : undefined;
+  const bridge = typeof window !== 'undefined' ? window.mcpDetective : undefined;
   if (bridge && bridge.kind === 'electron') return createElectronHost(bridge);
   return browserHost;
 }

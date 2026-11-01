@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 // The suite calls DELETE /__vault_storage and writes bookmarks/history through the
-// app. Without this the target is the developer's real ~/.mcp-sleuth, so running
+// app. Without this the target is the developer's real ~/.mcp-detective, so running
 // the tests destroys their vault and overwrites their app data.
-const E2E_DATA_DIR = join(tmpdir(), 'mcp-sleuth-release-e2e');
+const E2E_DATA_DIR = join(tmpdir(), 'mcp-detective-release-e2e');
 
 export default defineConfig({
   testDir: './tests/release',
@@ -29,9 +29,9 @@ export default defineConfig({
     {
       command: 'npm run build && node server.js',
       url: 'http://127.0.0.1:4173',
-      env: { ...process.env, MCP_SLEUTH_DATA_DIR: E2E_DATA_DIR },
+      env: { ...process.env, MCP_DETECTIVE_DATA_DIR: E2E_DATA_DIR },
       // Never reuse: any process already on 4173 is silently accepted, and a
-      // globally installed `mcp-sleuth` daemon or a stale server will serve an
+      // globally installed `mcp-detective` daemon or a stale server will serve an
       // old build. The release gate must test the tree, not whatever is running.
       reuseExistingServer: false,
       timeout: 120_000,

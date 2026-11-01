@@ -1,22 +1,22 @@
-# Sleuth
+# MCP Detective
 
 A small Vite + React + TypeScript app that connects to **MCP servers over HTTP or stdio**, lists their tools, and lets you invoke them with auto-generated forms. Runs in the browser or as a desktop app.
 
-Add any MCP HTTP endpoint or a local stdio command (Cursor/Claude-style `command` / `args` / `env`); Sleuth auto-connects on add and persists the list to the encrypted vault.
+Add any MCP HTTP endpoint or a local stdio command (Cursor/Claude-style `command` / `args` / `env`); MCP Detective auto-connects on add and persists the list to the encrypted vault.
 
 Three ways to run it:
 
 - **From source** — `npm run dev` (see [Quick start](#quick-start)).
-- **CLI** — `npx @orenvill/mcp-sleuth` serves the built app and opens your browser
+- **CLI** — `npx @orenvill/mcp-detective` serves the built app and opens your browser
   (see [Installation](#installation)). The only option for remote/SSH use.
 - **Desktop app** — a packaged Electron build (see [Desktop app](#desktop-app)).
 
 ## Features
 
-- **Add / edit / remove** any MCP server — HTTP or stdio — persisted to the encrypted vault under `~/.mcp-sleuth/`, no presets.
+- **Add / edit / remove** any MCP server — HTTP or stdio — persisted to the encrypted vault under `~/.mcp-detective/`, no presets.
 - **Auto-connect on add** — registers the server and immediately connects (streamable HTTP for HTTP servers; local stdio bridge for stdio servers).
-- **Stdio transport** — spawn local MCP subprocesses (`command`, `args`, optional `cwd` and env vars); same tool UI as HTTP. In the browser build this goes through a Node-side bridge, so it requires **`npm run dev`** or the **`mcp-sleuth` CLI** (not plain static `dist/index.html`); the desktop app spawns them directly.
-- **Embedded local proxy mode** — optionally routes HTTP MCP requests through Sleuth's localhost server so HTTP MCP servers do not need browser CORS support.
+- **Stdio transport** — spawn local MCP subprocesses (`command`, `args`, optional `cwd` and env vars); same tool UI as HTTP. In the browser build this goes through a Node-side bridge, so it requires **`npm run dev`** or the **`mcp-detective` CLI** (not plain static `dist/index.html`); the desktop app spawns them directly.
+- **Embedded local proxy mode** — optionally routes HTTP MCP requests through MCP Detective's localhost server so HTTP MCP servers do not need browser CORS support.
 - **Self-signed certificates, per server** — tick a box to reach an `https` endpoint whose certificate no public CA signed, without disabling verification anywhere else.
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).
@@ -25,7 +25,7 @@ Three ways to run it:
 - **Schema Lab** — inspect tool input schemas, highlight required fields, generate example arguments, and copy JSON-RPC `tools/call` payloads.
 - **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).
 - **Prompt Injection scan** — flags suspicious patterns in tool names, descriptions, and parameter metadata with highlighted matches.
-- **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-sleuth/` and exportable as Markdown.
+- **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-detective/` and exportable as Markdown.
 - **Agent Chat** — drive a model you supply (local or cloud) against a connected server and watch how it actually uses the tools. Every tool call is approval-gated, the run's calls can be captured as a Replay Suite or recorded to the Observation Journal, and refusals feed Agent Readiness. See [Agent Chat](#agent-chat).
 - **Meta-tool discovery** — recognizes tools that exist to discover *other* tools (`list_tools`, `search_tools`, `invoke_tool`, `get_manifest`, etc.) and surfaces a one-click **Discover all tools** button. Discovered tools appear in a collapsible section in the tool list and can be invoked directly or routed through a proxy meta-tool.
 
@@ -50,14 +50,14 @@ Then click **+ Add** in the sidebar:
 
 ## Desktop app
 
-Sleuth also ships as an Electron desktop app. Download the installer for your platform from the
-[latest GitHub release](https://github.com/OrenVill/mcp-sleuth/releases/latest):
+MCP Detective also ships as an Electron desktop app. Download the installer for your platform from the
+[latest GitHub release](https://github.com/OrenVill/mcp-detective/releases/latest):
 
 | Platform | File |
 |----------|------|
-| macOS | `Sleuth-<version>-arm64.dmg` (Apple silicon) or `Sleuth-<version>-x64.dmg` (Intel) |
-| Windows | `Sleuth-<version>-x64.exe` |
-| Linux | `Sleuth-<version>-x86_64.AppImage` or `Sleuth-<version>-amd64.deb` |
+| macOS | `Detective-<version>-arm64.dmg` (Apple silicon) or `Detective-<version>-x64.dmg` (Intel) |
+| Windows | `Detective-<version>-x64.exe` |
+| Linux | `Detective-<version>-x86_64.AppImage` or `Detective-<version>-amd64.deb` |
 
 What the desktop app adds over the browser build:
 
@@ -65,7 +65,7 @@ What the desktop app adds over the browser build:
   origin, so CORS does not apply and the per-server proxy toggle has nothing to do.
 - **Stdio without a bridge.** Stdio servers are spawned directly as child processes of the app;
   there is no `/__mcp_stdio` HTTP bridge in between.
-- **Vault auto-unlock via the OS keychain**, where the platform has a real keyring. Sleuth
+- **Vault auto-unlock via the OS keychain**, where the platform has a real keyring. MCP Detective
   declines the insecure `basic_text` backend (seen on some Linux desktops) and falls back to
   asking for the passphrase.
 - **Native save dialogs** for exports instead of browser downloads.
@@ -76,7 +76,7 @@ This project has no Apple Developer certificate and no Windows code-signing cert
 OS warns on first launch. That is expected, not a broken download:
 
 - **macOS** — the first open is blocked. Open **System Settings → Privacy & Security**, find the
-  message about Sleuth, and click **Open Anyway**. The right-click → Open trick is unreliable on
+  message about MCP Detective, and click **Open Anyway**. The right-click → Open trick is unreliable on
   current macOS; use Privacy & Security.
 - **Windows** — SmartScreen shows "Windows protected your PC". Click **More info** →
   **Run anyway**.
@@ -84,22 +84,22 @@ OS warns on first launch. That is expected, not a broken download:
 
 ### Launching it on Linux
 
-The deb installs to `/opt/Sleuth` and does not print anything when it finishes, so it is easy
+The deb installs to `/opt/Detective` and does not print anything when it finishes, so it is easy
 to think nothing happened. It gives you two ways in:
 
 ```bash
-sudo apt install ./Sleuth-<version>-amd64.deb
-mcp-sleuth
+sudo apt install ./Detective-<version>-amd64.deb
+mcp-detective
 ```
 
-The `mcp-sleuth` command comes from a symlink the package creates at `/usr/bin/mcp-sleuth`.
-The app also appears in your application menu as **Sleuth**.
+The `mcp-detective` command comes from a symlink the package creates at `/usr/bin/mcp-detective`.
+The app also appears in your application menu as **Detective**.
 
 The AppImage needs no install — just make it executable:
 
 ```bash
-chmod +x Sleuth-<version>-x86_64.AppImage
-./Sleuth-<version>-x86_64.AppImage
+chmod +x Detective-<version>-x86_64.AppImage
+./Detective-<version>-x86_64.AppImage
 ```
 
 **On WSL** there is no application menu, so the terminal command is the only way in. WSLg
@@ -107,14 +107,14 @@ supplies the window. Two quirks specific to WSL:
 
 - If it exits complaining about the sandbox, add `--no-sandbox`.
 - You get a passphrase prompt rather than automatic unlock: WSL has no keyring, so
-  `safeStorage` reports the `basic_text` backend, and Sleuth refuses to seal a passphrase
+  `safeStorage` reports the `basic_text` backend, and MCP Detective refuses to seal a passphrase
   with a hardcoded key.
 
 ### Update notifications
 
 The desktop app tells you when a newer version is out, and installing it stays a manual step.
 
-Five seconds after launch, and every six hours after that, Sleuth asks GitHub for the latest
+Five seconds after launch, and every six hours after that, MCP Detective asks GitHub for the latest
 release of this repository. If it is newer than the version you are running, a banner appears
 under the header:
 
@@ -140,7 +140,7 @@ app, which this project does not have, so the last step is always: download the 
 and install it over the old one.
 
 The browser and CLI builds have no update notice at all — they update with
-`npm i -g @orenvill/mcp-sleuth@latest`.
+`npm i -g @orenvill/mcp-detective@latest`.
 
 ### Running the desktop app from source
 
@@ -152,12 +152,12 @@ npm run package           # installers for the current platform
 npm run package:linux     # AppImage + deb
 ```
 
-`npm run electron:dev` sets `MCP_SLEUTH_DEV_URL=http://localhost:5173`, so run `npm run dev` in
+`npm run electron:dev` sets `MCP_DETECTIVE_DEV_URL=http://localhost:5173`, so run `npm run dev` in
 another terminal alongside it; renderer edits then hot-reload into the Electron window.
 
 ## Data directory
 
-The desktop app and the CLI read and write the same directory, `~/.mcp-sleuth/`:
+The desktop app and the CLI read and write the same directory, `~/.mcp-detective/`:
 
 | File | Contents |
 |------|----------|
@@ -168,7 +168,7 @@ The desktop app and the CLI read and write the same directory, `~/.mcp-sleuth/`:
 | `update-state.json` | Update-check preference and dismissed/skipped versions (desktop only) |
 | `daemon.json` | CLI daemon lock file (CLI only) |
 
-Override the directory with `MCP_SLEUTH_DATA_DIR=/path/to/dir`. `MCP_EXPLORER_DATA_DIR` is still
+Override the directory with `MCP_DETECTIVE_DATA_DIR=/path/to/dir`. `MCP_EXPLORER_DATA_DIR` is still
 honoured for scripts written before the rename. A pre-rename `~/.mcp-explorer/` directory is
 migrated once on first run — files are **copied**, not moved, so the old directory stays intact.
 
@@ -178,37 +178,38 @@ files. Run one at a time.
 ## Installation
 
 ```bash
-npm install -g @orenvill/mcp-sleuth
+npm install -g @orenvill/mcp-detective
 ```
 
-The `-g` flag installs the package **globally**, making the `mcp-sleuth` command available anywhere in your terminal. Without `-g`, npm installs it as a local project dependency and the command won't be on your `PATH`.
+The `-g` flag installs the package **globally**, making the `mcp-detective` command available anywhere in your terminal. Without `-g`, npm installs it as a local project dependency and the command won't be on your `PATH`.
 
-> **Already have an older install?** If you previously installed via `npm install -g mcp-sleuth` or `npm install -g github:OrenVill/mcp-sleuth`, uninstall it first:
+> **Upgrading from `@orenvill/mcp-sleuth`?** Uninstall the old global package, then install MCP Detective. On first launch, data from `~/.mcp-sleuth/` (and older `~/.mcp-explorer/` if present) is copied non-destructively into `~/.mcp-detective/`; browser vaults and bookmarks migrate the same way.
 > ```bash
-> npm uninstall -g mcp-sleuth
-> npm install -g @orenvill/mcp-sleuth
+> npm uninstall -g mcp-sleuth @orenvill/mcp-sleuth
+> npm install -g @orenvill/mcp-detective
 > ```
+> The `mcp-sleuth` command remains available as an alias on the new package.
 
 **Requirements:** Node.js 20 or later. Check with `node --version`.
 
 ## Run
 
 ```bash
-mcp-sleuth              # start + open browser at http://127.0.0.1:4173/
-mcp-sleuth 3000         # custom port
-mcp-sleuth --no-open    # skip opening the browser (also: OPEN=0)
+mcp-detective              # start + open browser at http://127.0.0.1:4173/
+mcp-detective 3000         # custom port
+mcp-detective --no-open    # skip opening the browser (also: OPEN=0)
 ```
 
 The CLI prints a single colored ready line and opens your default browser:
 
 ```
-  mcp-sleuth  ➜  http://127.0.0.1:4173/
+  mcp-detective  ➜  http://127.0.0.1:4173/
 ```
 
 To update to the latest version:
 
 ```bash
-npm update -g @orenvill/mcp-sleuth
+npm update -g @orenvill/mcp-detective
 ```
 
 ## Build / serve
@@ -242,9 +243,9 @@ Choose **Stdio** and configure:
 | Working directory | Optional |
 | Environment | Optional key/value pairs (secrets stored in the encrypted vault) |
 
-Stdio servers run as a local subprocess on your machine. The explorer's Node server (`server.js`, started by **`mcp-sleuth`** or **`npm run dev`**) exposes a same-origin Streamable HTTP bridge at `/__mcp_stdio/…` so the browser can reuse the same MCP client and dev tools as HTTP servers.
+Stdio servers run as a local subprocess on your machine. The explorer's Node server (`server.js`, started by **`mcp-detective`** or **`npm run dev`**) exposes a same-origin Streamable HTTP bridge at `/__mcp_stdio/…` so the browser can reuse the same MCP client and dev tools as HTTP servers.
 
-**Stdio requires the local explorer server.** Opening `dist/index.html` directly (without `server.js` or Vite) will not work — run `npm run dev` during development or `mcp-sleuth` / `npm start` for the built app.
+**Stdio requires the local explorer server.** Opening `dist/index.html` directly (without `server.js` or Vite) will not work — run `npm run dev` during development or `mcp-detective` / `npm start` for the built app.
 
 Use the **✎** button next to a server to edit its name, transport settings, or description; **✕** removes it.
 
@@ -262,7 +263,7 @@ actually holds. The same applies to the Agent Chat model-server API key.
 
 ## Agent Chat
 
-Every other trust surface in Sleuth — Permission Surface, Prompt Injection, Agent Readiness —
+Every other trust surface in MCP Detective — Permission Surface, Prompt Injection, Agent Readiness —
 infers risk from schemas and descriptions. Agent Chat closes the loop by letting a real model
 loose on the server and showing you what it does.
 
@@ -273,7 +274,7 @@ Open it with **Chat** in the toolbar.
 
 ### Bring your own model
 
-Sleuth ships no model and no key. From the picker in the chat header, add an **LLM server**:
+MCP Detective ships no model and no key. From the picker in the chat header, add an **LLM server**:
 
 | Field | Notes |
 |-------|-------|
@@ -282,13 +283,13 @@ Sleuth ships no model and no key. From the picker in the chat header, add an **L
 | Base URL | Defaults per type: `http://127.0.0.1:11434/v1` (Ollama), `https://api.anthropic.com/v1`, `https://generativelanguage.googleapis.com/v1beta` |
 | API key | Leave empty for a local model |
 
-Sleuth then asks that server which models it has and lists them; if it reports none, type a model
+MCP Detective then asks that server which models it has and lists them; if it reports none, type a model
 name by hand. "OpenAI-compatible" means anything serving `/v1/chat/completions` — Ollama, LM
 Studio, llama.cpp, vLLM, OpenAI itself, Groq, OpenRouter, Together, DeepSeek. Anthropic and
 Gemini have their own adapters because their tool-calling formats differ: Anthropic returns
 `tool_use` blocks and takes results back as user messages, and Gemini keys a tool response by the
 tool's name rather than by a call id. **The API key is stored in the same encrypted vault as your
-MCP server credentials** — there is no plaintext credential store anywhere in Sleuth.
+MCP server credentials** — there is no plaintext credential store anywhere in MCP Detective.
 
 Tick the servers whose tools the model may see. The one you are investigating is ticked by
 default; adding others is how you find out whether two servers export tools a model cannot tell
@@ -358,7 +359,7 @@ disk.
 
 | Way you run it | Path |
 |----------------|------|
-| `npm run dev` / `mcp-sleuth` CLI | Through Sleuth's own local server at `/__llm_proxy`, then to the provider. This is why a local Ollama works without setting `OLLAMA_ORIGINS` — the browser only ever talks to same-origin. |
+| `npm run dev` / `mcp-detective` CLI | Through MCP Detective's own local server at `/__llm_proxy`, then to the provider. This is why a local Ollama works without setting `OLLAMA_ORIGINS` — the browser only ever talks to same-origin. |
 | Desktop app | Straight from the Electron main process, like MCP traffic. No proxy in the path. |
 
 The proxy is a CORS forwarder, not a security boundary: the vault decrypts in the renderer, so the
@@ -372,9 +373,9 @@ calls the model causes do.
 
 ```
 bin/
-└── mcp-sleuth.js              # CLI: vite build (silent) → server.js → opens browser
+└── mcp-detective.js              # CLI: vite build (silent) → server.js → opens browser
 server.js                        # zero-dep static server for dist/ (used by `npm start`)
-data-dir.js                      # ~/.mcp-sleuth resolution + one-time pre-rename migration
+data-dir.js                      # ~/.mcp-detective resolution + one-time pre-rename migration
 llm-proxy.js                     # forwards Agent Chat provider calls (browser build only)
 electron/                        # desktop app main process (see Desktop app above)
 ├── main.js                      # entry: app lifecycle, app:// scheme, IPC wiring
@@ -404,7 +405,7 @@ src/
 
 ## CORS notes
 
-The browser sends MCP requests with headers such as `Mcp-Session-Id` and `Mcp-Protocol-Version`. By default, **Proxy through local server** is enabled for each server, which rewrites requests through the local `mcp-sleuth` static server and adds the browser-facing CORS headers there.
+The browser sends MCP requests with headers such as `Mcp-Session-Id` and `Mcp-Protocol-Version`. By default, **Proxy through local server** is enabled for each server, which rewrites requests through the local `mcp-detective` static server and adds the browser-facing CORS headers there.
 
 You can disable the checkbox for a server when its HTTP endpoint already supports browser clients directly. In direct mode, the MCP server must allow those MCP headers in `Access-Control-Allow-Headers` and expose `Mcp-Session-Id` via `Access-Control-Expose-Headers`.
 
@@ -454,13 +455,13 @@ Versioning is SemVer, automated by [release-please](https://github.com/googleapi
 - Merging the Release PR creates a git tag (`vX.Y.Z`), a GitHub Release with the changelog section, and uploads a built `dist.tgz` artifact plus the unsigned desktop installers built on a macOS / Windows / Linux matrix.
 - Commit types that bump the version: `feat:` (minor, pre-1.0), `fix:` / `perf:` / `refactor:` (patch). `feat!:` or a `BREAKING CHANGE:` footer triggers a major bump (post-1.0) or a minor bump (pre-1.0).
 
-The package is published to the npm registry as `@orenvill/mcp-sleuth`. To install from source instead:
+The package is published to the npm registry as `@orenvill/mcp-detective`. To install from source instead:
 
 ```bash
-npm install -g github:OrenVill/mcp-sleuth
+npm install -g github:OrenVill/mcp-detective
 ```
 
-Or download `dist.tgz` from a [GitHub Release](https://github.com/OrenVill/mcp-sleuth/releases) and serve it with any static host.
+Or download `dist.tgz` from a [GitHub Release](https://github.com/OrenVill/mcp-detective/releases) and serve it with any static host.
 
 
 ## Code signing policy
@@ -474,10 +475,10 @@ certificate by [SignPath Foundation](https://signpath.org).
 
 **Privacy policy**
 
-Sleuth is local-first. All state lives in `~/.mcp-sleuth/` on your machine.
+MCP Detective is local-first. All state lives in `~/.mcp-detective/` on your machine.
 There is no account, no backend service, and no telemetry or analytics.
 
-Sleuth makes outbound network requests only to:
+MCP Detective makes outbound network requests only to:
 - MCP servers you add yourself.
 - The LLM provider you configure for Agent Chat, using your own API key.
   Prompts, tool schemas and tool results are sent to that provider and are

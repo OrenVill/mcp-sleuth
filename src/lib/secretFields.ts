@@ -25,7 +25,7 @@ export const SECRET_MASK = '*****';
  * Prefix of the value meaning “whatever is already stored stays”. It opens with
  * a NUL, so no keyboard can produce it and no real credential collides with it.
  */
-const KEEP_PREFIX = `${String.fromCharCode(0)}mcp-sleuth:keep-stored-secret`;
+const KEEP_PREFIX = `${String.fromCharCode(0)}mcp-detective:keep-stored-secret`;
 
 /**
  * The marker for a kept secret. `storedKey` names the entry it came from, so a
