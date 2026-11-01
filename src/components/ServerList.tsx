@@ -13,9 +13,11 @@ function stdioCommandSummary(stdio: ServerStdioConfig | undefined): string {
 interface Props {
   servers: ServerEntry[];
   selectedId: string | null;
+  refreshingIds?: ReadonlySet<string>;
   onSelect: (id: string) => void;
   onConnect: (id: string) => void;
   onDisconnect: (id: string) => void;
+  onRefresh: (id: string) => void;
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
   onAddClick: () => void;
@@ -51,9 +53,11 @@ const STATUS_CONFIG: Record<ServerStatus, { dot: string; ring: string; label: st
 export function ServerList({
   servers,
   selectedId,
+  refreshingIds,
   onSelect,
   onConnect,
   onDisconnect,
+  onRefresh,
   onEdit,
   onRemove,
   onAddClick,
@@ -125,7 +129,7 @@ export function ServerList({
                     </span>
                   )}
                 </div>
-                <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                   <button
                     type="button"
                     title="Edit"
@@ -163,18 +167,65 @@ export function ServerList({
                 </div>
               )}
               {s.error && <ServerErrorMessage text={s.error} />}
-              <div className="mt-2 flex gap-1.5 items-center">
+              <div className="mt-2 flex gap-1.5 items-center flex-wrap">
                 {s.status === 'connected' ? (
-                  <button
-                    type="button"
-                    className="text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium transition-colors"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDisconnect(s.id);
-                    }}
-                  >
-                    Disconnect
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className="text-[11px] px-2 py-0.5 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDisconnect(s.id);
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                    <button
+                      type="button"
+                      title="Refresh tools"
+                      aria-label="Refresh tools"
+                      disabled={refreshingIds?.has(s.id)}
+                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-wait text-zinc-200 font-medium transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRefresh(s.id);
+                      }}
+                    >
+                      {refreshingIds?.has(s.id) ? (
+                        <>
+                          <svg className="w-3 h-3 animate-spin shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden>
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="3"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                            />
+                          </svg>
+                          Refreshing…
+                        </>
+                      ) : (
+                        <>
+                          <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 shrink-0" aria-hidden>
+                            <path
+                              d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3"
+                              stroke="currentColor"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          Refresh
+                        </>
+                      )}
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"

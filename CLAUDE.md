@@ -466,7 +466,7 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-29 spec files, 135 tests. Runs against the **built `dist/`** served by `server.js` at
+30 spec files, 140 tests. Runs against the **built `dist/`** served by `server.js` at
 `http://127.0.0.1:4173`. Playwright starts that server, the MCP fixture
 (`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001`, and the scripted OpenAI-compatible LLM
 fixture (`tests/fixtures/llm-server.mjs`) on `127.0.0.1:3003` itself — no manual setup.
@@ -508,6 +508,7 @@ Spec numbering maps directly to release checklist sections (`§3.N`):
 | `27-stored-secrets.spec.ts` | A stored credential never reaches an edit form; an untouched field keeps it |
 | `28-untrusted-content.spec.ts` | The HTML preview runs no script, the CSP is served, local endpoints refuse an unattributed caller |
 | `29-self-signed-tls.spec.ts` | The per-server self-signed certificate option, against a TLS fixture |
+| `30-refresh-server-tools.spec.ts` | Per-server Refresh button reloads tools without disconnecting |
 
 The numbers are a naming convention, not a mechanism — nothing enforces them — but they map to
 the `§3.N` sections of the release checklist, so the next spec added should be `30`. If you
