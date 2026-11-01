@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/OrenVill/mcp-detective/compare/v1.3.0...v2.0.0) (2026-11-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* Rebrand from Sleuth / `@orenvill/mcp-sleuth` to MCP Detective / `@orenvill/mcp-detective`. Data migrates automatically from `~/.mcp-sleuth` (and legacy browser storage) on first launch.
+
+### Features
+
+* Rebrand product as mcp-detective ([#66](https://github.com/OrenVill/mcp-detective/pull/66))
+
 ## [1.3.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.2.0...v1.3.0) (2026-08-28)
 
 
