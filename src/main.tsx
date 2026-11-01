@@ -4,14 +4,22 @@ import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { getHost } from './lib/host'
-import { hasCustomWindowControls, windowControls } from './lib/windowControls'
+import { windowControls } from './lib/windowControls'
 
 // Lets CSS target the desktop build, where the app header is the title bar.
 document.documentElement.dataset.host = getHost().kind
 
+const electronPlatform = (
+  window as unknown as { mcpDetective?: { platform?: string } }
+).mcpDetective?.platform
+if (electronPlatform) {
+  document.documentElement.dataset.platform = electronPlatform
+}
+
 // The desktop window paints its own rounded shell, which has to square off when
-// maximised — otherwise the corners clip the display.
-if (hasCustomWindowControls()) {
+// maximised — otherwise the corners clip the display. Linux uses custom IPC
+// controls; Windows uses native snap/maximize but the same CSS hook.
+if (getHost().kind === 'electron') {
   const setMaximized = (maximized: boolean) => {
     document.documentElement.dataset.maximized = String(maximized)
   }

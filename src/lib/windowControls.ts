@@ -31,10 +31,15 @@ async function call<T>(channel: string): Promise<T | null> {
   return envelope.value as T;
 }
 
-/** True when this build draws its own window controls (frameless, non-macOS). */
+/** True when this build draws its own window controls (Linux frameless; not macOS/Windows). */
 export function hasCustomWindowControls(): boolean {
   const api = bridge();
-  return api !== null && api.platform !== undefined && api.platform !== 'darwin';
+  return (
+    api !== null &&
+    api.platform !== undefined &&
+    api.platform !== 'darwin' &&
+    api.platform !== 'win32'
+  );
 }
 
 export const windowControls = {

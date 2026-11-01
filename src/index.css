@@ -139,6 +139,12 @@ body::before {
   app-region: drag;
 }
 
+/* Windows draws native min/max/close in titleBarOverlay; keep header content clear. */
+[data-host='electron'][data-platform='win32'] .app-header,
+[data-host='electron'][data-platform='win32'] .app-titlebar {
+  padding-right: 140px;
+}
+
 /* `label` is in this list because a checkbox pill is mostly label: without it
    the input is clickable but the text beside it drags the window instead of
    toggling. Same reasoning for any interactive wrapper added here later. */
@@ -155,10 +161,12 @@ body::before {
 }
 
 /* ── Desktop window chrome ────────────────────────────────────────────────
-   The Electron window is transparent and frameless, so the app paints its own
-   rounded shell. html/body stay see-through and #root supplies the surface,
-   which is what turns a full-bleed web page into something window-shaped.
-   Squared off when maximised, where rounded corners would clip the display. */
+   Linux: the Electron window is transparent and frameless, so the app paints
+   its own rounded shell. Windows uses an opaque window with titleBarOverlay
+   (see electron/windowChrome.js). html/body stay see-through on Linux and
+   #root supplies the surface, which is what turns a full-bleed web page into
+   something window-shaped. Squared off when maximised, where rounded corners
+   would clip the display. */
 [data-host='electron'] html,
 [data-host='electron'] body {
   background-color: transparent;
