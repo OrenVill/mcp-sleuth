@@ -33,7 +33,7 @@ test.describe.serial('§3.28 — Untrusted content from an MCP server', () => {
     const response = await request.get(`${APP_ORIGIN}/`);
     const csp = response.headers()['content-security-policy'];
     expect(csp, 'index.html must carry a CSP').toBeTruthy();
-    expect(csp).toContain("script-src 'self'");
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
   });

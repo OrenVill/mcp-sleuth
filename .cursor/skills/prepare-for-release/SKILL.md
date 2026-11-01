@@ -221,7 +221,7 @@ server sends is hostile input, so two defences have to hold.
    script blocks release: the frame is sandboxed, but a page that reproduces Sleuth's own
    vault-unlock panel does not need to escape the sandbox to collect a passphrase.
 2. **The page carries a Content-Security-Policy.** `curl -sI http://127.0.0.1:4173/ | grep -i
-   content-security-policy` must show one including `script-src 'self'`. It is served as a header
+   content-security-policy` must show one including `script-src 'self' 'wasm-unsafe-eval'`. It is served as a header
    rather than a meta tag so the Vite dev server's HMR client still works — check the built CLI
    server, not `npm run dev`.
 

@@ -52,17 +52,13 @@ test.describe.serial('§3.7 — Result pane — rich rendering', () => {
   });
 
   test('JSON result is syntax-highlighted and pretty-printed', async () => {
-    // Shiki loads async — wait up to 5s for the highlighted spans to appear
+    await page.locator('aside + aside ul li').filter({ hasText: /search_documents/i }).click();
+    await page.locator('input[type="text"], input:not([type])').first().fill('hello');
+    await page.getByRole('button', { name: /run|submit|invoke|call/i }).first().click();
+
     const highlightedSpan = page.locator('.shiki-block span[style*="color"]').first();
-    if (await highlightedSpan.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await page.screenshot({ path: 'test-results/07-json-highlighted.png' });
-    } else {
-      // Fallback: confirm at least a code/pre block with content is present
-      const codeBlock = page.locator('.shiki-block, pre').first();
-      const text = await codeBlock.textContent().catch(() => null);
-      expect(text).not.toBeNull();
-      await page.screenshot({ path: 'test-results/07-json-highlighted.png' });
-    }
+    await expect(highlightedSpan).toBeVisible({ timeout: 10_000 });
+    await page.screenshot({ path: 'test-results/07-json-highlighted.png' });
   });
 
   test('HTML resource shows Code / Preview toggle with iframe in Preview', async () => {

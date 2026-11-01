@@ -13,8 +13,11 @@
  * and eval'd script that production does not. A header lets the built app be
  * strict without making `npm run dev` unusable.
  *
- * Two directives are deliberately loose:
+ * Three directives are deliberately loose:
  *
+ * - `script-src` includes `'wasm-unsafe-eval'`. Shiki's Oniguruma engine loads
+ *   WebAssembly from same-origin chunks; without this directive the browser
+ *   refuses to compile it and every CodeBlock falls back to plain text.
  * - `style-src` allows inline styles. React sets element styles directly and the
  *   syntax highlighter emits inline colours; there is no XSS sink here that the
  *   markdown escaping does not already close.
@@ -24,7 +27,7 @@
  */
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
-  "script-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
