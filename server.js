@@ -16,7 +16,7 @@ const defaultRoot = resolve(here, 'dist');
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
 const c = (codes, s) => (useColor ? `\x1b[${codes}m${s}\x1b[0m` : s);
 export function readyLine(host, port) {
-  const name = c('1;38;5;141', 'mcp-sleuth'); // bold violet
+  const name = c('1;38;5;141', 'mcp-detective'); // bold violet
   const arrow = c('2', '➜'); // dim
   const url = c('36', `http://${host}:${port}/`); // cyan
   return `  ${name}  ${arrow}  ${url}`;
@@ -48,7 +48,7 @@ export function start({
 } = {}) {
   if (!existsSync(root)) {
     throw new Error(
-      `mcp-sleuth: ${root} does not exist. Run "npm run build" (or "mcp-sleuth") first.`,
+      `mcp-detective: ${root} does not exist. Run "npm run build" (or "mcp-detective") first.`,
     );
   }
 

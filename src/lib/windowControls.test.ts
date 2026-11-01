@@ -16,7 +16,7 @@ function installBridge(
   invoke: InvokeMock = vi.fn(async () => ({ ok: true, value: true })) as InvokeMock,
 ) {
   const onMaximizedChanged = vi.fn(() => () => {});
-  vi.stubGlobal('window', { mcpSleuth: { platform, invoke, onMaximizedChanged } });
+  vi.stubGlobal('window', { mcpDetective: { platform, invoke, onMaximizedChanged } });
   return { invoke, onMaximizedChanged };
 }
 

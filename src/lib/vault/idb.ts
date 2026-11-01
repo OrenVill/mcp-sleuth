@@ -1,4 +1,4 @@
-import { IDB_NAME, IDB_RECORD_KEY, IDB_STORE, LEGACY_IDB_NAME } from './constants';
+import { IDB_NAME, IDB_RECORD_KEY, IDB_STORE, LEGACY_IDB_NAME, LEGACY_SLEUTH_IDB_NAME } from './constants';
 import type { VaultEnvelope } from './types';
 
 function openDb(name: string = IDB_NAME): Promise<IDBDatabase> {
@@ -42,14 +42,18 @@ function readFrom(name: string): Promise<VaultEnvelope | null> {
 export async function getVaultEnvelope(): Promise<VaultEnvelope | null> {
   const current = await readFrom(IDB_NAME);
   if (current) return current;
-  // The product was renamed; an existing browser vault still lives under the old
-  // database name. Read it rather than orphaning it. Writes always go to the new
-  // database, so this fallback quietly stops mattering after the next save.
-  try {
-    return await readFrom(LEGACY_IDB_NAME);
-  } catch {
-    return null;
+  // The product was renamed; an existing browser vault may still live under an
+  // older database name. Read it rather than orphaning it. Writes always go to
+  // the new database, so this fallback quietly stops mattering after the next save.
+  for (const name of [LEGACY_SLEUTH_IDB_NAME, LEGACY_IDB_NAME]) {
+    try {
+      const legacy = await readFrom(name);
+      if (legacy) return legacy;
+    } catch {
+      /* try next */
+    }
   }
+  return null;
 }
 
 export async function putVaultEnvelope(envelope: VaultEnvelope): Promise<void> {

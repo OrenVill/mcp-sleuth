@@ -1,18 +1,19 @@
 /**
  * The directory holding the vault, app data, daemon lock, and window state.
  *
- * The product was renamed from "MCP Explorer" to "Sleuth". Existing installs keep
- * their data in `~/.mcp-sleuth`, including encrypted vaults that cannot be
- * recreated, so this module migrates it once — non-destructively, leaving the old
- * directory in place so a downgrade still works.
+ * The product was renamed from MCP Explorer → Sleuth → MCP Detective. Existing
+ * installs keep their data under older directory names, including encrypted
+ * vaults that cannot be recreated, so this module migrates once — non-destructively,
+ * leaving old directories in place so a downgrade still works.
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-export const DATA_DIR_NAME = '.mcp-sleuth';
-/** The pre-rename directory. Must NOT track DATA_DIR_NAME — it names data
- *  written by older versions, so renaming it makes the migration a no-op. */
+export const DATA_DIR_NAME = '.mcp-detective';
+/** Immediate predecessor. Must NOT track DATA_DIR_NAME. */
+export const PREVIOUS_DATA_DIR_NAME = '.mcp-sleuth';
+/** The pre-rename (Explorer) directory. Must NOT track DATA_DIR_NAME. */
 export const LEGACY_DATA_DIR_NAME = '.mcp-explorer';
 
 /** Files worth carrying across a rename. */
@@ -25,8 +26,9 @@ export const MIGRATABLE_FILES = [
 
 export function getDataDir(env = process.env) {
   return (
+    env.MCP_DETECTIVE_DATA_DIR ??
+    // Honoured for compatibility with scripts written before this rename.
     env.MCP_SLEUTH_DATA_DIR ??
-    // Honoured for compatibility with scripts written before the rename.
     // Deliberately the OLD name — do not "fix" this to match the new one.
     env.MCP_EXPLORER_DATA_DIR ??
     join(homedir(), DATA_DIR_NAME)
@@ -41,7 +43,15 @@ export function getDataDir(env = process.env) {
  * real vault leak into a throwaway test directory.
  */
 export function isDefaultDataDir(env = process.env) {
-  return !env.MCP_SLEUTH_DATA_DIR && !env.MCP_EXPLORER_DATA_DIR;
+  return (
+    !env.MCP_DETECTIVE_DATA_DIR &&
+    !env.MCP_SLEUTH_DATA_DIR &&
+    !env.MCP_EXPLORER_DATA_DIR
+  );
+}
+
+export function getPreviousDataDir() {
+  return join(homedir(), PREVIOUS_DATA_DIR_NAME);
 }
 
 export function getLegacyDataDir() {
@@ -91,4 +101,19 @@ export function migrateLegacyDataDir({
   } catch {
     return [];
   }
+}
+
+/**
+ * Migrate from each predecessor directory in order (Sleuth, then Explorer).
+ */
+export function migrateAllLegacyDataDirs({
+  dataDir = getDataDir(),
+  isDefault = isDefaultDataDir(),
+  fs = { existsSync, readdirSync, mkdirSync, copyFileSync },
+  previousDir = getPreviousDataDir(),
+  explorerDir = getLegacyDataDir(),
+} = {}) {
+  const fromPrevious = migrateLegacyDataDir({ dataDir, isDefault, fs, legacyDir: previousDir });
+  const fromExplorer = migrateLegacyDataDir({ dataDir, isDefault, fs, legacyDir: explorerDir });
+  return [...fromPrevious, ...fromExplorer];
 }

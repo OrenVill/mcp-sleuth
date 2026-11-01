@@ -30,9 +30,9 @@ createRoot(document.getElementById('root')!).render(
 // A rejected promise with no handler used to vanish silently; an MCP call that
 // fails outside a try/catch left the UI stuck with no clue why.
 window.addEventListener('unhandledrejection', (event) => {
-  console.error('sleuth: unhandled rejection', event.reason)
+  console.error('detective: unhandled rejection', event.reason)
 })
 
 window.addEventListener('error', (event) => {
-  console.error('sleuth: uncaught error', event.error ?? event.message)
+  console.error('detective: uncaught error', event.error ?? event.message)
 })

@@ -1,5 +1,5 @@
-appId: com.orenvill.sleuth
-productName: Sleuth
+appId: com.orenvill.detective
+productName: Detective
 copyright: MIT
 
 directories:
@@ -7,13 +7,13 @@ directories:
   buildResources: build
 
 # Without this the artifact name is derived from the scoped package name and the
-# "/" in "@orenvill/mcp-sleuth" is treated as a path separator, so the deb is
+# "/" in "@orenvill/mcp-detective" is treated as a path separator, so the deb is
 # written to release/@orenvill/ (and silently fails).
 artifactName: ${productName}-${version}-${arch}.${ext}
 
 # `main` is injected only into the packaged app. The published npm package must
 # keep no `main` field — it is a CLI (`bin`), and a `main` pointing at
-# electron/main.js would make `require('@orenvill/mcp-sleuth')` boot a window.
+# electron/main.js would make `require('@orenvill/mcp-detective')` boot a window.
 extraMetadata:
   main: electron/main.js
 
@@ -57,8 +57,8 @@ linux:
   # Debian requires a maintainer with an address. A GitHub noreply address keeps
   # a personal one out of the published package; change it if you prefer.
   maintainer: OrenVill <OrenVill@users.noreply.github.com>
-  # Without this the binary is named from the scoped package — "@orenvillmcp-sleuth".
-  executableName: mcp-sleuth
+  # Without this the binary is named from the scoped package — "@orenvillmcp-detective".
+  executableName: mcp-detective
   target:
     - target: AppImage
       arch: [x64]

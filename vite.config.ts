@@ -30,7 +30,7 @@ function vaultStorageMiddleware(
 /** Run before Vite's SPA HTML fallback so GET /__vault_storage hits the file store. */
 function vaultStoragePlugin(): PluginOption {
   return {
-    name: 'mcp-sleuth-vault-storage',
+    name: 'mcp-detective-vault-storage',
     enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(vaultStorageMiddleware);
@@ -61,7 +61,7 @@ function appDataMiddleware(
 
 function appDataPlugin(): PluginOption {
   return {
-    name: 'mcp-sleuth-app-data',
+    name: 'mcp-detective-app-data',
     enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(appDataMiddleware);
@@ -92,7 +92,7 @@ function llmProxyMiddleware(
 
 function llmProxyPlugin(): PluginOption {
   return {
-    name: 'mcp-sleuth-llm-proxy',
+    name: 'mcp-detective-llm-proxy',
     enforce: 'pre',
     configureServer(server) {
       server.middlewares.use(llmProxyMiddleware);
@@ -123,7 +123,7 @@ function stdioBridgeMiddleware(
 
 function mcpProxyPlugin(): PluginOption {
   return {
-    name: 'mcp-sleuth-proxy',
+    name: 'mcp-detective-proxy',
     configureServer(server) {
       server.middlewares.use(stdioBridgeMiddleware);
       server.middlewares.use(PROXY_PATH, handleMcpProxy);

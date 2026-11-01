@@ -1,7 +1,7 @@
 /**
  * HTTP handler for gzip-compressed app data (bookmarks + history) stored on disk.
- * Default path: ~/.mcp-sleuth/data.gz
- * Override directory: MCP_SLEUTH_DATA_DIR=/path/to/dir
+ * Default path: ~/.mcp-detective/data.gz
+ * Override directory: MCP_DETECTIVE_DATA_DIR=/path/to/dir
  */
 import { gzip, gunzip } from 'node:zlib';
 import { promisify } from 'node:util';

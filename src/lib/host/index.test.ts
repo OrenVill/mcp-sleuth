@@ -33,7 +33,7 @@ describe('bridge detection', () => {
 
   it('picks the electron host when the preload bridge is present', () => {
     vi.stubGlobal('window', {
-      mcpSleuth: {
+      mcpDetective: {
         kind: 'electron',
         invoke: async () => ({ ok: true, value: undefined }),
         onToolsChanged: () => () => {},

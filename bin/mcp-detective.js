@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { readLock, writeLock, deleteLock, isAlive } from '../daemon-lock.js';
-import { migrateLegacyDataDir } from '../data-dir.js';
+import { migrateAllLegacyDataDirs } from '../data-dir.js';
 
 const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const viteBin = resolve(
@@ -90,8 +90,8 @@ function openBrowser(url) {
   }
 }
 
-// Carry a pre-rename ~/.mcp-sleuth vault across, once. Non-destructive.
-migrateLegacyDataDir();
+// Carry a pre-rename ~/.mcp-detective vault across, once. Non-destructive.
+migrateAllLegacyDataDirs();
 
 const args = process.argv.slice(2);
 
@@ -100,7 +100,7 @@ if (args[0] === 'stop') {
   const lock = await readLock();
   if (!lock || !isAlive(lock.pid)) {
     if (lock) await deleteLock();
-    console.log('mcp-sleuth is not running');
+    console.log('mcp-detective is not running');
     process.exit(0);
   }
   process.kill(lock.pid, 'SIGTERM');
@@ -112,7 +112,7 @@ if (args[0] === 'stop') {
     waited += STOP_INTERVAL;
   }
   await deleteLock();
-  console.log(paint('1;38;5;141', 'mcp-sleuth') + ' stopped');
+  console.log(paint('1;38;5;141', 'mcp-detective') + ' stopped');
   process.exit(0);
 }
 
@@ -123,7 +123,7 @@ if (!isDaemon) {
   const lock = await readLock();
   if (lock && isAlive(lock.pid)) {
     console.log(
-      paint('1;38;5;141', 'mcp-sleuth') +
+      paint('1;38;5;141', 'mcp-detective') +
         ' is already running on ' +
         paint('36', `http://127.0.0.1:${lock.port}/`),
     );
@@ -156,12 +156,12 @@ if (!isDaemon) {
   }
 
   if (!startedLock) {
-    console.error(paint('31', 'mcp-sleuth: timed out waiting for daemon to start'));
+    console.error(paint('31', 'mcp-detective: timed out waiting for daemon to start'));
     process.exit(1);
   }
 
   console.log(
-    paint('1;38;5;141', 'mcp-sleuth') +
+    paint('1;38;5;141', 'mcp-detective') +
       ' started on ' +
       paint('36', `http://127.0.0.1:${startedLock.port}/`),
   );
@@ -177,7 +177,7 @@ const hasPrebuiltDist = existsSync(resolve(pkgRoot, 'dist', 'index.html'));
 if (!hasPrebuiltDist) {
   if (!existsSync(viteBin)) {
     process.stderr.write(
-      `mcp-sleuth: could not find vite at ${viteBin}.\nRun "npm install" inside ${pkgRoot} first.\n`,
+      `mcp-detective: could not find vite at ${viteBin}.\nRun "npm install" inside ${pkgRoot} first.\n`,
     );
     process.exit(1);
   }
@@ -211,7 +211,7 @@ for (let attempt = 0; attempt < MAX_PORT_TRIES; attempt++) {
     break;
   } catch (err) {
     if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_TRIES - 1) continue;
-    process.stderr.write(`mcp-sleuth: ${err.message}\n`);
+    process.stderr.write(`mcp-detective: ${err.message}\n`);
     process.exit(1);
   }
 }

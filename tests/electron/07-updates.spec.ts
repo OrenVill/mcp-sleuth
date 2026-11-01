@@ -7,7 +7,7 @@ import { closeApp, launchApp, setupVault, type LaunchedApp } from './helpers';
  * §3.25 — update notifications (desktop).
  *
  * The app is pointed at a local stand-in for GitHub's /releases/latest through
- * MCP_SLEUTH_UPDATE_FEED_URL, so these run offline and announce whatever the
+ * MCP_DETECTIVE_UPDATE_FEED_URL, so these run offline and announce whatever the
  * test wants. Nothing is ever downloaded or installed: the builds are unsigned,
  * so the notifier only ever opens the release page.
  */
@@ -21,12 +21,12 @@ function releasePayload(version: string) {
     name: `v${version}`,
     draft: false,
     prerelease: false,
-    html_url: `https://github.com/OrenVill/mcp-sleuth/releases/tag/v${version}`,
+    html_url: `https://github.com/OrenVill/mcp-detective/releases/tag/v${version}`,
     published_at: new Date().toISOString(),
     body: '### Features\n\n* **updates:** notify on a new release',
     assets: [
-      { name: `Sleuth-${version}-amd64.deb`, state: 'uploaded' },
-      { name: `Sleuth-${version}-x64.exe`, state: 'uploaded' },
+      { name: `Detective-${version}-amd64.deb`, state: 'uploaded' },
+      { name: `Detective-${version}-x64.exe`, state: 'uploaded' },
     ],
   };
 }
@@ -56,7 +56,7 @@ function serveRelease(version: string): void {
 }
 
 async function launchAgainstFeed(dataDir?: string): Promise<LaunchedApp> {
-  return launchApp({ dataDir, env: { MCP_SLEUTH_UPDATE_FEED_URL: feedUrl } });
+  return launchApp({ dataDir, env: { MCP_DETECTIVE_UPDATE_FEED_URL: feedUrl } });
 }
 
 test.describe('§3.25 update notifications', () => {
@@ -68,7 +68,7 @@ test.describe('§3.25 update notifications', () => {
 
       const banner = launched.page.getByTestId('update-banner');
       await expect(banner).toBeVisible({ timeout: 20_000 });
-      await expect(banner).toContainText(`Sleuth ${NEWER_VERSION}`);
+      await expect(banner).toContainText(`Detective ${NEWER_VERSION}`);
       await expect(banner).toContainText(INSTALLED_VERSION);
       await expect(banner.getByRole('button', { name: 'Download' })).toBeVisible();
     } finally {
@@ -101,7 +101,7 @@ test.describe('§3.25 update notifications', () => {
 
       await pill.click();
       const popover = launched.page.getByTestId('version-popover');
-      await expect(popover).toContainText(`Sleuth ${INSTALLED_VERSION}`);
+      await expect(popover).toContainText(`Detective ${INSTALLED_VERSION}`);
       await expect(popover.getByRole('checkbox')).toBeChecked();
       await expect(popover.getByRole('button', { name: 'Check now' })).toBeVisible();
     } finally {

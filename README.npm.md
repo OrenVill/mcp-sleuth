@@ -1,35 +1,35 @@
-# Sleuth
+# MCP Detective
 
 Browser-based explorer for MCP servers over **streamable HTTP** or **stdio** — list and invoke tools with auto-generated forms.
 
 ## Install
 
 ```bash
-npm install -g @orenvill/mcp-sleuth
+npm install -g @orenvill/mcp-detective
 ```
 
-The `-g` flag installs globally, making the `mcp-sleuth` command available anywhere in your terminal.
+The `-g` flag installs globally, making the `mcp-detective` command available anywhere in your terminal.
 
 **Requirements:** Node.js 20 or later (`node --version`).
 
-> **Upgrading from an older install?** If you previously used `npm install -g mcp-sleuth` or `npm install -g github:OrenVill/mcp-sleuth`, uninstall first:
+> **Upgrading from an older install?** If you previously used `npm install -g mcp-detective` or `npm install -g github:OrenVill/mcp-detective`, uninstall first:
 > ```bash
-> npm uninstall -g mcp-sleuth
-> npm install -g @orenvill/mcp-sleuth
+> npm uninstall -g mcp-sleuth @orenvill/mcp-sleuth
+> npm install -g @orenvill/mcp-detective
 > ```
 
 ## Run
 
 ```bash
-mcp-sleuth              # start + open browser at http://127.0.0.1:4173/
-mcp-sleuth 3000         # custom port
-mcp-sleuth --no-open    # skip opening the browser (also: OPEN=0)
+mcp-detective              # start + open browser at http://127.0.0.1:4173/
+mcp-detective 3000         # custom port
+mcp-detective --no-open    # skip opening the browser (also: OPEN=0)
 ```
 
 ## Update
 
 ```bash
-npm update -g @orenvill/mcp-sleuth
+npm update -g @orenvill/mcp-detective
 ```
 
 ## What it does
@@ -41,12 +41,12 @@ Point it at any MCP server:
 
 The explorer auto-connects, lists all available tools, and generates input forms from each tool's JSON Schema so you can invoke them immediately from the browser.
 
-**Stdio note:** stdio servers use a local Node bridge built into `mcp-sleuth`. You must run the app via **`mcp-sleuth`** (or `npm run dev` from source) — opening static files alone does not spawn subprocesses.
+**Stdio note:** stdio servers use a local Node bridge built into `mcp-detective`. You must run the app via **`mcp-detective`** (or `npm run dev` from source) — opening static files alone does not spawn subprocesses.
 
-- Add / edit / remove HTTP or stdio MCP servers — persisted to the encrypted vault under `~/.mcp-sleuth/`
+- Add / edit / remove HTTP or stdio MCP servers — persisted to the encrypted vault under `~/.mcp-detective/`
 - Editing a server never shows you its stored secrets — a saved password, token, API key, or
   environment value shows as `*****`, with **Change** to replace it
-- Stdio bridge for local command-based MCP servers (requires `mcp-sleuth` or `npm run dev`)
+- Stdio bridge for local command-based MCP servers (requires `mcp-detective` or `npm run dev`)
 - Local proxy mode for HTTP MCP servers that do not expose browser CORS headers
 - Auto-discovered tool list via `tools/list`
 - Generated forms for strings, numbers, booleans, enums, and JSON objects/arrays
@@ -64,12 +64,12 @@ evidence about the server, not a conversation worth keeping.
 
 Add an **LLM server** from the picker in the chat header: a name, a type (OpenAI-compatible,
 Anthropic, or Google Gemini), a base URL (defaults to `http://127.0.0.1:11434/v1` for Ollama), and
-an API key only if the provider needs one. Sleuth asks that server which models it has and lists
+an API key only if the provider needs one. MCP Detective asks that server which models it has and lists
 them. The key is stored in the same
 encrypted vault as your MCP server credentials.
 
 **Local models work without any extra configuration.** The browser never calls the provider
-directly — `mcp-sleuth`'s own local server forwards the request at `/__llm_proxy`, so everything
+directly — `mcp-detective`'s own local server forwards the request at `/__llm_proxy`, so everything
 the page sends is same-origin. That is why a local Ollama works on the first try with no
 `OLLAMA_ORIGINS` set. The forwarder accepts only the endpoints a provider actually exposes,
 requires a same-origin request, and never logs request or response bodies. It is a CORS
@@ -88,7 +88,7 @@ What the chat does:
 - **Live trace** beside the transcript, with every call also landing in the Protocol Inspector.
 - **Capture** a run's tool calls as a Replay Suite, or **Record** any step to the Observation
   Journal.
-- **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-sleuth/`;
+- **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-detective/`;
   the messages and raw tool output live in memory for the session.
 - **It always shows you it is working** — dots while the agent has the turn, a caret while text
   streams. Type during a run and the message is queued rather than dropped; Enter sends,
@@ -100,8 +100,8 @@ A run stops on its own after 8 model turns, and **Stop** cancels whatever is in 
 
 ## Desktop app
 
-Sleuth also ships as an Electron desktop app — download an installer from the
-[GitHub releases page](https://github.com/OrenVill/mcp-sleuth/releases/latest). Compared with
+MCP Detective also ships as an Electron desktop app — download an installer from the
+[GitHub releases page](https://github.com/OrenVill/mcp-detective/releases/latest). Compared with
 this CLI it adds:
 
 - No CORS proxy — MCP requests go out from the Electron main process, so browser CORS never applies
@@ -114,12 +114,12 @@ The builds are unsigned, so macOS and Windows warn on first launch; the README o
 click-through steps. There is no auto-update — updating means downloading a newer installer.
 
 The CLI stays fully supported and is the only option for a remote or SSH session, where there is
-no desktop to run an app on. Both share `~/.mcp-sleuth/` (override with `MCP_SLEUTH_DATA_DIR`), so
+no desktop to run an app on. Both share `~/.mcp-detective/` (override with `MCP_DETECTIVE_DATA_DIR`), so
 running the CLI and the desktop app simultaneously is last-write-wins — use one at a time.
 
 ## Full documentation
 
-[github.com/OrenVill/mcp-sleuth](https://github.com/OrenVill/mcp-sleuth)
+[github.com/OrenVill/mcp-detective](https://github.com/OrenVill/mcp-detective)
 
 ## License
 

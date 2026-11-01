@@ -1,7 +1,7 @@
 /**
  * HTTP handler for encrypted vault JSON stored on disk (npm / node server + Vite dev).
- * Default path: ~/.mcp-sleuth/vault.json
- * Override directory: MCP_SLEUTH_DATA_DIR=/path/to/dir (file will be vault.json inside it).
+ * Default path: ~/.mcp-detective/vault.json
+ * Override directory: MCP_DETECTIVE_DATA_DIR=/path/to/dir (file will be vault.json inside it).
  */
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
