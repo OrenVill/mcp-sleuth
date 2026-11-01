@@ -1,5 +1,82 @@
 # Changelog
 
+## [1.0.0](https://github.com/OrenVill/mcp-sleuth/compare/v2.0.0...v1.0.0) (2026-11-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* ship Sleuth as a desktop app, and rename from MCP Explorer ([#48](https://github.com/OrenVill/mcp-sleuth/issues/48))
+
+### Features
+
+* add agent readiness scoring ([#37](https://github.com/OrenVill/mcp-sleuth/issues/37)) ([1e75758](https://github.com/OrenVill/mcp-sleuth/commit/1e75758aaf294668d039850017652d8a85a0212b))
+* add Client Config Export, Handoff README, and Scenario Runner ([#38](https://github.com/OrenVill/mcp-sleuth/issues/38)) ([64d5aa5](https://github.com/OrenVill/mcp-sleuth/commit/64d5aa5588ad5ea1a27bd7dbc59764ba064a1609))
+* add dev tools protocol inspector and schema lab ([#35](https://github.com/OrenVill/mcp-sleuth/issues/35)) ([44b2627](https://github.com/OrenVill/mcp-sleuth/commit/44b26272e3cbed160758d330b738840508ec8dba))
+* add dev tools replay and diff features ([#36](https://github.com/OrenVill/mcp-sleuth/issues/36)) ([6765d25](https://github.com/OrenVill/mcp-sleuth/commit/6765d25b908032d71d414a683204c262750c9470))
+* add embedded local proxy mode ([#30](https://github.com/OrenVill/mcp-sleuth/issues/30)) ([645f925](https://github.com/OrenVill/mcp-sleuth/commit/645f925542306eba8b5b923fb98a7851dea38747))
+* add MCP resources and prompts support ([#7](https://github.com/OrenVill/mcp-sleuth/issues/7)) ([de1e153](https://github.com/OrenVill/mcp-sleuth/commit/de1e153fa0ccc16387dfa106537d9ff7c79cdff3))
+* add MCP resources and prompts support ([#7](https://github.com/OrenVill/mcp-sleuth/issues/7)) ([#9](https://github.com/OrenVill/mcp-sleuth/issues/9)) ([284bc98](https://github.com/OrenVill/mcp-sleuth/commit/284bc98aaa05d1d566753830474d57761475ae2b))
+* add protocol inspector ([#32](https://github.com/OrenVill/mcp-sleuth/issues/32)) ([d355af4](https://github.com/OrenVill/mcp-sleuth/commit/d355af4d628295495cadaa49eeb930d9d23b19c8))
+* add stdio MCP transport with local Node bridge ([#44](https://github.com/OrenVill/mcp-sleuth/issues/44)) ([db0d924](https://github.com/OrenVill/mcp-sleuth/commit/db0d924010b0d7282a8f0bcb2c2b19faefceb43e))
+* Agent Chat — drive a real model against an MCP server, gated and traced ([#58](https://github.com/OrenVill/mcp-sleuth/issues/58)) ([1a71795](https://github.com/OrenVill/mcp-sleuth/commit/1a71795ac6a100dc9dc0f6d296f5c4210cc1176e))
+* **agent:** make the chat readable, interruptible, and recoverable ([#60](https://github.com/OrenVill/mcp-sleuth/issues/60)) ([27641ff](https://github.com/OrenVill/mcp-sleuth/commit/27641ffd1bee947d51c28a5a0c286978b41a5f93))
+* call history with expand and side-by-side comparison ([#10](https://github.com/OrenVill/mcp-sleuth/issues/10)) ([eae8df4](https://github.com/OrenVill/mcp-sleuth/commit/eae8df4b90d8b912a2c119acc3908890d3743069))
+* cross-server search (⌘K) and tool bookmarks ([#11](https://github.com/OrenVill/mcp-sleuth/issues/11)) ([730a73c](https://github.com/OrenVill/mcp-sleuth/commit/730a73ce292ec867204dba1737f940a75d3617c4))
+* daemonize CLI with lock file and stop subcommand ([#23](https://github.com/OrenVill/mcp-sleuth/issues/23)) ([426a078](https://github.com/OrenVill/mcp-sleuth/commit/426a0785fd9ba335699d18d5e849c0965db3a226))
+* **desktop:** notify when a new version is released ([#56](https://github.com/OrenVill/mcp-sleuth/issues/56)) ([dd3cc8c](https://github.com/OrenVill/mcp-sleuth/commit/dd3cc8c71725c993b5056bb280426d8c574ff55c))
+* **discovery:** accept hyphenated names and broader aggregator nouns ([dcc2814](https://github.com/OrenVill/mcp-sleuth/commit/dcc2814b180357f111c8ba33b91ce46376e43949))
+* **discovery:** bulk_list strategy ([9266862](https://github.com/OrenVill/mcp-sleuth/commit/92668626a546953f7f9c9b47c1ad3ea15ec7eafd))
+* **discovery:** category_index strategy with per-category fan-out ([e5f34b4](https://github.com/OrenVill/mcp-sleuth/commit/e5f34b4a2a231f8a1f5092c372ccb291aea3bc28))
+* **discovery:** enable_capability strategy (enum-driven) ([ed24ba0](https://github.com/OrenVill/mcp-sleuth/commit/ed24ba0bc7a6a7539265152ad6c52c04c4288fc0))
+* **discovery:** foundation — types, constants, strategy interface, parse, detect ([11b031e](https://github.com/OrenVill/mcp-sleuth/commit/11b031ed3a49521dc4e4cccdb8fc901a5f85a8a8))
+* **discovery:** hybrid_index strategy (list + per-tool describe fan-out) ([2e33829](https://github.com/OrenVill/mcp-sleuth/commit/2e338299cb0c5b3dd202bd99790634c0369f77c9))
+* **discovery:** invoke routing, UI components, mcpClient helpers ([580ce8d](https://github.com/OrenVill/mcp-sleuth/commit/580ce8d4ce3e96f4af447a563731483d7710b9a7))
+* **discovery:** manifest strategy (multi-shape parser) ([1ac212e](https://github.com/OrenVill/mcp-sleuth/commit/1ac212e22527e86fef610fdb2c0b2056ec6b9286))
+* **discovery:** paginated_list strategy with cursor/page/offset support ([c2d2f62](https://github.com/OrenVill/mcp-sleuth/commit/c2d2f6265448daa7467fc422c0548ef5b306c9b3))
+* **discovery:** proxy strategy + orchestrator ([2b09192](https://github.com/OrenVill/mcp-sleuth/commit/2b09192bbf02278ce4106780b45e2f5ee5508bba))
+* **discovery:** search strategy with probe sequence and alphabet sweep ([8dbb0e5](https://github.com/OrenVill/mcp-sleuth/commit/8dbb0e54be12e1435b08ccb90a6406f26d5f044c))
+* **discovery:** wire detection, orchestrator, and routing into App + ToolDetail + ToolList ([38ef600](https://github.com/OrenVill/mcp-sleuth/commit/38ef6004a997c786c6e0f7bb0dddd759fbba95cc))
+* persist bookmarks and call history to ~/.mcp-explorer/data.gz ([#14](https://github.com/OrenVill/mcp-sleuth/issues/14)) ([66bc326](https://github.com/OrenVill/mcp-sleuth/commit/66bc32691f3b42eb2e1a3f25ad23f66953053ea6))
+* publish @orenvill/mcp-explorer to npm registry ([#15](https://github.com/OrenVill/mcp-sleuth/issues/15)) ([a667a6c](https://github.com/OrenVill/mcp-sleuth/commit/a667a6c096b4fd178927ca64c25f49fc50eed25c))
+* rich code rendering, markdown/HTML preview, image resources, semantic diff ([#26](https://github.com/OrenVill/mcp-sleuth/issues/26)) ([65e0064](https://github.com/OrenVill/mcp-sleuth/commit/65e0064d8f065cbd6afd3ace9f8de8b94fa6cb80))
+* server export and documentation generation ([#12](https://github.com/OrenVill/mcp-sleuth/issues/12)) ([c94abfc](https://github.com/OrenVill/mcp-sleuth/commit/c94abfc4c55dd59296edb1c307e6a7477bc7da3f))
+* ship Sleuth as a desktop app, and rename from MCP Explorer ([#48](https://github.com/OrenVill/mcp-sleuth/issues/48)) ([4066718](https://github.com/OrenVill/mcp-sleuth/commit/40667182318ff22634f0d6bdbac9a501cd49b8e4))
+* **vault:** add constants and envelope types ([90ee95f](https://github.com/OrenVill/mcp-sleuth/commit/90ee95f3084b2594053aa4833ad0749312b26362))
+* **vault:** add Web Crypto derive and AES-GCM helpers ([82cf436](https://github.com/OrenVill/mcp-sleuth/commit/82cf436a2d3e300ccda0e7e4423c5b16674878b0))
+* **vault:** IndexedDB read/write/delete envelope ([09c0850](https://github.com/OrenVill/mcp-sleuth/commit/09c08504f4b691989f4ec113bcd18e4755b9df4d))
+* **vault:** integrate vault file handling and enhance server response management ([1508b73](https://github.com/OrenVill/mcp-sleuth/commit/1508b73bae8a4d28cddfe544c058aaf8e337cd8d))
+* **vault:** service, UI, and App vault gate ([15d3059](https://github.com/OrenVill/mcp-sleuth/commit/15d30595af77097d9881124e876dab18b55ad758))
+
+
+### Bug Fixes
+
+* **ci:** unbreak npm ci on macOS and Windows ([#51](https://github.com/OrenVill/mcp-sleuth/issues/51)) ([fe9b43c](https://github.com/OrenVill/mcp-sleuth/commit/fe9b43c6c1c4c33f88b18ae023b2366a32511990))
+* include daemon-lock.js in npm package files ([#46](https://github.com/OrenVill/mcp-sleuth/issues/46)) ([0386c68](https://github.com/OrenVill/mcp-sleuth/commit/0386c6873a8b8f248dbc89771785d6c58a8ff94a))
+* **linux:** set the window icon and document how to launch the app ([#53](https://github.com/OrenVill/mcp-sleuth/issues/53)) ([4e0fd05](https://github.com/OrenVill/mcp-sleuth/commit/4e0fd052c86dac4eba9f909ce178bd245d1c5eae))
+* remove registry-url from setup-node to unblock OIDC npm publish ([#17](https://github.com/OrenVill/mcp-sleuth/issues/17)) ([8a12763](https://github.com/OrenVill/mcp-sleuth/commit/8a1276394f4283f672cc445eabda21f36992f1d8))
+* **security:** close twelve review findings, and allow self-signed TLS per server ([#65](https://github.com/OrenVill/mcp-sleuth/issues/65)) ([f20a6c8](https://github.com/OrenVill/mcp-sleuth/commit/f20a6c8314f654fe49d9c143a94d4340a1f4f130))
+* **security:** never put a stored credential into an edit form ([#63](https://github.com/OrenVill/mcp-sleuth/issues/63)) ([7c30e78](https://github.com/OrenVill/mcp-sleuth/commit/7c30e7842cc829eb4f0c4669d0fb3b606d47e169))
+* textarea fields accept user input for object/array params ([#25](https://github.com/OrenVill/mcp-sleuth/issues/25)) ([9d09d2c](https://github.com/OrenVill/mcp-sleuth/commit/9d09d2cae06c123cf851ac15d2790cffa1e0fc4b))
+* **updates:** do not announce a release before its installers exist ([#57](https://github.com/OrenVill/mcp-sleuth/issues/57)) ([0f16f27](https://github.com/OrenVill/mcp-sleuth/commit/0f16f27a56f97cd1308b0165dedf2dcb0e5770e9))
+* use NPM_TOKEN for npm publish authentication ([#19](https://github.com/OrenVill/mcp-sleuth/issues/19)) ([a1c6546](https://github.com/OrenVill/mcp-sleuth/commit/a1c654692359eeeb59c3a28a19c25a667ca234df))
+
+
+### Documentation
+
+* add browser encrypted vault design spec ([f7c589e](https://github.com/OrenVill/mcp-sleuth/commit/f7c589e12f6f109485fd39a1be099580f32f003a))
+* add browser vault implementation plan ([733212c](https://github.com/OrenVill/mcp-sleuth/commit/733212c305881aaa76f8e743e7ef6e1094100732))
+* add meta-tool discovery design spec ([34d562d](https://github.com/OrenVill/mcp-sleuth/commit/34d562dfefdddd975534cd5cda412bf557e73917))
+* add meta-tool discovery implementation plan ([402ddb9](https://github.com/OrenVill/mcp-sleuth/commit/402ddb9bffc843218844e0ef447366233e3178bc))
+* enrich .cursorrules with full project architecture and add CLAUDE.md copy ([#40](https://github.com/OrenVill/mcp-sleuth/issues/40)) ([67a604b](https://github.com/OrenVill/mcp-sleuth/commit/67a604b2a0fe9a20ad2d7addd2343400453dbad3))
+* improve installation instructions with -g explanation and upgrade notes ([#21](https://github.com/OrenVill/mcp-sleuth/issues/21)) ([719aeb2](https://github.com/OrenVill/mcp-sleuth/commit/719aeb2e288d8fe9d7e4b7911fce5df16ade8065))
+* mention meta-tool discovery in README features ([a9ea9bc](https://github.com/OrenVill/mcp-sleuth/commit/a9ea9bcbb002819ac7217f1b7013ef1a5b71fa51))
+* split README into GitHub and npm variants ([#27](https://github.com/OrenVill/mcp-sleuth/issues/27)) ([197eba3](https://github.com/OrenVill/mcp-sleuth/commit/197eba35694714d7d5ea90442536e9df2b392f16))
+
+
+### Chores
+
+* release the rename as 1.0.0 rather than 0.9.0 ([#50](https://github.com/OrenVill/mcp-sleuth/issues/50)) ([07549e4](https://github.com/OrenVill/mcp-sleuth/commit/07549e43b042dc03a52115970d3afaa0130aaa4a))
+
 ## [1.3.0](https://github.com/OrenVill/mcp-sleuth/compare/v1.2.0...v1.3.0) (2026-08-28)
 
 
