@@ -73,6 +73,16 @@ describe('openaiProvider.buildRequest', () => {
     );
   });
 
+  it('does not double slashes when the saved base URL has a trailing slash', () => {
+    const trailing = {
+      ...request,
+      config: { ...config, baseUrl: 'http://127.0.0.1:11434/v1/' },
+    };
+    expect(openaiProvider.buildRequest(trailing).url).toBe(
+      'http://127.0.0.1:11434/v1/chat/completions',
+    );
+  });
+
   it('omits Authorization when there is no key, for local models', () => {
     expect(openaiProvider.buildRequest(request).headers.Authorization).toBeUndefined();
   });
@@ -173,6 +183,12 @@ describe('openaiProvider stream parsing', () => {
 describe('openaiProvider model listing', () => {
   it('targets the models endpoint', () => {
     expect(openaiProvider.modelsRequest(config).url).toBe('http://127.0.0.1:11434/v1/models');
+  });
+
+  it('does not double slashes on the models endpoint when the base has a trailing slash', () => {
+    expect(openaiProvider.modelsRequest({ ...config, baseUrl: 'http://127.0.0.1:11434/v1/' }).url).toBe(
+      'http://127.0.0.1:11434/v1/models',
+    );
   });
 
   it('extracts model ids', () => {

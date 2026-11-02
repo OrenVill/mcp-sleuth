@@ -144,6 +144,16 @@ describe('geminiProvider.buildRequest', () => {
     );
   });
 
+  it('does not double slashes when the saved base URL has a trailing slash', () => {
+    const trailing = {
+      ...request,
+      config: { ...config, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/' },
+    };
+    expect(geminiProvider.buildRequest(trailing).url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse',
+    );
+  });
+
   it('omits the api key header when there is no key', () => {
     expect(geminiProvider.buildRequest(request).headers['x-goog-api-key']).toBeUndefined();
   });
@@ -281,6 +291,13 @@ describe('geminiProvider model listing', () => {
     expect(geminiProvider.modelsRequest(config).url).toBe(
       'https://generativelanguage.googleapis.com/v1beta/models',
     );
+  });
+
+  it('does not double slashes on the models endpoint when the base has a trailing slash', () => {
+    expect(
+      geminiProvider.modelsRequest({ ...config, baseUrl: 'https://generativelanguage.googleapis.com/v1beta/' })
+        .url,
+    ).toBe('https://generativelanguage.googleapis.com/v1beta/models');
   });
 
   it('sends the api key header when a key is configured', () => {
