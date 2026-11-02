@@ -142,6 +142,41 @@ function buildServer() {
     async ({ command }) => ({ content: [{ type: 'text', text: `ran ${command}` }] }),
   );
 
+  // §3.26 Agent Chat: meta-tool discovery updates the exposed tool count.
+  server.registerTool(
+    'list_tools',
+    {
+      description: 'List all tools available on this server for discovery.',
+      inputSchema: {},
+    },
+    async () => ({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            tools: [
+              {
+                name: 'extra_sample_alpha',
+                description: 'A discovered sample tool',
+                inputSchema: { type: 'object', properties: {} },
+              },
+              {
+                name: 'extra_sample_beta',
+                description: 'Another discovered sample tool',
+                inputSchema: { type: 'object', properties: {} },
+              },
+              {
+                name: 'extra_sample_gamma',
+                description: 'Third discovered sample tool',
+                inputSchema: { type: 'object', properties: {} },
+              },
+            ],
+          }),
+        },
+      ],
+    }),
+  );
+
   // ── Resources ────────────────────────────────────────────────────────────
   server.registerResource(
     'page.html',

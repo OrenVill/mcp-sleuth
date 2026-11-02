@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 838 tests
+npm test             # vitest run — 907 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -180,7 +180,7 @@ feeding the reason back; transcript text found on disk; an API key found anywher
 vault ciphertext. Everything else in the list is a defect to file, not a stop.
 
 Automated: `tests/release/26-agent-chat.spec.ts`, against `tests/fixtures/llm-server.mjs` — it
-covers the header readiness line, the gate appearing before the call runs, allow, deny with a
+covers the header readiness line, meta-tool discovery updating the exposed tool count, the gate appearing before the call runs, allow, deny with a
 reason and the run continuing, the live trace, replay capture, the working indicator across every
 gap in a run, Enter/Shift+Enter in the composer, queueing a message typed mid-run, the expander on
 a long tool result, jump-to-latest, New chat, Escape against an open picker, Retry after a failed
