@@ -279,7 +279,7 @@ npm run test:e2e:electron          # needs a display
 xvfb-run -a npm run test:e2e:electron   # headless machine / CI
 ```
 
-All 52 tests across 9 spec files must pass:
+All 54 tests across 10 spec files must pass:
 
 | Spec | Area |
 |------|------|
@@ -292,6 +292,7 @@ All 52 tests across 9 spec files must pass:
 | `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failed check |
 | `08-agent-chat.spec.ts` | Agent Chat — provider requests leave the main process directly, no `/__llm_proxy` |
 | `09-self-signed-tls.spec.ts` | The self-signed certificate option, applied in main and scoped to one host |
+| `10-session-recovery.spec.ts` | Stale Streamable HTTP session after server restart — transparent re-init, Reconnect when down |
 
 **Agent Chat egress (manual pass).** The desktop build has no proxy in the path, so this is a
 different code path from §3.26, not a repeat of it. With a local model running, open **Chat**, add
