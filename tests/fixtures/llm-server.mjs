@@ -117,7 +117,11 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === '/v1/models') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ data: [{ id: 'fixture-model' }] }));
+    res.end(
+      JSON.stringify({
+        data: [{ id: 'fixture-model' }, { id: 'fixture-model-alt' }],
+      }),
+    );
     return;
   }
 

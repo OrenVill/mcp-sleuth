@@ -368,6 +368,58 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     expect(copied).toContain('**We are done.**');
   });
 
+  test('clicking a model in the picker saves it and updates the header', async () => {
+    await page.getByTestId('llm-picker').click();
+    await page.getByTestId('llm-model-select').click();
+    await page.getByRole('option', { name: 'fixture-model-alt' }).click();
+    await expect(page.getByTestId('llm-picker')).toContainText('fixture-model-alt');
+    // Click outside the popover — a single Escape can dismiss Agent Chat once the
+    // model dialog is already gone.
+    await page.getByTestId('agent-input').click();
+    await expect(page.getByRole('dialog', { name: 'Model' })).toBeHidden();
+  });
+
+  test('clicking another model server in the picker switches the active config', async () => {
+    await page.getByTestId('llm-picker').click();
+    await page.getByRole('button', { name: 'Add model server' }).click();
+    const form = page.getByTestId('llm-config-form');
+    await form.getByPlaceholder('Local Ollama').fill('Fixture LLM B');
+    await page.getByRole('textbox', { name: 'Base URL' }).fill(LLM_BASE);
+    await form.getByRole('button', { name: 'Add server' }).click();
+    await expect(form).toBeHidden({ timeout: 10_000 });
+
+    await page.getByTestId('llm-picker').click();
+    await expect(page.getByTestId('llm-config-select')).toContainText('Fixture LLM B', {
+      timeout: 10_000,
+    });
+
+    await page.getByTestId('llm-config-select').click();
+    await page.getByRole('option', { name: 'Fixture LLM', exact: true }).click();
+    await expect(page.getByTestId('llm-config-select')).toContainText('Fixture LLM');
+    await page.getByTestId('agent-input').click();
+  });
+
+  test('when model discovery fails, typing a model name still saves it', async () => {
+    await page.getByTestId('llm-picker').click();
+    await page.getByRole('button', { name: 'Add model server' }).click();
+    const form = page.getByTestId('llm-config-form');
+    await form.getByPlaceholder('Local Ollama').fill('No models API');
+    await page.getByRole('textbox', { name: 'Base URL' }).fill(`${LLM_BASE}/no-models`);
+    await form.getByRole('button', { name: 'Add server' }).click();
+    await expect(form).toBeHidden({ timeout: 10_000 });
+
+    await page.getByTestId('llm-picker').click();
+    await expect(page.getByTestId('llm-models-error')).toBeVisible({ timeout: 10_000 });
+
+    const manual = page.getByTestId('llm-model-manual');
+    await manual.fill('typed-model-name');
+    await expect(page.getByTestId('llm-picker')).toContainText('typed-model-name');
+
+    await page.getByTestId('llm-config-select').click();
+    await page.getByRole('option', { name: 'Fixture LLM', exact: true }).click();
+    await page.getByTestId('agent-input').click();
+  });
+
   test('the MCP scope popover lists the connected server', async () => {
     await page.getByTestId('mcp-scope-picker').click();
     const scope = page.getByRole('dialog', { name: 'MCP servers in scope' });
