@@ -69,7 +69,7 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 144 tests across 30 spec files must pass. Any failure blocks the release.
+All 145 tests across 30 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
