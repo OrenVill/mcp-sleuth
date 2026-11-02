@@ -447,3 +447,33 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     await expect(page.getByTestId('agent-input')).toBeEnabled();
   });
 });
+
+test.describe('§3.26 — Agent Chat Base URL field', () => {
+  test('keeps slashes while typing and normalizes on save', async ({ page }) => {
+    await setupVault(page);
+    await addFixtureServer(page);
+    await openChat(page);
+
+    const form = page.getByTestId('llm-config-form');
+    await expect(form).toBeVisible();
+    await form.getByPlaceholder('Local Ollama').fill('Slash test');
+
+    const baseUrl = page.getByRole('textbox', { name: 'Base URL' });
+    await baseUrl.clear();
+    await baseUrl.click();
+    await page.keyboard.type(`${LLM_BASE}/`);
+    await expect(baseUrl).toHaveValue(`${LLM_BASE}/`);
+
+    await form.getByRole('button', { name: 'Add server' }).click();
+    await expect(form).toBeHidden();
+    await expect(page.getByTestId('llm-picker')).toContainText('fixture-model', {
+      timeout: 10_000,
+    });
+
+    await page.getByTestId('llm-picker').click();
+    await page.getByRole('button', { name: 'Edit “Slash test”' }).click();
+    await expect(form).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Base URL' })).toHaveValue(LLM_BASE);
+    await form.getByRole('button', { name: 'Cancel' }).click();
+  });
+});

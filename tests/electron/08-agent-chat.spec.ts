@@ -76,6 +76,21 @@ test.describe.serial('Electron — Agent Chat', () => {
     await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
   });
 
+  test('Base URL keeps slashes while typing character by character', async () => {
+    const page = launched.page;
+    await page.getByTestId('open-agent-chat').click();
+    const form = page.getByTestId('llm-config-form');
+    await expect(form).toBeVisible();
+    const baseUrl = form.getByRole('textbox', { name: 'Base URL' });
+    await baseUrl.clear();
+    await baseUrl.click();
+    await page.keyboard.type(`${LLM_BASE_URL}/`);
+    await expect(baseUrl).toHaveValue(`${LLM_BASE_URL}/`);
+    await form.getByRole('button', { name: 'Cancel' }).click();
+    await page.getByRole('button', { name: 'Back to servers' }).click();
+    await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
+  });
+
   test('adding an LLM server discovers its models over IPC', async () => {
     const page = launched.page;
     await page.getByTestId('open-agent-chat').click();

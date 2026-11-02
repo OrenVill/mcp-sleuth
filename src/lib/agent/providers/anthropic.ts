@@ -5,6 +5,7 @@ import type {
   LlmStreamEvent,
   RawToolCall,
 } from '../types';
+import { joinBaseUrl } from '../normalizeBaseUrl';
 import type { LlmProvider, LlmStreamParser, ProviderHttpRequest } from './types';
 
 /**
@@ -220,7 +221,7 @@ export const anthropicProvider: LlmProvider = {
       }));
     }
     return {
-      url: `${req.config.baseUrl}/messages`,
+      url: joinBaseUrl(req.config.baseUrl, '/messages'),
       headers: authHeaders(req.config),
       body,
     };
@@ -229,7 +230,7 @@ export const anthropicProvider: LlmProvider = {
   createStreamParser: createParser,
 
   modelsRequest(config: LlmConfig) {
-    return { url: `${config.baseUrl}/models`, headers: authHeaders(config) };
+    return { url: joinBaseUrl(config.baseUrl, '/models'), headers: authHeaders(config) };
   },
 
   parseModels(payload: unknown): string[] {

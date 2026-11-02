@@ -5,6 +5,7 @@ import type {
   LlmStreamEvent,
   RawToolCall,
 } from '../types';
+import { joinBaseUrl } from '../normalizeBaseUrl';
 import type { LlmProvider, LlmStreamParser, ProviderHttpRequest } from './types';
 
 interface GeminiFunctionCall {
@@ -172,7 +173,10 @@ export const geminiProvider: LlmProvider = {
       ];
     }
     return {
-      url: `${req.config.baseUrl}/models/${req.config.model}:streamGenerateContent?alt=sse`,
+      url: joinBaseUrl(
+        req.config.baseUrl,
+        `/models/${req.config.model}:streamGenerateContent?alt=sse`,
+      ),
       headers: authHeaders(req.config),
       body,
     };
@@ -181,7 +185,7 @@ export const geminiProvider: LlmProvider = {
   createStreamParser: createParser,
 
   modelsRequest(config: LlmConfig) {
-    return { url: `${config.baseUrl}/models`, headers: authHeaders(config) };
+    return { url: joinBaseUrl(config.baseUrl, '/models'), headers: authHeaders(config) };
   },
 
   parseModels(payload: unknown): string[] {
