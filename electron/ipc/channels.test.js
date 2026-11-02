@@ -40,10 +40,10 @@ describe('ok / fail', () => {
 });
 
 describe('isTrustedSenderUrl', () => {
-  const appOrigin = 'app://mcp-sleuth';
+  const appOrigin = 'app://mcp-detective';
 
   it('accepts the packaged renderer', () => {
-    expect(isTrustedSenderUrl('app://mcp-sleuth/index.html', { appOrigin })).toBe(true);
+    expect(isTrustedSenderUrl('app://mcp-detective/index.html', { appOrigin })).toBe(true);
   });
 
   it('accepts the dev server when one is configured', () => {
@@ -62,7 +62,7 @@ describe('isTrustedSenderUrl', () => {
   });
 
   it('refuses a lookalike origin', () => {
-    expect(isTrustedSenderUrl('app://mcp-sleuth.evil.example/', { appOrigin })).toBe(false);
+    expect(isTrustedSenderUrl('app://mcp-detective.evil.example/', { appOrigin })).toBe(false);
   });
 
   it('refuses a missing url', () => {
