@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ServerList } from './components/ServerList';
 import { ServerBrowser } from './components/ServerBrowser';
 import { ToolDetail } from './components/ToolDetail';
@@ -100,9 +100,13 @@ export default function App() {
   const discoveryControllersRef = useRef<Map<string, AbortController>>(new Map());
   /** Discovery runs for up to 30s; it reads current servers rather than a stale closure. */
   const serversRef = useRef<ServerEntry[]>(servers);
+  const selectedIdRef = useRef<string | null>(selectedId);
   useLayoutEffect(() => {
     serversRef.current = servers;
   }, [servers]);
+  useLayoutEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
   /** Bumps when the add/edit modal opens so the form remounts with fresh initial state (no reset-in-effect). */
   const [dialogFormKey, setDialogFormKey] = useState(0);
 
@@ -166,6 +170,70 @@ export default function App() {
     setServers((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }
 
+  useEffect(() => {
+    const mcp = getHost().mcp;
+    const unsubs: (() => void)[] = [];
+
+    if (mcp.onClosed) {
+      unsubs.push(
+        mcp.onClosed((id) => {
+          updateServer(id, {
+            status: 'error',
+            error: 'Connection lost. Use Reconnect when the server is available again.',
+            connectionNotice: undefined,
+            tools: undefined,
+            metaTools: undefined,
+            resources: undefined,
+            resourceTemplates: undefined,
+            prompts: undefined,
+            discovered: undefined,
+          });
+          if (selectedIdRef.current === id) {
+            setSelectedToolName(null);
+            setSelectedResourceUri(null);
+            setSelectedPromptName(null);
+          }
+        }),
+      );
+    }
+
+    if (mcp.onReconnected) {
+      unsubs.push(
+        mcp.onReconnected((id) => {
+          updateServer(id, {
+            status: 'connected',
+            error: undefined,
+            connectionNotice: 'Session renewed',
+          });
+          void refetchTools(id).then((tools) => {
+            applyServerTools(id, tools);
+          });
+          void Promise.allSettled([listResources(id), listPrompts(id)]).then(
+            ([resourceResult, promptResult]) => {
+              updateServer(id, {
+                resources:
+                  resourceResult.status === 'fulfilled'
+                    ? resourceResult.value.resources
+                    : undefined,
+                resourceTemplates:
+                  resourceResult.status === 'fulfilled'
+                    ? resourceResult.value.templates
+                    : undefined,
+                prompts: promptResult.status === 'fulfilled' ? promptResult.value : undefined,
+              });
+            },
+          );
+        }),
+      );
+    }
+
+    return () => {
+      for (const u of unsubs) u();
+    };
+    // Mount-only subscription to MCP session lifecycle pushes from the host.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, []);
+
   /**
    * When opening from Add/Edit, pass `connection` so connect runs with the submitted URL/auth
    * even before React has committed the new/updated server row (avoids a stale `servers.find`).
@@ -175,7 +243,7 @@ export default function App() {
     const transport = connection?.transport ?? s?.transport ?? 'http';
     setSelectedId(id);
     setSelectedToolName(null);
-    updateServer(id, { status: 'connecting', error: undefined });
+    updateServer(id, { status: 'connecting', error: undefined, connectionNotice: undefined });
     try {
       let tools;
       if (transport === 'stdio') {

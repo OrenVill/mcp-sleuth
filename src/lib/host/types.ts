@@ -65,6 +65,10 @@ export interface McpHost {
   ): Promise<PromptMessage[]>;
   /** Subscribe to `notifications/tools/list_changed`. Returns an unsubscribe fn. */
   onToolsChanged(serverId: string, handler: () => void): () => void;
+  /** Main/transport dropped the session (stdio exit or reconnect failure). */
+  onClosed?(handler: (serverId: string) => void): () => void;
+  /** Session was transparently re-initialized after the server forgot it. */
+  onReconnected?(handler: (serverId: string) => void): () => void;
 }
 
 /** The encrypted vault envelope, opaque at this layer. */

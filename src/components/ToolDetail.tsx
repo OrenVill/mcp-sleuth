@@ -8,6 +8,7 @@ import { AgentReadinessBadge } from './AgentReadinessBadge';
 import { useProtocolTraces } from './useProtocolTraces';
 import { analyzeToolReadiness } from '../lib/agentReadiness';
 import { invokeMaybeDiscovered } from '../lib/discovery/invoke';
+import { formatConnectionError } from '../lib/connectionErrorMessage';
 import { callTool } from '../lib/mcpClient';
 import { appendRecord, loadHistory, clearHistory } from '../lib/history';
 import type { CallRecord } from '../lib/history';
@@ -103,7 +104,7 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
       setResult(r);
       setResultEpoch((n) => n + 1);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatConnectionError(e));
     } finally {
       const durationMs = Date.now() - startMs;
       const record: CallRecord = {

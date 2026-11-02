@@ -232,6 +232,8 @@ The app starts with no servers. Click **+ Add** in the sidebar and pick **HTTP**
 
 Fill in a name and the streamable HTTP URL (typically `http://host:port/mcp`); the explorer registers and auto-connects over streamable HTTP.
 
+If a stateful MCP server restarts and forgets your session, Detective re-initializes the session automatically and retries your tool call once. When the server is unreachable, the sidebar shows **Reconnect** instead of staying falsely connected.
+
 ### Stdio
 
 Choose **Stdio** and configure:

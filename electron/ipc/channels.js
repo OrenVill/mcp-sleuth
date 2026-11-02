@@ -47,6 +47,7 @@ export const CHANNELS = {
   // main → renderer pushes
   toolsChanged: 'mcp:toolsChanged',
   closed: 'mcp:closed',
+  reconnected: 'mcp:reconnected',
   updateAvailable: 'mcp:updateAvailable',
   llmChunk: 'mcp:llmChunk',
   llmDone: 'mcp:llmDone',

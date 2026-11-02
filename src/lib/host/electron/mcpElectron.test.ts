@@ -8,6 +8,7 @@ type BridgeMock = ElectronBridge & {
   invoke: InvokeMock;
   onToolsChanged: SubscribeMock;
   onClosed: SubscribeMock;
+  onReconnected: SubscribeMock;
 };
 
 function makeBridge(overrides: Partial<BridgeMock> = {}): BridgeMock {
@@ -17,11 +18,13 @@ function makeBridge(overrides: Partial<BridgeMock> = {}): BridgeMock {
   });
   const onToolsChanged: SubscribeMock = vi.fn(() => () => {});
   const onClosed: SubscribeMock = vi.fn(() => () => {});
+  const onReconnected: SubscribeMock = vi.fn(() => () => {});
   return {
     kind: 'electron' as const,
     invoke,
     onToolsChanged,
     onClosed,
+    onReconnected,
     ...overrides,
   };
 }
@@ -114,6 +117,27 @@ describe('disconnect', () => {
     await host.connect('srv-1', 'https://x/mcp', undefined, true);
     await host.disconnect('srv-1');
     expect(host.isConnected('srv-1')).toBe(false);
+  });
+});
+
+describe('session mirror events', () => {
+  it('drops the mirror on closed and restores it on reconnected', () => {
+    let onClosedHandler: ((serverId: string) => void) | null = null;
+    let onReconnectedHandler: ((serverId: string) => void) | null = null;
+    bridge.onClosed = vi.fn((handler) => {
+      onClosedHandler = handler;
+      return () => {};
+    });
+    bridge.onReconnected = vi.fn((handler) => {
+      onReconnectedHandler = handler;
+      return () => {};
+    });
+
+    const host = createElectronMcpHost(bridge);
+    onClosedHandler!('srv-1');
+    expect(host.isConnected('srv-1')).toBe(false);
+    onReconnectedHandler!('srv-1');
+    expect(host.isConnected('srv-1')).toBe(true);
   });
 });
 

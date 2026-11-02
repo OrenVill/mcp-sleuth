@@ -46,6 +46,8 @@ export interface ServerEntry {
   stdioEnv?: Record<string, string>;
   status: ServerStatus;
   error?: string;
+  /** Brief non-error status (e.g. after automatic session renewal). */
+  connectionNotice?: string;
   tools?: ToolDef[];
   custom?: boolean;
   metaTools?: MetaToolBinding[];
