@@ -150,6 +150,131 @@ describe('serverReadinessMarkdown', () => {
     expect(md).not.toContain('Other');
     expect(otherTools).toHaveLength(1);
   });
+
+  test('groups identical findings across tools and lists tool names once', () => {
+    const sharedIssue = {
+      id: 'parameter-description-missing',
+      severity: 'high' as const,
+      path: 'query',
+      message: 'Parameter "query" has no description.',
+      recommendation: 'Explain what the parameter controls and how an agent should choose a value.',
+    };
+    const tools: AgentReadinessToolReport[] = [
+      toolReport({
+        toolName: 'zebra_search',
+        issues: [issue({ ...sharedIssue, toolName: 'zebra_search' })],
+      }),
+      toolReport({
+        toolName: 'alpha_search',
+        issues: [issue({ ...sharedIssue, toolName: 'alpha_search' })],
+      }),
+      toolReport({
+        toolName: 'beta_search',
+        issues: [issue({ ...sharedIssue, toolName: 'beta_search' })],
+      }),
+    ];
+
+    const md = serverReadinessMarkdown('Docs server', tools, []);
+    expect(md).toContain('## Shared findings');
+    expect(md).toContain(
+      '- **Parameter "query" has no description.** (3 tools): `alpha_search`, `beta_search`, `zebra_search`',
+    );
+    expect(md).not.toContain('## Tool details');
+    expect(md.match(/Parameter "query" has no description\./g)).toHaveLength(1);
+  });
+
+  test('keeps tool-specific findings under Tool details and shared ones grouped', () => {
+    const sharedIssue = {
+      id: 'tool-description-missing',
+      severity: 'medium' as const,
+      message: 'Tool has no description.',
+      recommendation: 'Add a description.',
+    };
+    const tools: AgentReadinessToolReport[] = [
+      toolReport({
+        toolName: 'shared_a',
+        issues: [issue({ ...sharedIssue, toolName: 'shared_a' })],
+      }),
+      toolReport({
+        toolName: 'shared_b',
+        issues: [issue({ ...sharedIssue, toolName: 'shared_b' })],
+      }),
+      toolReport({
+        toolName: 'unique_tool',
+        score: 40,
+        verdict: 'not-ready',
+        issues: [
+          issue({
+            toolName: 'unique_tool',
+            id: 'tool-name-generic',
+            severity: 'high',
+            message: 'Tool name "unique_tool" is too generic.',
+            recommendation: 'Rename to a verb_noun name.',
+          }),
+        ],
+      }),
+    ];
+
+    const md = serverReadinessMarkdown('Docs server', tools, []);
+    const sharedIdx = md.indexOf('## Shared findings');
+    const detailsIdx = md.indexOf('## Tool details');
+    expect(sharedIdx).toBeGreaterThan(-1);
+    expect(detailsIdx).toBeGreaterThan(sharedIdx);
+    expect(md).toContain('- **Tool has no description.** (2 tools): `shared_a`, `shared_b`');
+    expect(md).toContain('### `unique_tool` — 40 · Not ready');
+    expect(md).toContain('#### High — tool');
+    expect(md).not.toContain('### `shared_a`');
+    expect(md).not.toContain('### `shared_b`');
+  });
+
+  test('shared and unique issue ordering is stable', () => {
+    const tools: AgentReadinessToolReport[] = [
+      toolReport({
+        toolName: 't2',
+        issues: [
+          issue({
+            toolName: 't2',
+            id: 'b-id',
+            severity: 'medium',
+            message: 'shared message',
+            recommendation: 'fix shared',
+          }),
+          issue({
+            toolName: 't2',
+            id: 'z-unique',
+            severity: 'low',
+            message: 'only on t2',
+            recommendation: 'fix t2',
+          }),
+        ],
+      }),
+      toolReport({
+        toolName: 't1',
+        issues: [
+          issue({
+            toolName: 't1',
+            id: 'b-id',
+            severity: 'medium',
+            message: 'shared message',
+            recommendation: 'fix shared',
+          }),
+          issue({
+            toolName: 't1',
+            id: 'a-unique',
+            severity: 'high',
+            message: 'only on t1',
+            recommendation: 'fix t1',
+          }),
+        ],
+      }),
+    ];
+
+    const first = serverReadinessMarkdown('Docs server', tools, []);
+    const second = serverReadinessMarkdown('Docs server', [...tools].reverse(), []);
+    expect(first).toBe(second);
+    expect(first.indexOf('shared message')).toBeLessThan(first.indexOf('## Tool details'));
+    expect(first.indexOf('only on t1')).toBeLessThan(first.indexOf('only on t2'));
+  });
 });
 
 describe('escaping and untrusted text', () => {

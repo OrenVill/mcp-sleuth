@@ -60,6 +60,84 @@ function issueBlock(issue: AgentReadinessIssue, headingLevel: 3 | 4): string[] {
   ];
 }
 
+function issueGroupKey(issue: AgentReadinessIssue): string {
+  return `${issue.id}\0${issue.message}`;
+}
+
+function compareIssuesBySeverityThenId(
+  a: AgentReadinessIssue,
+  b: AgentReadinessIssue,
+): number {
+  const severityOrder: Record<AgentReadinessSeverity, number> = {
+    critical: 0,
+    high: 1,
+    medium: 2,
+    low: 3,
+  };
+  return (
+    severityOrder[a.severity] - severityOrder[b.severity] ||
+    a.id.localeCompare(b.id) ||
+    a.message.localeCompare(b.message)
+  );
+}
+
+function sortedUniqueToolNames(toolNames: string[]): string[] {
+  return [...new Set(toolNames)].sort((a, b) => a.localeCompare(b));
+}
+
+function sharedFindingLines(issue: AgentReadinessIssue, toolNames: string[]): string[] {
+  const names = sortedUniqueToolNames(toolNames);
+  const toolList = names.map((name) => `\`${escapeInline(name)}\``).join(', ');
+  return [
+    `- **${escapeInline(issue.message)}** (${names.length} tools): ${toolList}`,
+    `- **Recommendation:** ${escapeInline(issue.recommendation)}`,
+    `- **Id:** \`${escapeInline(issue.id)}\``,
+    '',
+  ];
+}
+
+function buildServerIssueGroups(tools: AgentReadinessToolReport[]): {
+  shared: { issue: AgentReadinessIssue; toolNames: string[] }[];
+  uniqueByTool: Map<string, AgentReadinessIssue[]>;
+} {
+  const groupMembers = new Map<string, { issue: AgentReadinessIssue; toolNames: string[] }>();
+
+  for (const tool of tools) {
+    for (const toolIssue of tool.issues) {
+      const key = issueGroupKey(toolIssue);
+      const existing = groupMembers.get(key);
+      if (existing) {
+        existing.toolNames.push(tool.toolName);
+      } else {
+        groupMembers.set(key, { issue: toolIssue, toolNames: [tool.toolName] });
+      }
+    }
+  }
+
+  const shared: { issue: AgentReadinessIssue; toolNames: string[] }[] = [];
+  const uniqueByTool = new Map<string, AgentReadinessIssue[]>();
+
+  for (const { issue, toolNames } of groupMembers.values()) {
+    const distinctTools = sortedUniqueToolNames(toolNames);
+    if (distinctTools.length > 1) {
+      shared.push({ issue, toolNames: distinctTools });
+    } else {
+      const toolName = distinctTools[0];
+      const list = uniqueByTool.get(toolName) ?? [];
+      list.push(issue);
+      uniqueByTool.set(toolName, list);
+    }
+  }
+
+  shared.sort((a, b) => compareIssuesBySeverityThenId(a.issue, b.issue));
+  for (const [toolName, issues] of uniqueByTool) {
+    issues.sort(compareIssuesBySeverityThenId);
+    uniqueByTool.set(toolName, issues);
+  }
+
+  return { shared, uniqueByTool };
+}
+
 function verdictForScore(score: number, criticalCount: number): AgentReadinessVerdict {
   if (criticalCount > 0 || score < 50) return 'not-ready';
   if (score < 70) return 'needs-work';
@@ -111,18 +189,21 @@ export function serverReadinessMarkdown(
   quickWins: string[],
   opts: ReadinessMarkdownOptions = {},
 ): string {
-  const allIssues = tools.flatMap((tool) => tool.issues);
+  const sortedTools = [...tools].sort((a, b) => a.toolName.localeCompare(b.toolName));
+  const allIssues = sortedTools.flatMap((tool) => tool.issues);
   const counts = countBySeverity(allIssues);
   const score =
-    tools.length === 0 ? 0 : Math.round(tools.reduce((sum, tool) => sum + tool.score, 0) / tools.length);
+    sortedTools.length === 0
+      ? 0
+      : Math.round(sortedTools.reduce((sum, tool) => sum + tool.score, 0) / sortedTools.length);
   const verdict = verdictForScore(score, counts.critical);
-  const readyToolCount = tools.filter((tool) => isReadyVerdict(tool.verdict)).length;
+  const readyToolCount = sortedTools.filter((tool) => isReadyVerdict(tool.verdict)).length;
 
   const lines: string[] = [
     `# Agent Readiness — ${escapeInline(serverName)}`,
     '',
     `**Score:** ${score} / 100 — ${readinessLabel(verdict)}`,
-    `**Tools scored:** ${tools.length} · **Ready tools:** ${readyToolCount} · **Critical issues:** ${counts.critical} · **High issues:** ${counts.high}`,
+    `**Tools scored:** ${sortedTools.length} · **Ready tools:** ${readyToolCount} · **Critical issues:** ${counts.critical} · **High issues:** ${counts.high}`,
     '',
   ];
 
@@ -136,21 +217,33 @@ export function serverReadinessMarkdown(
 
   lines.push('## Tools', '', '| Tool | Score | Verdict | Critical | High | Medium | Low |', '| --- | --- | --- | --- | --- | --- | --- |');
 
-  for (const tool of tools) {
+  for (const tool of sortedTools) {
     const toolCounts = countBySeverity(tool.issues);
     lines.push(
       `| \`${escapeCell(tool.toolName)}\` | ${tool.score} | ${escapeCell(readinessLabel(tool.verdict))} | ${toolCounts.critical} | ${toolCounts.high} | ${toolCounts.medium} | ${toolCounts.low} |`,
     );
   }
 
-  lines.push('', '## Tool details', '');
+  lines.push('');
 
-  for (const tool of tools) {
-    lines.push(`### \`${escapeInline(tool.toolName)}\` — ${tool.score} · ${readinessLabel(tool.verdict)}`, '');
-    if (tool.issues.length === 0) {
-      lines.push('_No readiness issues found._', '');
-    } else {
-      for (const issue of tool.issues) {
+  const { shared, uniqueByTool } = buildServerIssueGroups(sortedTools);
+
+  if (shared.length > 0) {
+    lines.push('## Shared findings', '');
+    for (const { issue, toolNames } of shared) {
+      lines.push(...sharedFindingLines(issue, toolNames));
+    }
+  }
+
+  const toolsWithUniqueIssues = sortedTools.filter(
+    (tool) => (uniqueByTool.get(tool.toolName)?.length ?? 0) > 0,
+  );
+  if (toolsWithUniqueIssues.length > 0) {
+    lines.push('## Tool details', '');
+    for (const tool of toolsWithUniqueIssues) {
+      const uniqueIssues = uniqueByTool.get(tool.toolName) ?? [];
+      lines.push(`### \`${escapeInline(tool.toolName)}\` — ${tool.score} · ${readinessLabel(tool.verdict)}`, '');
+      for (const issue of uniqueIssues) {
         lines.push(...issueBlock(issue, 4));
       }
     }
