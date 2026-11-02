@@ -6,6 +6,7 @@ import {
   chatExportFilename,
   chatToJson,
   chatToMarkdown,
+  sanitizeModelBaseUrl,
   scrubTextSecrets,
 } from './chatExport';
 
@@ -45,6 +46,80 @@ describe('chatExport', () => {
     expect(md).toContain('Hi there.');
     const json = JSON.parse(chatToJson(exp)) as { version: number };
     expect(json.version).toBe(CHAT_EXPORT_VERSION);
+  });
+
+  test('realistic search_tools export nests JSON results and keeps keywords', () => {
+    const toolList = {
+      tools: [
+        { name: 'echo_markdown', description: 'Echo markdown' },
+        { name: 'search_tools', description: 'Search' },
+      ],
+    };
+    const messages: AgentMessage[] = [
+      { role: 'user', text: 'What tools do you have for markdown?' },
+      {
+        role: 'assistant',
+        text: '',
+        toolCalls: [
+          {
+            id: 'call_search',
+            llmName: 'search_tools',
+            serverId: 's1',
+            toolName: 'search_tools',
+            args: { keywords: ['markdown', 'echo'] },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        toolCallId: 'call_search',
+        text: JSON.stringify(toolList, null, 2),
+        isError: false,
+      },
+      {
+        role: 'assistant',
+        text: 'You can use **echo_markdown** to echo formatted text.',
+      },
+    ];
+    const exp = buildChatExport({
+      messages,
+      config: null,
+      servers,
+      exportedAt: new Date('2026-11-02T17:30:00Z'),
+      appVersion: '2.0.1',
+    });
+    const parsed = JSON.parse(chatToJson(exp)) as {
+      messages: Array<{
+        role: string;
+        text?: string;
+        toolCalls?: Array<{
+          toolName: string;
+          llmName?: string;
+          serverId?: string;
+          args: { keywords: string[] };
+          result?: { content?: { tools: unknown[] }; text?: string; isError?: boolean };
+        }>;
+      }>;
+    };
+
+    expect(parsed.messages).toHaveLength(3);
+    const toolTurn = parsed.messages[1]!;
+    expect(toolTurn.role).toBe('assistant');
+    expect(toolTurn.text).toBeUndefined();
+    expect(toolTurn.toolCalls).toHaveLength(1);
+    const call = toolTurn.toolCalls![0]!;
+    expect(call.toolName).toBe('search_tools');
+    expect(call.llmName).toBeUndefined();
+    expect(call.serverId).toBeUndefined();
+    expect(call.args.keywords).toEqual(['markdown', 'echo']);
+    expect(call.result?.content).toEqual(toolList);
+    expect(call.result?.text).toBeUndefined();
+    expect(call.result?.isError).toBeUndefined();
+    expect(JSON.stringify(parsed)).not.toMatch(/\\\\n/);
+
+    const blob = chatToJson(exp);
+    expect(blob).not.toContain('[REDACTED]');
+    expect(blob).not.toContain('"text": ""');
   });
 
   test('pairs a successful tool call with its result', () => {
@@ -147,9 +222,18 @@ describe('chatExport', () => {
     const messages: AgentMessage[] = [
       { role: 'tool', toolCallId: 'orphan', text: 'lost result', isError: false },
     ];
-    const md = chatToMarkdown(exportAt(messages));
+    const exp = exportAt(messages);
+    const md = chatToMarkdown(exp);
     expect(md).toContain('## Tool result (unpaired)');
     expect(md).toContain('lost result');
+    const parsed = JSON.parse(chatToJson(exp)) as { messages: unknown[] };
+    expect(parsed.messages).toEqual([
+      {
+        role: 'tool',
+        toolCallId: 'orphan',
+        result: { text: 'lost result' },
+      },
+    ]);
   });
 
   test('fence length escapes triple backticks in tool output', () => {
@@ -200,12 +284,80 @@ describe('chatExport', () => {
     expect(blob).not.toContain('sk-live-abcdefghijklmnop');
     expect(blob).toContain('[REDACTED]');
     expect(exp.model?.extraHeaders).toEqual({ 'X-Custom': '[REDACTED]' });
-    expect(exp.messages[1].toolCalls?.[0].args).toEqual({
+    const call = (exp.messages[1] as { toolCalls?: Array<{ args: Record<string, unknown> }> })
+      .toolCalls?.[0];
+    expect(call?.args).toEqual({
       Authorization: '[REDACTED]',
       apiKey: '[REDACTED]',
       safe: 'visible',
     });
     expect(scrubTextSecrets('prefix sk-1234567890123456 suffix')).toContain('[REDACTED]');
+  });
+
+  test('does not redact keywords or monkey keys', () => {
+    expect(
+      buildChatExport({
+        messages: [
+          {
+            role: 'assistant',
+            text: '',
+            toolCalls: [
+              {
+                id: 'k',
+                llmName: 'search_tools',
+                serverId: 's1',
+                toolName: 'search_tools',
+                args: { keywords: ['a'], monkey: 'business' },
+              },
+            ],
+          },
+        ],
+        config: null,
+        servers,
+        exportedAt: new Date(),
+        appVersion: '1',
+      }).messages[0],
+    ).toMatchObject({
+      toolCalls: [{ args: { keywords: ['a'], monkey: 'business' } }],
+    });
+  });
+
+  test('sanitizeModelBaseUrl strips credentials and query strings', () => {
+    expect(sanitizeModelBaseUrl('https://user:pass@proxy.example/v1?key=secret')).toBe(
+      'https://proxy.example/v1',
+    );
+    expect(sanitizeModelBaseUrl('http://127.0.0.1:11434/v1')).toBe('http://127.0.0.1:11434/v1');
+  });
+
+  test('includes serverId when multiple servers are in scope', () => {
+    const multi = [
+      { id: 's1', name: 'A' },
+      { id: 's2', name: 'B' },
+    ];
+    const exp = buildChatExport({
+      messages: [
+        {
+          role: 'assistant',
+          text: '',
+          toolCalls: [
+            {
+              id: 'x',
+              llmName: 't',
+              serverId: 's2',
+              toolName: 't',
+              args: {},
+            },
+          ],
+        },
+      ],
+      config: null,
+      servers: multi,
+      exportedAt: new Date(),
+      appVersion: '1',
+    });
+    expect(
+      (exp.messages[0] as { toolCalls?: Array<{ serverId?: string }> }).toolCalls?.[0]?.serverId,
+    ).toBe('s2');
   });
 
   test('chatExportFilename uses local date parts', () => {
@@ -214,7 +366,7 @@ describe('chatExport', () => {
     expect(chatExportFilename('json', date)).toBe('mcp-detective-chat-2026-11-02-0905.json');
   });
 
-  test('JSON messages round-trip shape', () => {
+  test('JSON nests tool results under assistant toolCalls', () => {
     const messages: AgentMessage[] = [
       { role: 'user', text: 'Q' },
       {
@@ -228,10 +380,10 @@ describe('chatExport', () => {
     ];
     const parsed = JSON.parse(chatToJson(exportAt(messages))) as {
       format: string;
-      messages: AgentMessage[];
+      messages: Array<{ role: string; toolCalls?: Array<{ result?: { text: string } }> }>;
     };
     expect(parsed.format).toBe('mcp-detective.agent-chat');
-    expect(parsed.messages).toHaveLength(3);
-    expect(parsed.messages[1].toolCalls?.[0].toolName).toBe('t');
+    expect(parsed.messages).toHaveLength(2);
+    expect(parsed.messages[1].toolCalls?.[0].result?.text).toBe('out');
   });
 });

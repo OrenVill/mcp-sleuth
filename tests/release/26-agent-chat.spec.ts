@@ -134,8 +134,10 @@ test.describe.serial('§3.26 — Agent Chat', () => {
 
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain('# MCP Detective chat');
-    expect(copied).toContain('echo_markdown');
-    expect(copied).toContain('We are done');
+    expect(copied).toContain('discover meta tools please');
+    expect(copied).toContain('list_tools');
+    expect(copied).toContain('Listed the extra tools.');
+    expect(copied).toContain('extra_sample_alpha');
 
     await expect(page.getByTestId('agent-export-json-save')).toBeVisible();
     const [download] = await Promise.all([
@@ -149,10 +151,19 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     const { readFileSync } = await import('node:fs');
     const parsed = JSON.parse(readFileSync(jsonPath!, 'utf8')) as {
       format: string;
-      messages: unknown[];
+      version: number;
+      messages: Array<{
+        role: string;
+        toolCalls?: Array<{ toolName: string; result?: { content?: { tools: unknown[] } } }>;
+      }>;
     };
     expect(parsed.format).toBe('mcp-detective.agent-chat');
+    expect(parsed.version).toBe(2);
     expect(parsed.messages.length).toBeGreaterThan(0);
+    const toolTurn = parsed.messages.find((m) => m.toolCalls?.some((c) => c.toolName === 'list_tools'));
+    expect(toolTurn?.toolCalls?.[0]?.result?.content?.tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'extra_sample_alpha' })]),
+    );
   });
 
   test('denying a call asks why, and the run continues instead of aborting', async () => {
