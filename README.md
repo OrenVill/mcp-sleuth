@@ -26,6 +26,7 @@ Three ways to run it:
 - **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).
 - **Prompt Injection scan** — flags suspicious patterns in tool names, descriptions, and parameter metadata with highlighted matches.
 - **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-detective/` and exportable as Markdown.
+- **Agent Readiness** — scores connected tools for agent-friendliness; copy a per-tool or per-server report as Markdown from Dev Tools.
 - **Agent Chat** — drive a model you supply (local or cloud) against a connected server and watch how it actually uses the tools. Every tool call is approval-gated, the run's calls can be captured as a Replay Suite or recorded to the Observation Journal, and refusals feed Agent Readiness. See [Agent Chat](#agent-chat).
 - **Meta-tool discovery** — recognizes tools that exist to discover *other* tools (`list_tools`, `search_tools`, `invoke_tool`, `get_manifest`, etc.) and surfaces a one-click **Discover all tools** button. Discovered tools appear in a collapsible section in the tool list and can be invoked directly or routed through a proxy meta-tool.
 
