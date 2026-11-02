@@ -466,7 +466,7 @@ Two suites, two configs.
 
 ### Browser release suite — `tests/release/`
 
-30 spec files, 140 tests. Runs against the **built `dist/`** served by `server.js` at
+30 spec files, 146 tests. Runs against the **built `dist/`** served by `server.js` at
 `http://127.0.0.1:4173`. Playwright starts that server, the MCP fixture
 (`tests/fixtures/http-mcp-server.mjs`) on `127.0.0.1:3001`, and the scripted OpenAI-compatible LLM
 fixture (`tests/fixtures/llm-server.mjs`) on `127.0.0.1:3003` itself — no manual setup.
@@ -517,7 +517,7 @@ change.
 
 ### Electron suite — `tests/electron/`
 
-9 spec files, 52 tests, driven by `playwright.electron.config.ts` against the packaged main
+9 spec files, 53 tests, driven by `playwright.electron.config.ts` against the packaged main
 process. Needs a display: on a headless machine use `xvfb-run -a`.
 
 ```bash

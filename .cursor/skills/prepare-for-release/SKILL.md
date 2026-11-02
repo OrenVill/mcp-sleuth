@@ -69,7 +69,7 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 145 tests across 30 spec files must pass. Any failure blocks the release.
+All 146 tests across 30 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
@@ -187,7 +187,7 @@ a long tool result, jump-to-latest, New chat, Escape against an open picker, Ret
 turn, Stop leaving the run cancelled but retryable, the approval card taking focus without arming
 Enter, copying an assistant message as markdown source, the MCP scope popover, and the disabled
 composer. Steps 5, 7, 8, 9, and 10 above
-are the manual-only ones.
+are the manual-only ones. Also covers **Export** (Markdown/JSON copy and browser download).
 
 **§3.27 — Stored secrets never reach an edit form (manual pass):** A saved credential must not
 be recoverable from the UI that edits it. `type="password"` only draws dots; the value behind

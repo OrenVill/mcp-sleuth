@@ -5,6 +5,7 @@ import { updateObservationJournal } from '../lib/observationJournalStore';
 import type { LlmConfig } from '../lib/agent/types';
 import { useProtocolTraces } from './useProtocolTraces';
 import { AgentModelPicker } from './AgentModelPicker';
+import { AgentChatExportMenu } from './AgentChatExportMenu';
 import { AgentTranscript } from './AgentTranscript';
 import { ToolCallApproval } from './ToolCallApproval';
 import { WindowControls } from './WindowControls';
@@ -324,6 +325,7 @@ export function AgentChatPanel({
   const visibleTraces =
     traceFilter === 'failed' ? runTraces.filter((t) => t.status === 'error') : runTraces;
   const hasConversation = run.messages.length > 0 || run.streamingText.length > 0;
+  const canExportCommitted = run.messages.length > 0;
 
   return (
     <div
@@ -418,6 +420,16 @@ export function AgentChatPanel({
               </svg>
               New chat
             </button>
+          )}
+          {hasConversation && (
+            <AgentChatExportMenu
+              messages={run.messages}
+              config={config}
+              servers={servers}
+              selectedServerIds={selectedServerIds}
+              disabled={!canExportCommitted}
+              onNotice={setNotice}
+            />
           )}
           <AgentModelPicker
             configs={llmConfigs}

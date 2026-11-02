@@ -346,6 +346,8 @@ never dismisses an open card either.
   relative to the slowest call in the run. The same calls also land in the Protocol Inspector.
 - **Capture** — save the run's successful tool calls as a Replay Suite and re-run them later.
 - **Record** — send any tool step to that server's Observation Journal.
+- **Export** — save or copy the full conversation as Markdown or JSON, with best-effort credential
+  scrubbing before you share it.
 - **Agent Readiness** — deny reasons, tool errors, and runs that hit the turn limit become issues
   on the server's score, with recommendations aimed at the tool descriptions and schemas that
   caused them.

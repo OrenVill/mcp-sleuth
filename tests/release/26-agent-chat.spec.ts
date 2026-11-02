@@ -111,6 +111,34 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     await expect(page.getByTestId('agent-notice')).toContainText('replay suite');
   });
 
+  test('export copies and downloads the conversation', async () => {
+    await page.getByTestId('agent-export').click();
+    await page.getByTestId('agent-export-markdown-copy').click();
+    await expect(page.getByTestId('agent-export-markdown-copy')).toContainText('Copied');
+
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('# MCP Detective chat');
+    expect(copied).toContain('echo_markdown');
+    expect(copied).toContain('We are done');
+
+    await expect(page.getByTestId('agent-export-json-save')).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 5000 }),
+      page.getByTestId('agent-export-json-save').click(),
+    ]);
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/^mcp-detective-chat-.*\.json$/);
+    const jsonPath = await download.path();
+    expect(jsonPath).toBeTruthy();
+    const { readFileSync } = await import('node:fs');
+    const parsed = JSON.parse(readFileSync(jsonPath!, 'utf8')) as {
+      format: string;
+      messages: unknown[];
+    };
+    expect(parsed.format).toBe('mcp-detective.agent-chat');
+    expect(parsed.messages.length).toBeGreaterThan(0);
+  });
+
   test('denying a call asks why, and the run continues instead of aborting', async () => {
     // Fresh conversation: the fixture only calls a tool when no tool result is
     // present in the request.

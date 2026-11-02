@@ -58,6 +58,18 @@ describe('electron files host', () => {
     );
   });
 
+  it('saveFileAsync reports cancelled when the dialog returns null', async () => {
+    const bridge = bridgeReturning(null);
+    const host = createElectronFilesHost(bridge);
+    await expect(host.saveFileAsync('out.md', '# hi', 'text/markdown')).resolves.toBe('cancelled');
+  });
+
+  it('saveFileAsync reports saved when a path is returned', async () => {
+    const bridge = bridgeReturning('/tmp/out.json');
+    const host = createElectronFilesHost(bridge);
+    await expect(host.saveFileAsync('out.json', '{}', 'application/json')).resolves.toBe('saved');
+  });
+
   it('round-trips app data', async () => {
     const bridge = bridgeReturning({ version: 1 });
     const host = createElectronFilesHost(bridge);

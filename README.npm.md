@@ -91,6 +91,8 @@ What the chat does:
 - **Live trace** beside the transcript, with every call also landing in the Protocol Inspector.
 - **Capture** a run's tool calls as a Replay Suite, or **Record** any step to the Observation
   Journal.
+- **Export** the conversation as Markdown or JSON (save to file or copy), with best-effort redaction
+  of credentials before you paste it into a bug report.
 - **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-detective/`;
   the messages and raw tool output live in memory for the session.
 - **It always shows you it is working** — dots while the agent has the turn, a caret while text

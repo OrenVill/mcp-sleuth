@@ -91,8 +91,11 @@ export interface SecretsHost {
 }
 
 /** Writing generated content out of the app, and persisted app data. */
+export type SaveFileResult = 'saved' | 'cancelled' | 'failed';
+
 export interface FilesHost {
   saveFile(filename: string, content: string, mimeType: string): void;
+  saveFileAsync(filename: string, content: string, mimeType: string): Promise<SaveFileResult>;
   /** Persisted app data (bookmarks, history, journals), or null if none stored. */
   readAppData(): Promise<unknown | null>;
   writeAppData(data: unknown): Promise<void>;
