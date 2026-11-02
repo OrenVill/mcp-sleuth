@@ -33,6 +33,7 @@ import {
   listPrompts,
 } from './lib/mcpClient';
 import { detectMetaTools } from './lib/discovery/detect';
+import { mergeDiscoveredTools } from './lib/discovery/mergeDiscovered';
 import { runDiscovery } from './lib/discovery/orchestrator';
 import { loadLegacyServers } from './lib/storage';
 import { getHost } from './lib/host';
@@ -405,11 +406,8 @@ export default function App() {
 
     const latest = serversRef.current.find((s) => s.id === serverId);
     if (!latest) return;
-    const existing = latest.discovered ?? [];
-    const byName = new Map(existing.map((t) => [t.name, t]));
-    for (const t of result.tools) if (!byName.has(t.name)) byName.set(t.name, t);
     updateServer(serverId, {
-      discovered: Array.from(byName.values()),
+      discovered: mergeDiscoveredTools(latest.discovered, result.tools),
       discoveryRuns: {
         ...(latest.discoveryRuns ?? {}),
         [metaToolName]: result.run,
@@ -894,6 +892,13 @@ export default function App() {
             llmConfigs={vault.llmConfigs}
             onSaveLlmConfigs={vault.saveLlmConfigs}
             activeServerId={selectedId}
+            onDiscovered={(serverId, tools) => {
+              const latest = serversRef.current.find((s) => s.id === serverId);
+              if (!latest) return;
+              updateServer(serverId, {
+                discovered: mergeDiscoveredTools(latest.discovered, tools),
+              });
+            }}
             onClose={() => setAgentChatOpen(false)}
           />
         </Suspense>

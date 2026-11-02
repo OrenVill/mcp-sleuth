@@ -70,7 +70,7 @@ test.describe.serial('§3.26 — Agent Chat', () => {
   test.afterAll(() => ctx.close());
 
   test('the header reports readiness and the tool count', async () => {
-    await expect(page.getByTestId('agent-chat-panel')).toContainText('5 tools exposed');
+    await expect(page.getByTestId('agent-chat-panel')).toContainText('6 tools exposed');
     await expect(page.getByTestId('agent-input')).toBeEnabled();
   });
 
@@ -104,6 +104,22 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     const row = page.getByTestId('trace-row').first();
     await expect(row).toBeVisible();
     await expect(row).toContainText('echo_markdown');
+  });
+
+  test('meta-tool discovery in chat updates the exposed tool count', async () => {
+    await closeChat(page);
+    await openChat(page);
+
+    const approval = await sendAndAwaitApproval(page, 'discover meta tools please');
+    await expect(approval).toContainText('list_tools');
+    await page
+      .getByTestId('tool-call-approval')
+      .getByRole('button', { name: 'Allow', exact: true })
+      .click();
+
+    await expect(page.getByTestId('agent-chat-panel')).toContainText('9 tools exposed', {
+      timeout: 15_000,
+    });
   });
 
   test('a finished run can be captured as a replay suite', async () => {
