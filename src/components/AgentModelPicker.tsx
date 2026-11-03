@@ -5,6 +5,7 @@ import type { LlmConfig, LlmProviderId } from '../lib/agent/types';
 import { Select } from './Select';
 import { Popover } from './Popover';
 import { SecretInput } from './SecretInput';
+import { normalizeBaseUrl } from '../lib/agent/normalizeBaseUrl';
 import { maskStoredSecret, resolveStoredSecret } from '../lib/secretFields';
 
 interface Props {
@@ -168,7 +169,11 @@ export function AgentModelPicker({
           className="w-full max-w-md space-y-3 bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl p-5 max-h-[90vh] overflow-y-auto"
           onSubmit={(event) => {
             event.preventDefault();
-            onSaveConfig({ ...draft, apiKey: resolveStoredSecret(draft.apiKey, storedApiKey) });
+            onSaveConfig({
+              ...draft,
+              baseUrl: normalizeBaseUrl(draft.baseUrl),
+              apiKey: resolveStoredSecret(draft.apiKey, storedApiKey),
+            });
             setDraft(null);
           }}
         >
@@ -231,7 +236,7 @@ export function AgentModelPicker({
             <input
               required
               value={draft.baseUrl}
-              onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value.replace(/\/+$/, '') })}
+              onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
               className={FIELD}
             />
           </label>

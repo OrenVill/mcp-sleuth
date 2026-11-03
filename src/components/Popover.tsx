@@ -68,10 +68,17 @@ export function Popover({
     const onDown = (event: MouseEvent) => {
       const target = event.target as Node;
       if (triggerRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      // Nested `Select` listboxes portal to the body beside this panel, so they
+      // are outside `panelRef` even though they belong to controls rendered inside it.
+      const el = target instanceof Element ? target : null;
+      if (el?.closest('[role="listbox"]')) return;
       setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        const listbox = document.querySelector('body > [role="listbox"]');
+        const focusInPanel = panelRef.current?.contains(document.activeElement);
+        if (listbox && focusInPanel) return;
         setOpen(false);
         triggerRef.current?.focus();
       }

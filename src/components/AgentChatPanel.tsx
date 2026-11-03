@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import type { ServerEntry } from '../types';
+import type { ServerEntry, DiscoveredTool } from '../types';
 import { addInvocationObservation } from '../lib/observationJournal';
 import { updateObservationJournal } from '../lib/observationJournalStore';
 import type { LlmConfig } from '../lib/agent/types';
 import { useProtocolTraces } from './useProtocolTraces';
 import { AgentModelPicker } from './AgentModelPicker';
+import { AgentChatExportMenu } from './AgentChatExportMenu';
 import { AgentTranscript } from './AgentTranscript';
 import { ToolCallApproval } from './ToolCallApproval';
 import { WindowControls } from './WindowControls';
@@ -16,6 +17,7 @@ interface Props {
   onSaveLlmConfigs: (configs: LlmConfig[]) => void;
   /** The server the user is currently investigating; the default chat scope. */
   activeServerId: string | null;
+  onDiscovered?: (serverId: string, tools: DiscoveredTool[]) => void;
   onClose: () => void;
 }
 
@@ -97,6 +99,7 @@ export function AgentChatPanel({
   llmConfigs,
   onSaveLlmConfigs,
   activeServerId,
+  onDiscovered,
   onClose,
 }: Props) {
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
@@ -142,7 +145,7 @@ export function AgentChatPanel({
    */
   const effectiveConfigId = activeConfigId ?? llmConfigs[0]?.id ?? null;
   const config = llmConfigs.find((c) => c.id === effectiveConfigId) ?? null;
-  const run = useAgentRun(servers, config, selectedServerIds);
+  const run = useAgentRun(servers, config, selectedServerIds, undefined, onDiscovered);
 
   const connectedIds = useMemo(
     () => servers.filter((s) => s.status === 'connected').map((s) => s.id),
@@ -324,6 +327,7 @@ export function AgentChatPanel({
   const visibleTraces =
     traceFilter === 'failed' ? runTraces.filter((t) => t.status === 'error') : runTraces;
   const hasConversation = run.messages.length > 0 || run.streamingText.length > 0;
+  const canExportCommitted = run.messages.length > 0;
 
   return (
     <div
@@ -418,6 +422,16 @@ export function AgentChatPanel({
               </svg>
               New chat
             </button>
+          )}
+          {hasConversation && (
+            <AgentChatExportMenu
+              messages={run.messages}
+              config={config}
+              servers={servers}
+              selectedServerIds={selectedServerIds}
+              disabled={!canExportCommitted}
+              onNotice={setNotice}
+            />
           )}
           <AgentModelPicker
             configs={llmConfigs}

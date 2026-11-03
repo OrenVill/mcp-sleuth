@@ -33,5 +33,11 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      command: 'node tests/fixtures/stateful-http-mcp-server.mjs 3005',
+      port: 3005,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });

@@ -10,6 +10,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import { createInsecureFetch } from './insecureFetch.js';
+import { chainHandler, isConnectionDeadError, isSessionLostError, isSseDisconnectSuspect } from './sessionRecovery.js';
 
 const SERVER_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
@@ -121,10 +122,13 @@ export function createDefaultDeps() {
 }
 
 export function createSessionManager(deps = createDefaultDeps()) {
-  /** @type {Map<string, {client: any, transport: any}>} */
+  /** @type {Map<string, SessionRecord>} */
   const sessions = new Map();
   const toolsChangedListeners = new Set();
   const closedListeners = new Set();
+  const reconnectedListeners = new Set();
+  /** @type {Map<string, Promise<void>>} */
+  const reconnectInflight = new Map();
 
   function requireId(serverId) {
     if (!isValidServerId(serverId)) {
@@ -138,7 +142,15 @@ export function createSessionManager(deps = createDefaultDeps()) {
     return session;
   }
 
-  async function release(serverId) {
+  function emitClosed(serverId) {
+    for (const listener of closedListeners) listener(serverId);
+  }
+
+  function emitReconnected(serverId) {
+    for (const listener of reconnectedListeners) listener(serverId);
+  }
+
+  async function release(serverId, { emitClosedEvent = false } = {}) {
     const session = sessions.get(serverId);
     if (!session) return;
     sessions.delete(serverId);
@@ -152,36 +164,129 @@ export function createSessionManager(deps = createDefaultDeps()) {
     } catch {
       /* ignore */
     }
+    if (emitClosedEvent) emitClosed(serverId);
   }
 
-  async function open(serverId, transport) {
+  function attachTransportHandlers(serverId, client, transport) {
+    const handleClose = () => {
+      if (sessions.get(serverId)?.transport === transport) {
+        sessions.delete(serverId);
+        emitClosed(serverId);
+      }
+    };
+
+    transport.onclose = chainHandler(transport.onclose, handleClose);
+
+    transport.onerror = chainHandler(transport.onerror, (err) => {
+      if (sessions.get(serverId)?.transport !== transport) return;
+      void (async () => {
+        if (isSseDisconnectSuspect(err)) {
+          try {
+            await client.ping();
+            return;
+          } catch (pingErr) {
+            if (!isSessionLostError(pingErr)) return;
+          }
+        } else if (!isSessionLostError(err)) {
+          return;
+        }
+        // Wait for the next MCP call to run withSessionRecovery; do not loop here.
+      })();
+    });
+  }
+
+  async function open(serverId, transport, connectionMeta) {
     const client = deps.createClient();
     await client.connect(transport);
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
       for (const listener of toolsChangedListeners) listener(serverId);
     });
-    // A transport can drop without the renderer asking (server restart, stdio child
-    // exit). Guard on identity so a stale transport cannot evict a newer session.
-    transport.onclose = () => {
-      if (sessions.get(serverId)?.transport === transport) {
-        sessions.delete(serverId);
-        for (const listener of closedListeners) listener(serverId);
+    attachTransportHandlers(serverId, client, transport);
+    sessions.set(serverId, { client, transport, ...connectionMeta });
+  }
+
+  async function reconnect(serverId) {
+    const inflight = reconnectInflight.get(serverId);
+    if (inflight) return inflight;
+
+    const job = (async () => {
+      const record = sessions.get(serverId);
+      if (!record) throw new Error(`Not connected to server "${serverId}"`);
+
+      const saved = {
+        kind: record.kind,
+        url: record.url,
+        auth: record.auth,
+        options: record.options,
+        stdio: record.stdio,
+        env: record.env,
+      };
+
+      await release(serverId);
+
+      try {
+        if (saved.kind === 'http') {
+          const transport = deps.createHttpTransport(saved.url, saved.auth, saved.options ?? {});
+          await open(serverId, transport, saved);
+        } else if (saved.kind === 'stdio') {
+          assertSpawnable(saved.stdio, saved.env);
+          await open(
+            serverId,
+            deps.createStdioTransport({
+              command: saved.stdio.command,
+              args: saved.stdio.args,
+              cwd: saved.stdio.cwd,
+              env: saved.env,
+            }),
+            saved,
+          );
+        } else {
+          throw new Error('Unknown session kind');
+        }
+        emitReconnected(serverId);
+      } catch (err) {
+        await release(serverId);
+        emitClosed(serverId);
+        const detail = err instanceof Error ? err.message : String(err);
+        throw new Error(`Server restarted and could not be reconnected: ${detail}`, { cause: err });
       }
-    };
-    sessions.set(serverId, { client, transport });
+    })().finally(() => {
+      reconnectInflight.delete(serverId);
+    });
+
+    reconnectInflight.set(serverId, job);
+    return job;
+  }
+
+  async function withSessionRecovery(serverId, fn) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (isSessionLostError(err)) {
+        await reconnect(serverId);
+        return await fn();
+      }
+      if (isConnectionDeadError(err)) {
+        await release(serverId);
+        emitClosed(serverId);
+      }
+      throw err;
+    }
   }
 
   return {
     async connect(serverId, url, auth, options) {
       requireId(serverId);
       await release(serverId);
-      await open(serverId, deps.createHttpTransport(url, auth, options));
+      const meta = { kind: 'http', url, auth, options: options ?? {} };
+      await open(serverId, deps.createHttpTransport(url, auth, options), meta);
     },
 
     async connectStdio(serverId, stdio, env) {
       requireId(serverId);
       assertSpawnable(stdio, env);
       await release(serverId);
+      const meta = { kind: 'stdio', stdio, env };
       await open(
         serverId,
         deps.createStdioTransport({
@@ -190,6 +295,7 @@ export function createSessionManager(deps = createDefaultDeps()) {
           cwd: stdio.cwd,
           env,
         }),
+        meta,
       );
     },
 
@@ -203,41 +309,53 @@ export function createSessionManager(deps = createDefaultDeps()) {
     },
 
     async listTools(serverId) {
-      const { client } = requireSession(serverId);
-      const list = await client.listTools();
-      return list.tools;
+      return withSessionRecovery(serverId, async () => {
+        const { client } = requireSession(serverId);
+        const list = await client.listTools();
+        return list.tools;
+      });
     },
 
     async callTool(serverId, name, args) {
-      const { client } = requireSession(serverId);
-      return client.callTool({ name, arguments: args });
+      return withSessionRecovery(serverId, async () => {
+        const { client } = requireSession(serverId);
+        return client.callTool({ name, arguments: args });
+      });
     },
 
     async listResources(serverId) {
-      const { client } = requireSession(serverId);
-      const result = await client.listResources();
-      return {
-        resources: result.resources ?? [],
-        resourceTemplates: result.resourceTemplates ?? [],
-      };
+      return withSessionRecovery(serverId, async () => {
+        const { client } = requireSession(serverId);
+        const result = await client.listResources();
+        return {
+          resources: result.resources ?? [],
+          resourceTemplates: result.resourceTemplates ?? [],
+        };
+      });
     },
 
     async readResource(serverId, uri) {
-      const { client } = requireSession(serverId);
-      const result = await client.readResource({ uri });
-      return { contents: result.contents };
+      return withSessionRecovery(serverId, async () => {
+        const { client } = requireSession(serverId);
+        const result = await client.readResource({ uri });
+        return { contents: result.contents };
+      });
     },
 
     async listPrompts(serverId) {
-      const { client } = requireSession(serverId);
-      const result = await client.listPrompts();
-      return result.prompts ?? [];
+      return withSessionRecovery(serverId, async () => {
+        const { client } = requireSession(serverId);
+        const result = await client.listPrompts();
+        return result.prompts ?? [];
+      });
     },
 
     async getPrompt(serverId, name, args) {
-      const { client } = requireSession(serverId);
-      const result = await client.getPrompt({ name, arguments: args });
-      return result.messages;
+      return withSessionRecovery(serverId, async () => {
+        const { client } = requireSession(serverId);
+        const result = await client.getPrompt({ name, arguments: args });
+        return result.messages;
+      });
     },
 
     onToolsChanged(listener) {
@@ -250,8 +368,31 @@ export function createSessionManager(deps = createDefaultDeps()) {
       return () => closedListeners.delete(listener);
     },
 
+    onReconnected(listener) {
+      reconnectedListeners.add(listener);
+      return () => reconnectedListeners.delete(listener);
+    },
+
     async closeAll() {
       await Promise.all([...sessions.keys()].map((id) => release(id)));
     },
+
+    // Test hooks — not part of the production IPC surface.
+    _isSessionLostError: isSessionLostError,
+    _reconnectInflight: reconnectInflight,
   };
 }
+
+/**
+ * @typedef {'http' | 'stdio'} SessionKind
+ * @typedef {{
+ *   client: import('@modelcontextprotocol/sdk/client/index.js').Client,
+ *   transport: import('@modelcontextprotocol/sdk/shared/transport.js').Transport,
+ *   kind: SessionKind,
+ *   url?: string,
+ *   auth?: unknown,
+ *   options?: { allowSelfSigned?: boolean },
+ *   stdio?: { command: string, args?: string[], cwd?: string },
+ *   env?: Record<string, string>,
+ * }} SessionRecord
+ */

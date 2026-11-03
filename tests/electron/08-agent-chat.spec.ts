@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   closeApp,
   FIXTURE_URL,
@@ -72,6 +74,21 @@ test.describe.serial('Electron — Agent Chat', () => {
       'Add a model to start',
     );
 
+    await page.getByRole('button', { name: 'Back to servers' }).click();
+    await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
+  });
+
+  test('Base URL keeps slashes while typing character by character', async () => {
+    const page = launched.page;
+    await page.getByTestId('open-agent-chat').click();
+    const form = page.getByTestId('llm-config-form');
+    await expect(form).toBeVisible();
+    const baseUrl = form.getByRole('textbox', { name: 'Base URL' });
+    await baseUrl.clear();
+    await baseUrl.click();
+    await page.keyboard.type(`${LLM_BASE_URL}/`);
+    await expect(baseUrl).toHaveValue(`${LLM_BASE_URL}/`);
+    await form.getByRole('button', { name: 'Cancel' }).click();
     await page.getByRole('button', { name: 'Back to servers' }).click();
     await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
   });
@@ -151,6 +168,32 @@ test.describe.serial('Electron — Agent Chat', () => {
 
     await page.getByTestId('capture-replay-suite').click();
     await expect(page.getByTestId('agent-notice')).toContainText('Captured 1 call');
+  });
+
+  test('export writes markdown and JSON through the native save path', async () => {
+    const page = launched.page;
+    await page.getByTestId('agent-export').click();
+    await page.getByTestId('agent-export-markdown-save').click();
+    await expect
+      .poll(() => readdirSync(launched.saveDir).some((name) => name.endsWith('.md')))
+      .toBe(true);
+
+    const mdName = readdirSync(launched.saveDir).find((name) => name.endsWith('.md'));
+    expect(mdName).toMatch(/^mcp-detective-chat-.*\.md$/);
+    const md = readFileSync(join(launched.saveDir, mdName!), 'utf8');
+    expect(md).toContain('We are done');
+    expect(md).toContain('echo_markdown');
+
+    await page.getByTestId('agent-export').click();
+    await page.getByTestId('agent-export-json-save').click();
+    await expect
+      .poll(() => readdirSync(launched.saveDir).some((name) => name.endsWith('.json')))
+      .toBe(true);
+    const jsonName = readdirSync(launched.saveDir).find((name) => name.endsWith('.json'));
+    const parsed = JSON.parse(readFileSync(join(launched.saveDir, jsonName!), 'utf8')) as {
+      format: string;
+    };
+    expect(parsed.format).toBe('mcp-detective.agent-chat');
   });
 
   test('provider traffic never left the renderer', async () => {

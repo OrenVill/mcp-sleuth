@@ -37,6 +37,15 @@ function scriptFor(toolResultCount, userText) {
   if (userText.includes('explode')) {
     return { content: 'Recovered after the failure.', toolCalls: [] };
   }
+  if (userText.includes('discover meta tools') && toolResultCount === 0) {
+    return {
+      content: '',
+      toolCalls: [{ id: 'call_meta', name: 'list_tools', args: {} }],
+    };
+  }
+  if (userText.includes('discover meta tools')) {
+    return { content: 'Listed the extra tools.', toolCalls: [] };
+  }
   if (toolResultCount === 0) {
     return {
       content: '',
@@ -117,7 +126,11 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === '/v1/models') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ data: [{ id: 'fixture-model' }] }));
+    res.end(
+      JSON.stringify({
+        data: [{ id: 'fixture-model' }, { id: 'fixture-model-alt' }],
+      }),
+    );
     return;
   }
 

@@ -21,7 +21,7 @@ function makeFakeMcp(overrides: Partial<McpHost> = {}): McpHost {
 }
 
 function install(mcp: McpHost): void {
-  setHost({ kind: 'browser', mcp, files: { saveFile: vi.fn() } } as unknown as Host);
+  setHost({ kind: 'browser', mcp, files: { saveFile: vi.fn(), saveFileAsync: vi.fn(async () => 'saved' as const) } } as unknown as Host);
 }
 
 let mcp: McpHost;

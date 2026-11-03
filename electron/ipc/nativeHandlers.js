@@ -26,7 +26,7 @@ export function registerNativeHandlers({ secrets, appData, getWindow }) {
   handle(CHANNELS.readAppData, 'E_APPDATA_READ', () => appData.read());
   handle(CHANNELS.writeAppData, 'E_APPDATA_WRITE', (data) => appData.write(data));
 
-  handle(CHANNELS.saveFile, 'E_SAVE_FILE', async (filename, content) => {
+  handle(CHANNELS.saveFile, 'E_SAVE_FILE', async (filename, content, mimeType) => {
     // Playwright cannot drive a native dialog, so E2E writes to a fixed
     // directory. Never in a packaged app: the branch skips the save dialog,
     // which is the only consent gate on a renderer-driven file write, and it
@@ -45,8 +45,15 @@ export function registerNativeHandlers({ secrets, appData, getWindow }) {
     }
 
     const win = getWindow();
+    const filters =
+      mimeType === 'application/json'
+        ? [{ name: 'JSON', extensions: ['json'] }]
+        : mimeType === 'text/markdown'
+          ? [{ name: 'Markdown', extensions: ['md'] }]
+          : undefined;
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
       defaultPath: filename,
+      ...(filters ? { filters } : {}),
     });
     if (canceled || !filePath) return null;
     await writeFile(filePath, content, 'utf8');

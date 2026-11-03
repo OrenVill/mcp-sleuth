@@ -26,6 +26,7 @@ Three ways to run it:
 - **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).
 - **Prompt Injection scan** — flags suspicious patterns in tool names, descriptions, and parameter metadata with highlighted matches.
 - **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-detective/` and exportable as Markdown.
+- **Agent Readiness** — scores connected tools for agent-friendliness; copy a per-tool or per-server report as Markdown from Dev Tools.
 - **Agent Chat** — drive a model you supply (local or cloud) against a connected server and watch how it actually uses the tools. Every tool call is approval-gated, the run's calls can be captured as a Replay Suite or recorded to the Observation Journal, and refusals feed Agent Readiness. See [Agent Chat](#agent-chat).
 - **Meta-tool discovery** — recognizes tools that exist to discover *other* tools (`list_tools`, `search_tools`, `invoke_tool`, `get_manifest`, etc.) and surfaces a one-click **Discover all tools** button. Discovered tools appear in a collapsible section in the tool list and can be invoked directly or routed through a proxy meta-tool.
 
@@ -232,6 +233,8 @@ The app starts with no servers. Click **+ Add** in the sidebar and pick **HTTP**
 
 Fill in a name and the streamable HTTP URL (typically `http://host:port/mcp`); the explorer registers and auto-connects over streamable HTTP.
 
+If a stateful MCP server restarts and forgets your session, Detective re-initializes the session automatically and retries your tool call once. When the server is unreachable, the sidebar shows **Reconnect** instead of staying falsely connected.
+
 ### Stdio
 
 Choose **Stdio** and configure:
@@ -343,6 +346,8 @@ never dismisses an open card either.
   relative to the slowest call in the run. The same calls also land in the Protocol Inspector.
 - **Capture** — save the run's successful tool calls as a Replay Suite and re-run them later.
 - **Record** — send any tool step to that server's Observation Journal.
+- **Export** — save or copy the full conversation as Markdown or JSON, with best-effort credential
+  scrubbing before you share it.
 - **Agent Readiness** — deny reasons, tool errors, and runs that hit the turn limit become issues
   on the server's score, with recommendations aimed at the tool descriptions and schemas that
   caused them.

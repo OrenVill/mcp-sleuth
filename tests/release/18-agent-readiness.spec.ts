@@ -6,7 +6,9 @@ test.describe.serial('§3.18 — Agent Readiness', () => {
   let page: Page;
 
   test.beforeAll(async ({ browser }) => {
-    ctx = await browser.newContext();
+    ctx = await browser.newContext({
+      permissions: ['clipboard-read', 'clipboard-write'],
+    });
     page = await ctx.newPage();
     await setupVault(page);
     await addFixtureServer(page);
@@ -65,6 +67,29 @@ test.describe.serial('§3.18 — Agent Readiness', () => {
   test('report works with no AI API key and no network model call', async () => {
     const apiKeyError = page.locator('text=/api key required|openai|anthropic api/i').first();
     await expect(apiKeyError).not.toBeVisible({ timeout: 2_000 });
+  });
+
+  test('Copy as Markdown puts tool and server readiness reports on the clipboard', async () => {
+    await page.getByRole('button', { name: 'Agent Readiness' }).click();
+
+    const toolCopy = page.getByTestId('agent-readiness-copy-tool');
+    await expect(toolCopy).toBeVisible({ timeout: 5_000 });
+    await toolCopy.click();
+    await expect(toolCopy).toContainText('Copied!', { timeout: 3_000 });
+
+    const toolClipboard = await page.evaluate(() => navigator.clipboard.readText());
+    expect(toolClipboard).toMatch(/^# Agent Readiness —/);
+    expect(toolClipboard).toMatch(/## Issues/);
+
+    const serverCopy = page.getByTestId('agent-readiness-copy-server');
+    await serverCopy.click();
+    await expect(serverCopy).toContainText('Copied!', { timeout: 3_000 });
+
+    const serverClipboard = await page.evaluate(() => navigator.clipboard.readText());
+    expect(serverClipboard).toMatch(/^# Agent Readiness —/);
+    expect(serverClipboard).toMatch(/## Tools/);
+    expect(serverClipboard.length).toBeGreaterThan(toolClipboard.length);
+
     await page.keyboard.press('Escape');
   });
 });

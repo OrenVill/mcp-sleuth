@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { createSessionManager, isValidServerId } from './sessions.js';
+import { isSessionLostError } from './sessionRecovery.js';
 
 function fakeClient() {
   return {
@@ -123,6 +125,139 @@ describe('sessionManager', () => {
 
     expect(manager.isConnected('srv-1')).toBe(false);
     expect(closed).toEqual(['srv-1']);
+  });
+});
+
+describe('session recovery', () => {
+  it('isSessionLostError recognizes a stale session 404', () => {
+    expect(isSessionLostError(new StreamableHTTPError(404, 'Session not found'))).toBe(true);
+    expect(isSessionLostError(new StreamableHTTPError(401, 'Unauthorized'))).toBe(false);
+    expect(isSessionLostError(new StreamableHTTPError(403, 'Forbidden'))).toBe(false);
+    expect(isSessionLostError(new Error('tool failed'))).toBe(false);
+  });
+
+  it('retries once after a session-lost error and re-initializes the transport', async () => {
+    let client = fakeClient();
+    let transport = { close: vi.fn(async () => undefined), onclose: undefined, onerror: undefined };
+    const createHttpTransport = vi.fn(() => transport);
+
+    client.callTool = vi
+      .fn()
+      .mockRejectedValueOnce(new StreamableHTTPError(404, 'Session not found'))
+      .mockResolvedValueOnce({ content: [{ type: 'text', text: 'ok' }] });
+
+    const manager = createSessionManager({
+      createClient: () => client,
+      createHttpTransport,
+      createStdioTransport: vi.fn(),
+    });
+
+    await manager.connect('srv-1', 'https://example.com/mcp');
+    expect(createHttpTransport).toHaveBeenCalledTimes(1);
+
+    const result = await manager.callTool('srv-1', 'echo', { message: 'hi' });
+    expect(result.content[0].text).toBe('ok');
+    expect(createHttpTransport).toHaveBeenCalledTimes(2);
+    expect(client.callTool).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry ordinary tool failures', async () => {
+    const client = fakeClient();
+    client.callTool = vi.fn(async () => {
+      throw new Error('validation failed');
+    });
+    const manager = createSessionManager({
+      createClient: () => client,
+      createHttpTransport: vi.fn(() => ({ close: vi.fn(async () => undefined) })),
+      createStdioTransport: vi.fn(),
+    });
+    await manager.connect('srv-1', 'https://x/mcp');
+    await expect(manager.callTool('srv-1', 'echo', {})).rejects.toThrow(/validation failed/);
+    expect(client.callTool).toHaveBeenCalledTimes(1);
+  });
+
+  it('shares one reconnect across concurrent calls', async () => {
+    let client = fakeClient();
+    const createHttpTransport = vi.fn(() => {
+      return { close: vi.fn(async () => undefined), onclose: undefined, onerror: undefined };
+    });
+
+    client.callTool = vi.fn(async () => {
+      if (client.callTool.mock.calls.length <= 2) {
+        throw new StreamableHTTPError(404, 'Session not found');
+      }
+      return { content: [] };
+    });
+
+    const manager = createSessionManager({
+      createClient: () => client,
+      createHttpTransport,
+      createStdioTransport: vi.fn(),
+    });
+
+    await manager.connect('srv-1', 'https://x/mcp');
+    await Promise.all([
+      manager.callTool('srv-1', 'a', {}),
+      manager.callTool('srv-1', 'b', {}),
+    ]);
+    expect(createHttpTransport).toHaveBeenCalledTimes(2);
+  });
+
+  it('emits closed when reconnect fails', async () => {
+    const client = fakeClient();
+    client.callTool = vi.fn(async () => {
+      throw new StreamableHTTPError(404, 'Session not found');
+    });
+    const createHttpTransport = vi
+      .fn()
+      .mockReturnValueOnce({ close: vi.fn(async () => undefined) })
+      .mockImplementationOnce(() => {
+        throw new Error('ECONNREFUSED');
+      });
+
+    const manager = createSessionManager({
+      createClient: () => client,
+      createHttpTransport,
+      createStdioTransport: vi.fn(),
+    });
+    const closed = [];
+    manager.onClosed((id) => closed.push(id));
+
+    await manager.connect('srv-1', 'https://x/mcp');
+    await expect(manager.callTool('srv-1', 'echo', {})).rejects.toThrow(
+      /could not be reconnected/i,
+    );
+    expect(closed).toEqual(['srv-1']);
+    expect(manager.isConnected('srv-1')).toBe(false);
+  });
+
+  it('does not emit closed to listeners when a stale transport closes after reconnect', async () => {
+    const transports = [];
+    const createHttpTransport = vi.fn(() => {
+      const t = { close: vi.fn(async () => undefined), onclose: undefined, onerror: undefined };
+      transports.push(t);
+      return t;
+    });
+    let client = fakeClient();
+    client.callTool = vi
+      .fn()
+      .mockRejectedValueOnce(new StreamableHTTPError(404, 'Session not found'))
+      .mockResolvedValueOnce({ content: [] });
+
+    const manager = createSessionManager({
+      createClient: () => client,
+      createHttpTransport,
+      createStdioTransport: vi.fn(),
+    });
+    const closed = [];
+    manager.onClosed((id) => closed.push(id));
+
+    await manager.connect('srv-1', 'https://x/mcp');
+    const stale = transports[0];
+    await manager.callTool('srv-1', 'echo', {});
+    stale.onclose();
+    expect(closed).toEqual([]);
+    expect(manager.isConnected('srv-1')).toBe(true);
   });
 });
 

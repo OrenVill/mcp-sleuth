@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -9,6 +10,10 @@ import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
 import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
+
+const appVersion = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
+) as { version: string };
 
 /**
  * The dev server exposes exactly the same intercepted endpoints as the CLI
@@ -183,6 +188,9 @@ function mcpProxyPlugin(): PluginOption {
 }
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion.version),
+  },
   plugins: [
     localEndpointGuardPlugin(),
     vaultStoragePlugin(),

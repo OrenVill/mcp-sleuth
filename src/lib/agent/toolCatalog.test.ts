@@ -65,4 +65,22 @@ describe('buildToolCatalog', () => {
     s.tools![0].description = undefined;
     expect(buildToolCatalog([s], ['s1']).tools[0].description).toBe('');
   });
+
+  it('includes discovered tools in the count and resolve', () => {
+    const s = server('s1', 'One', ['native']);
+    s.discovered = [
+      {
+        name: 'discovered_one',
+        description: 'from meta-tool',
+        inputSchema: { type: 'object' },
+        source: { via: 'list_tools', kind: 'bulk_list' },
+      },
+    ];
+    const catalog = buildToolCatalog([s], ['s1']);
+    expect(catalog.tools.map((t) => t.name)).toEqual(['native', 'discovered_one']);
+    expect(catalog.resolve('discovered_one')).toEqual({
+      serverId: 's1',
+      toolName: 'discovered_one',
+    });
+  });
 });

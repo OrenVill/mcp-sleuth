@@ -5,6 +5,7 @@ import type {
   LlmStreamEvent,
   RawToolCall,
 } from '../types';
+import { joinBaseUrl } from '../normalizeBaseUrl';
 import type { LlmProvider, LlmStreamParser, ProviderHttpRequest } from './types';
 
 interface OpenAiToolCall {
@@ -164,7 +165,7 @@ export const openaiProvider: LlmProvider = {
       }));
     }
     return {
-      url: `${req.config.baseUrl}/chat/completions`,
+      url: joinBaseUrl(req.config.baseUrl, '/chat/completions'),
       headers: authHeaders(req.config),
       body,
     };
@@ -173,7 +174,7 @@ export const openaiProvider: LlmProvider = {
   createStreamParser: createParser,
 
   modelsRequest(config: LlmConfig) {
-    return { url: `${config.baseUrl}/models`, headers: authHeaders(config) };
+    return { url: joinBaseUrl(config.baseUrl, '/models'), headers: authHeaders(config) };
   },
 
   parseModels(payload: unknown): string[] {

@@ -169,6 +169,14 @@ function formatGenericMessage(message: string): string {
     );
   }
 
+  if (lower.includes('server restarted and could not be reconnected')) {
+    return join(
+      'Could not restore the MCP session',
+      message.replace(/^Server restarted and could not be reconnected:\s*/i, '').trim() ||
+        'The server may still be down or rejected the connection. Use Reconnect when it is ready.',
+    );
+  }
+
   if (lower.includes('bad gateway:')) {
     const tail = message.replace(/^[\s\S]*?bad gateway:\s*/i, '').trim();
     return formatBadGateway(tail || message);
