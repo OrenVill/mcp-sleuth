@@ -1,6 +1,7 @@
 import * as clack from '@clack/prompts';
 import type { AgentToolCall, DenyReason, GateDecision, GateVerdict } from '../../lib/agent/types';
 import { boxRow, formatToolArgsDisplayLines } from './formatToolArgsDisplay';
+import { colorizeToolApprovalCard } from './terminalTheme';
 
 const DENY_REASONS: { value: DenyReason; label: string; hint: string }[] = [
   { value: 'wrong_tool', label: 'Wrong tool', hint: 'Descriptions do not tell these tools apart' },
@@ -48,7 +49,7 @@ export async function promptToolCallApproval(options: {
   serverName: string;
   verdict: GateVerdict;
 }): Promise<GateDecision> {
-  process.stdout.write(`\n${formatToolCallApprovalCard(options)}\n\n`);
+  process.stdout.write(`\n${colorizeToolApprovalCard(formatToolCallApprovalCard(options))}\n\n`);
 
   const actions: { value: 'allow' | 'remember' | 'deny'; label: string }[] = [
     { value: 'allow', label: 'Allow once' },

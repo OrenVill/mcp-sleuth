@@ -7,6 +7,7 @@ import { runExport } from './exportCmd';
 import { runProvider } from './provider';
 import { runReadiness } from './readiness';
 import { runServer } from './server';
+import { paint, terminalColorsEnabled } from '../chat/terminalTheme';
 
 export const commandRegistry: Record<string, CommandHandler> = {
   chat: runChat,
@@ -20,24 +21,28 @@ export const commandRegistry: Record<string, CommandHandler> = {
 };
 
 export function printHelp(): void {
-  process.stdout.write(`mcp-detective — terminal CLI
+  const h = (text: string) => (terminalColorsEnabled() ? paint('1;38;5;213', text) : text);
+  const dim = (text: string) => (terminalColorsEnabled() ? paint('38;5;245', text) : text);
+  const cmd = (text: string) => (terminalColorsEnabled() ? paint('38;5;183', text) : text);
 
-Subcommands:
-  readiness              Agent Readiness report
-  audit permission|injection
-  export handoff|tools|client-config
-  call <tool> [--args JSON]
-  provider list|add|remove
-  server list|add|remove
-  chat                   Agent Chat (alias: tui)
-  add-completions        Install bash tab completion (~/.bashrc)
-  help
+  process.stdout.write(`${h('mcp-detective')} ${dim('— terminal CLI')}
 
-Global flags: --server, --json, -o/--output, --passphrase-file, --discover
-Env: MCP_DETECTIVE_VAULT_PASSPHRASE, MCP_DETECTIVE_DATA_DIR
+${dim('Subcommands:')}
+  ${cmd('readiness')}              Agent Readiness report
+  ${cmd('audit')} permission|injection
+  ${cmd('export')} handoff|tools|client-config
+  ${cmd('call')} <tool> [--args JSON]
+  ${cmd('provider')} list|add|remove
+  ${cmd('server')} list|add|remove
+  ${cmd('chat')}                   Agent Chat (alias: tui)
+  ${cmd('add-completions')}        Install bash tab completion (~/.bashrc)
+  ${cmd('help')}
 
-Vault: interactive unlock is remembered for 30 minutes (cli-vault-session.json in the data dir).
+${dim('Global flags:')} --server, --json, -o/--output, --passphrase-file, --discover
+${dim('Env:')} MCP_DETECTIVE_VAULT_PASSPHRASE, MCP_DETECTIVE_DATA_DIR
 
-Browser UI (default): run mcp-detective with no subcommand.
+${dim('Vault:')} interactive unlock is remembered for 30 minutes (cli-vault-session.json in the data dir).
+
+${dim('Browser UI (default):')} run mcp-detective with no subcommand.
 `);
 }

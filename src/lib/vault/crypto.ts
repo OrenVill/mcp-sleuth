@@ -91,7 +91,7 @@ export async function importAesKeyRaw(b64: string): Promise<CryptoKey> {
     'raw',
     keyBytes,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true,
     ['encrypt', 'decrypt'],
   );
 }

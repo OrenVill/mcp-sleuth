@@ -61,6 +61,11 @@ export async function clearVaultSession(): Promise<void> {
   }
 }
 
+/** Test-only: simulate a new CLI process with the session file still on disk. */
+export function resetVaultSessionMemoryForTests(): void {
+  memorySession = null;
+}
+
 /** Slide the 30-minute window forward (new CLI command or chat turn). */
 export async function touchVaultSession(): Promise<void> {
   if (memorySession && isValid(memorySession.expiresAt)) {

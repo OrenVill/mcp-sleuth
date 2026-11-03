@@ -1,8 +1,10 @@
 import { parseArgv } from './argv';
 import { EXIT_OK, EXIT_USAGE } from './exitCodes';
 import { commandRegistry, printHelp } from './commands/registry';
+import { initCliTheme } from './core/cliTheme';
 
 export async function runCli(argv: string[]): Promise<number> {
+  initCliTheme();
   const { command, rest, flags } = parseArgv(argv);
 
   if (!command || command === 'help') {
