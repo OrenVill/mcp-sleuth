@@ -1,5 +1,6 @@
 import * as clack from '@clack/prompts';
 import type { AgentToolCall, DenyReason, GateDecision, GateVerdict } from '../../lib/agent/types';
+import { boxRow, formatToolArgsDisplayLines } from './formatToolArgsDisplay';
 
 const DENY_REASONS: { value: DenyReason; label: string; hint: string }[] = [
   { value: 'wrong_tool', label: 'Wrong tool', hint: 'Descriptions do not tell these tools apart' },
@@ -23,26 +24,19 @@ export function formatToolCallApprovalCard(options: {
   const { call, serverName, verdict } = options;
   const width = clampWidth(options.width ?? 68);
   const rule = '─'.repeat(width - 2);
+  const innerWidth = width - 4;
 
-  const lines: string[] = [
-    `╭${rule}╮`,
-    `│ Tool call  ${call.toolName}  ·  ${serverName}`,
-  ];
+  const lines: string[] = [`╭${rule}╮`, boxRow(`Tool call  ${call.toolName}  ·  ${serverName}`, width)];
 
   if (verdict === 'ask_locked') {
-    lines.push('│ ALWAYS ASKS — high risk in Permission Surface');
+    lines.push(boxRow('ALWAYS ASKS — high risk in Permission Surface', width));
   }
 
   lines.push(`├${rule}┤`);
 
-  const argsJson = JSON.stringify(call.args, null, 2);
-  const argLines = argsJson.split('\n');
-  const maxArgLines = 14;
-  for (let i = 0; i < Math.min(argLines.length, maxArgLines); i++) {
-    lines.push(`│ ${argLines[i]}`);
-  }
-  if (argLines.length > maxArgLines) {
-    lines.push(`│ … ${argLines.length - maxArgLines} more lines`);
+  const argLines = formatToolArgsDisplayLines(call.args, { innerWidth, maxLines: 28 });
+  for (const line of argLines) {
+    lines.push(boxRow(line, width));
   }
 
   lines.push(`╰${rule}╯`);

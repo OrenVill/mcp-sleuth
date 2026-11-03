@@ -22,6 +22,30 @@ describe('formatToolCallApprovalCard', () => {
     expect(card).toContain('╰');
   });
 
+  it('pretty-prints nested tools_json with summary', () => {
+    const card = formatToolCallApprovalCard({
+      call: {
+        id: '1',
+        llmName: 'execute_tools',
+        serverId: 's',
+        toolName: 'execute_tools',
+        args: {
+          tools_json: JSON.stringify([
+            { name: 'get_current_weather', arguments: { latitude: 40.7128 } },
+            { name: 'get_current_weather', arguments: { latitude: 51.5074 } },
+          ]),
+        },
+      },
+      serverName: 'a',
+      verdict: 'ask',
+      width: 72,
+    });
+    expect(card).toContain('2 nested tool call(s)');
+    expect(card).toContain('"latitude": 40.7128');
+    expect(card).not.toContain('tools_json": "[{\\"');
+    expect(card.split('\n').every((line) => line.length <= 72 || line.startsWith('╭'))).toBe(true);
+  });
+
   it('shows always-asks badge for locked tools', () => {
     const card = formatToolCallApprovalCard({
       call: {
