@@ -7,7 +7,17 @@ import {
 } from './terminalTheme';
 
 function stripAnsi(value: string): string {
-  return value.replace(/\x1b\[[0-9;]*m/g, '');
+  let out = '';
+  for (let i = 0; i < value.length; i++) {
+    if (value.charCodeAt(i) === 0x1b && value[i + 1] === '[') {
+      let j = i + 2;
+      while (j < value.length && value[j] !== 'm') j++;
+      i = j;
+      continue;
+    }
+    out += value[i]!;
+  }
+  return out;
 }
 
 /** Decode entities common in MCP/LLM text so terminal tables read naturally. */
