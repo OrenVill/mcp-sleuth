@@ -1,11 +1,6 @@
 import { Marked, type RendererObject, type Tokens } from 'marked';
 import { wrapPlainLine } from './formatToolArgsDisplay';
-import {
-  colorizeAssistantBody,
-  paint,
-  sgr,
-  terminalColorsEnabled,
-} from './terminalTheme';
+import { paint, sgr, terminalColorsEnabled } from './terminalTheme';
 
 function stripAnsi(value: string): string {
   let out = '';
@@ -250,7 +245,7 @@ export function renderTerminalMarkdown(source: string): string {
   const input = htmlLike ? trimmed.replace(/<[^>]+>/g, '') : trimmed;
   const out = marked.parse(input) as string;
   const normalized = out.replace(/\n{3,}/g, '\n\n').trimEnd();
-  return colorizeAssistantBody(normalized);
+  return normalized;
 }
 
 export function writeAssistantMarkdown(source: string): void {

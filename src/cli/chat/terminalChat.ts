@@ -14,7 +14,7 @@ import type { ServerEntry } from '../../types';
 import { refreshVaultSessionActivity } from '../core/prelude';
 import { streamChat } from '../core/llmFetch';
 import type { ChatMcpDeps } from '../core/multiConnect';
-import { clearChatScreen, writeChatBanner, writeThemedLine } from './terminalTheme';
+import { clearChatScreen, writeChatBanner } from './terminalTheme';
 import { writeAssistantMarkdown } from './terminalMarkdown';
 import { promptToolCallApproval } from './toolCallApprovalPrompt';
 
@@ -136,5 +136,5 @@ export async function runTerminalChat(options: {
   }
 
   await deps.disconnectAll();
-  writeThemedLine('◆', 'Chat ended');
+  process.stdout.write('\nChat ended\n');
 }

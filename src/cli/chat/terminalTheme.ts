@@ -41,75 +41,33 @@ export function initTerminalTheme(): void {
 
 export function colorizeBoxDrawing(
   text: string,
-  options?: { emphasizeRows?: Set<number> },
+  options?: { titleRows?: Set<number> },
 ): string {
   if (!terminalColorsEnabled()) return text;
-  const emphasizeRows = options?.emphasizeRows ?? new Set<number>();
+  const titleRows = options?.titleRows ?? new Set<number>();
   const lines = text.split('\n');
-  const out = lines.map((line, row) => colorizeBoxLine(line, emphasizeRows.has(row)));
+  const out = lines.map((line, row) => colorizeBoxLine(line, titleRows.has(row)));
   return `${out.join('\n')}${t.reset}`;
 }
 
-function colorizeBoxLine(line: string, emphasizeContent: boolean): string {
+/** Violet box borders; optional title row accent; inner text plain. */
+function colorizeBoxLine(line: string, titleRow: boolean): string {
   let out = '';
   for (const ch of line) {
     if (BORDER_CHARS.has(ch)) {
       out += paint(sgr.border, ch);
+    } else if (titleRow) {
+      out += paint(sgr.brand, ch);
     } else {
-      out += paint(emphasizeContent ? sgr.brand : sgr.body, ch);
+      out += ch;
     }
   }
   return out;
 }
 
-export function colorizeLabeledBlock(text: string): string {
-  if (!terminalColorsEnabled()) return text;
-  const parts = text.split(/\n(─{8,})\n/);
-  const blocks: string[] = [];
-  for (let i = 0; i < parts.length; i++) {
-    const part = parts[i]!;
-    if (/^─{8,}$/.test(part)) {
-      blocks.push(paint(sgr.border, part));
-      continue;
-    }
-    blocks.push(
-      part
-        .split('\n')
-        .map((line) => {
-          const idx = line.indexOf(': ');
-          if (idx === -1) return paint(sgr.body, line);
-          return paint(sgr.label, line.slice(0, idx + 1)) + paint(sgr.bright, line.slice(idx + 1));
-        })
-        .join('\n'),
-    );
-  }
-  return `${blocks.join('\n')}${t.reset}`;
-}
-
-export function colorizeAssistantBody(text: string): string {
-  if (!terminalColorsEnabled()) return text;
-  if (text.includes('┌')) {
-    return colorizeBoxDrawing(text, { emphasizeRows: new Set([1]) });
-  }
-  if (/^[^:\n]+: .+/m.test(text) && text.includes('──')) {
-    return colorizeLabeledBlock(text);
-  }
-  return `${text
-    .split('\n')
-    .map((line) => {
-      if (line.startsWith('│ ')) return paint(sgr.muted, line);
-      if (line.startsWith('• ') || /^\d+\.\s/.test(line)) {
-        return paint(sgr.bullet, line.slice(0, 2)) + paint(sgr.body, line.slice(2));
-      }
-      if (/^─+$/.test(line)) return paint(sgr.border, line);
-      return paint(sgr.body, line);
-    })
-    .join('\n')}${t.reset}`;
-}
-
 export function colorizeToolApprovalCard(card: string): string {
   if (!terminalColorsEnabled()) return card;
-  return colorizeBoxDrawing(card, { emphasizeRows: new Set([1]) });
+  return colorizeBoxDrawing(card, { titleRows: new Set([1]) });
 }
 
 export function clearChatScreen(): void {
