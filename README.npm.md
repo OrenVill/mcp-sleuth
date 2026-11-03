@@ -27,6 +27,23 @@ mcp-detective 3000         # custom port
 mcp-detective --no-open    # skip opening the browser (also: OPEN=0)
 ```
 
+### Terminal CLI
+
+Subcommands use the same vault and servers as the app (`~/.mcp-detective/vault.json`):
+
+```bash
+mcp-detective readiness          # unlock → pick server → markdown report
+mcp-detective readiness --server "My API" --json   # CI (set MCP_DETECTIVE_VAULT_PASSPHRASE)
+mcp-detective audit permission
+mcp-detective export handoff -o handoff.md
+mcp-detective call my_tool --args '{"key":"value"}'
+mcp-detective provider list
+mcp-detective server list
+mcp-detective chat               # Agent Chat in the terminal (alias: tui)
+```
+
+Interactive runs prompt for your vault passphrase. For scripts, set `MCP_DETECTIVE_VAULT_PASSPHRASE` or `--passphrase-file` (never pass secrets on the command line).
+
 ## Update
 
 ```bash
