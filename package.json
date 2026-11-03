@@ -27,7 +27,9 @@
   },
   "files": [
     "bin",
+    "completions",
     "dist",
+    "mcp",
     "data-dir.js",
     "daemon-lock.js",
     "server.js",
@@ -50,7 +52,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && node scripts/build-cli.mjs",
     "start": "node server.js",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -69,6 +71,7 @@
     "postpublish": "mv _README.github.md README.md"
   },
   "dependencies": {
+    "@clack/prompts": "^1.8.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "marked": "^18.0.4"
   },
@@ -82,6 +85,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "electron": "^43.4.1",
     "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

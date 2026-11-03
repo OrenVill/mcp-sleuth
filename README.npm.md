@@ -27,6 +27,36 @@ mcp-detective 3000         # custom port
 mcp-detective --no-open    # skip opening the browser (also: OPEN=0)
 ```
 
+### Terminal CLI
+
+Subcommands use the same vault and servers as the app (`~/.mcp-detective/vault.json`).
+
+**Git checkout:** your shell may still run an older global `mcp-detective` that only starts the browser UI. Use `node bin/mcp-detective.js …` from the repo (after `npm run build`), or `npm link` at the repo root so `which mcp-detective` points at this package.
+
+```bash
+mcp-detective readiness          # unlock → pick server → markdown report
+mcp-detective readiness --server "My API" --json   # CI (set MCP_DETECTIVE_VAULT_PASSPHRASE)
+mcp-detective audit permission
+mcp-detective export handoff -o handoff.md
+mcp-detective call my_tool --args '{"key":"value"}'
+mcp-detective provider list
+mcp-detective server list
+mcp-detective chat               # Agent Chat in the terminal (alias: tui)
+```
+
+Interactive runs prompt for your vault passphrase. For scripts, set `MCP_DETECTIVE_VAULT_PASSPHRASE` or `--passphrase-file` (never pass secrets on the command line).
+
+After one interactive unlock, the CLI remembers your session for **30 minutes** (`cli-vault-session.json` in the data dir, mode 0600). Each subcommand or chat turn extends the timer. Scripted passphrases (`MCP_DETECTIVE_VAULT_PASSPHRASE` / `--passphrase-file`) never use this cache.
+
+### Shell completion (bash)
+
+```bash
+mcp-detective add-completions
+source ~/.bashrc    # once per open terminal (first time)
+```
+
+After the managed block is in `~/.bashrc`, running `mcp-detective add-completions` again reloads completion in the current shell. Tab completes subcommands, nested verbs, and common flags.
+
 ## Update
 
 ```bash
