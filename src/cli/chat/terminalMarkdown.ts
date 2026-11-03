@@ -1,5 +1,73 @@
 import { Marked, type RendererObject, type Tokens } from 'marked';
-import { paint, t } from './terminalTheme';
+
+function stripAnsi(value: string): string {
+  return value.replace(/\x1b\[[0-9;]*m/g, '');
+}
+
+function visibleLength(value: string): number {
+  return stripAnsi(value).length;
+}
+
+function padCell(
+  text: string,
+  width: number,
+  align: 'left' | 'center' | 'right' | null,
+): string {
+  const plain = stripAnsi(text);
+  const len = plain.length;
+  if (len >= width) {
+    return plain.length > width ? plain.slice(0, width - 1) + '…' : plain;
+  }
+  const pad = width - len;
+  if (align === 'right') return `${' '.repeat(pad)}${plain}`;
+  if (align === 'center') {
+    const left = Math.floor(pad / 2);
+    return `${' '.repeat(left)}${plain}${' '.repeat(pad - left)}`;
+  }
+  return `${plain}${' '.repeat(pad)}`;
+}
+
+/** Plain-text table layout for the terminal (testable without marked). */
+export function formatTerminalTable(
+  header: string[],
+  rows: string[][],
+  align: Array<'left' | 'center' | 'right' | null> = [],
+): string {
+  if (header.length === 0) return '';
+
+  const colCount = header.length;
+  const widths = Array.from({ length: colCount }, (_, col) => {
+    let max = visibleLength(header[col] ?? '');
+    for (const row of rows) {
+      max = Math.max(max, visibleLength(row[col] ?? ''));
+    }
+    return Math.min(Math.max(max, 3), 36);
+  });
+
+  const hLine = (left: string, mid: string, right: string, fill: string) => {
+    const midSeg = widths.map((w) => fill.repeat(w + 2)).join(mid);
+    return `${left}${midSeg}${right}`;
+  };
+
+  const headerRow = header.map((h) => stripAnsi(h));
+  const rowsPlain = rows.map((row) => row.map((cell) => stripAnsi(cell)));
+
+  const rowLine = (cells: string[]) => {
+    const body = widths
+      .map((width, col) => ` ${padCell(cells[col] ?? '', width, align[col] ?? 'left')} `)
+      .join('│');
+    return `│${body}│`;
+  };
+
+  const lines = [
+    hLine('┌', '┬', '┐', '─'),
+    rowLine(headerRow),
+    hLine('├', '┼', '┤', '─'),
+    ...rowsPlain.map((row) => rowLine(row)),
+    hLine('└', '┴', '┘', '─'),
+  ];
+  return lines.join('\n');
+}
 
 function stripUnsafeUrl(href: string | null | undefined): string | null {
   const stripped = Array.from(href ?? '')
@@ -11,42 +79,40 @@ function stripUnsafeUrl(href: string | null | undefined): string | null {
 
 const renderer: RendererObject = {
   html({ text }: Tokens.HTML | Tokens.Tag): string {
-    return paint('38;5;245', text);
+    return text;
   },
   heading({ tokens, depth }: Tokens.Heading): string {
-    const inner = this.parser.parseInline(tokens);
-    const tone = depth === 1 ? '1;38;5;252m' : '1;38;5;245m';
-    return `\n${paint(tone, inner)}\n`;
+    const inner = stripAnsi(this.parser.parseInline(tokens));
+    const prefix = depth <= 2 ? '\n' : '\n';
+    return `${prefix}${inner}\n`;
   },
   paragraph({ tokens }: Tokens.Paragraph): string {
-    return `${this.parser.parseInline(tokens)}\n\n`;
+    return `${stripAnsi(this.parser.parseInline(tokens))}\n\n`;
   },
   strong({ tokens }: Tokens.Strong): string {
-    return paint('1;38;5;252m', this.parser.parseInline(tokens));
+    return stripAnsi(this.parser.parseInline(tokens));
   },
   em({ tokens }: Tokens.Em): string {
-    return paint('38;5;252m', this.parser.parseInline(tokens));
+    return stripAnsi(this.parser.parseInline(tokens));
   },
   codespan({ text }: Tokens.Codespan): string {
-    return paint('48;5;235;38;5;183m', ` ${text} `);
+    return text;
   },
   code({ text }: Tokens.Code): string {
-    const lines = text.replace(/\n$/, '').split('\n');
-    const body = lines.map((line) => paint('38;5;245m', line)).join('\n');
-    return `\n${paint('48;5;235m', body)}\n\n`;
+    return `\n${text.replace(/\n$/, '')}\n\n`;
   },
   link({ href, tokens }: Tokens.Link): string {
-    const inner = this.parser.parseInline(tokens);
+    const inner = stripAnsi(this.parser.parseInline(tokens));
     const safe = stripUnsafeUrl(href);
     if (!safe) return inner;
-    return paint('4;38;5;141m', `${inner} (${safe})`);
+    return `${inner} (${safe})`;
   },
   blockquote({ tokens }: Tokens.Blockquote): string {
     const inner = this.parser.parse(tokens);
     return inner
       .split('\n')
       .filter(Boolean)
-      .map((line) => paint('38;5;240m', `│ ${line}`))
+      .map((line) => `│ ${stripAnsi(line)}`)
       .join('\n')
       .concat('\n\n');
   },
@@ -54,20 +120,27 @@ const renderer: RendererObject = {
     return token.items
       .map((item, index) => {
         const bullet = token.ordered ? `${index + 1}.` : '•';
-        const body = this.parser.parse(item.tokens).trimEnd();
-        return `${paint('38;5;141m', bullet)} ${body}`;
+        const body = stripAnsi(this.parser.parse(item.tokens)).trimEnd();
+        return `${bullet} ${body}`;
       })
       .join('\n')
       .concat('\n\n');
   },
+  table(token: Tokens.Table): string {
+    const header = token.header.map((cell) => stripAnsi(this.parser.parseInline(cell.tokens)));
+    const rows = token.rows.map((row) =>
+      row.map((cell) => stripAnsi(this.parser.parseInline(cell.tokens))),
+    );
+    return `\n${formatTerminalTable(header, rows, token.align)}\n\n`;
+  },
   hr(): string {
-    return `${paint('38;5;240m', '─'.repeat(40))}\n\n`;
+    return `${'─'.repeat(40)}\n\n`;
   },
 };
 
 const marked = new Marked({ renderer, gfm: true, breaks: true });
 
-/** Render assistant markdown for the terminal (untrusted model text). */
+/** Render assistant markdown for the terminal (plain text, no ANSI). */
 export function renderTerminalMarkdown(source: string): string {
   const trimmed = source.trim();
   if (!trimmed) return '';
@@ -80,5 +153,5 @@ export function renderTerminalMarkdown(source: string): string {
 export function writeAssistantMarkdown(source: string): void {
   const rendered = renderTerminalMarkdown(source);
   if (!rendered) return;
-  process.stdout.write(`\n${paint('38;5;141m', 'Assistant')}\n${rendered}\n`);
+  process.stdout.write(`\nAssistant\n${rendered}\n`);
 }

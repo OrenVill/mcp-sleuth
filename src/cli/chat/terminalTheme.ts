@@ -20,7 +20,8 @@ export function useTerminalColor(): boolean {
 
 export function paint(codes: string, text: string): string {
   if (!useTerminalColor()) return text;
-  return `\x1b[${codes}m${text}${t.reset}`;
+  const body = codes.endsWith('m') ? codes.slice(0, -1) : codes;
+  return `\x1b[${body}m${text}${t.reset}`;
 }
 
 /** Full reset + home (like Ctrl+L / clear). */
@@ -30,10 +31,9 @@ export function clearChatScreen(): void {
 }
 
 export function writeChatBanner(title: string, subtitle?: string): void {
-  const line = paint('38;5;141', '◆') + ' ' + paint('1;38;5;252', title);
-  process.stdout.write(`\n${line}\n`);
+  process.stdout.write(`\n◆ ${title}\n`);
   if (subtitle) {
-    process.stdout.write(`${paint('2;38;5;245', subtitle)}\n`);
+    process.stdout.write(`${subtitle}\n`);
   }
-  process.stdout.write(`${paint('38;5;240', '─'.repeat(Math.min(48, process.stdout.columns || 48)))}\n\n`);
+  process.stdout.write(`${'─'.repeat(Math.min(48, process.stdout.columns || 48))}\n\n`);
 }

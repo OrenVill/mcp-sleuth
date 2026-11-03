@@ -61,7 +61,7 @@ export async function runTerminalChat(options: {
     await refreshVaultSessionActivity();
 
     const line = await clack.text({
-      message: paint('38;5;141m', 'You'),
+      message: 'You',
     });
     if (clack.isCancel(line)) break;
     const text = String(line).trim();
@@ -136,5 +136,5 @@ export async function runTerminalChat(options: {
   }
 
   await deps.disconnectAll();
-  clack.outro(paint('38;5;245m', 'Chat ended'));
+  clack.outro('Chat ended');
 }
