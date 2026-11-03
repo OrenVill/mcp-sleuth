@@ -3,6 +3,7 @@ import {
   decodeBasicHtmlEntities,
   formatTerminalTable,
   formatTerminalTableStacked,
+  normalizeMarkdownInput,
   renderTerminalMarkdown,
 } from './terminalMarkdown';
 import { terminalColorsEnabled } from './terminalTheme';
@@ -31,6 +32,15 @@ describe('renderTerminalMarkdown', () => {
     const out = renderTerminalMarkdown("| T |\n| --- |\n| it&#39;s ok |");
     expect(out).toContain("it's ok");
     expect(out).not.toContain('&#39;');
+  });
+
+  it('turns br tags into line breaks', () => {
+    expect(normalizeMarkdownInput('Line one<br>Line two')).toBe('Line one\nLine two');
+    const out = renderTerminalMarkdown('Line one<br>Line two');
+    expect(out).toContain('Line one');
+    expect(out).toContain('Line two');
+    expect(out).not.toContain('<br');
+    expect(renderTerminalMarkdown('a<br/>b<br />c')).toMatch(/a\nb\nc/);
   });
 
   it('can accent headings for CLI reports', () => {

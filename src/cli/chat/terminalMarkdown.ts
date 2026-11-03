@@ -170,7 +170,7 @@ function stripUnsafeUrl(href: string | null | undefined): string | null {
 
 const renderer: RendererObject = {
   html({ text }: Tokens.HTML | Tokens.Tag): string {
-    return text;
+    return text.replace(/<br\s*\/?>/gi, '\n');
   },
   heading({ tokens, depth }: Tokens.Heading): string {
     const inner = stripAnsi(this.parser.parseInline(tokens));
@@ -247,6 +247,25 @@ export type RenderTerminalMarkdownOptions = {
   accentHeadings?: boolean;
 };
 
+/** Turn `<br>` into newlines; strip any other HTML (untrusted MCP/LLM text). */
+export function normalizeMarkdownInput(source: string): string {
+  let text = source.replace(/<br\s*\/?>/gi, '\n');
+  if (text.includes('<') && text.includes('>')) {
+    text = text.replace(/<[^>]+>/g, '');
+  }
+  return text;
+}
+
+/** Strip HTML artifacts marked may still emit (e.g. `<br>` with breaks: true). */
+export function postProcessRenderedMarkdown(text: string): string {
+  let out = text.replace(/<br\s*\/?>/gi, '\n');
+  out = out.replace(/<\/?p>/gi, '\n');
+  if (out.includes('<') && out.includes('>')) {
+    out = out.replace(/<[^>]+>/g, '');
+  }
+  return out.replace(/\n{3,}/g, '\n\n').trimEnd();
+}
+
 /** Render markdown for the terminal (GFM tables, lists, headings). */
 export function renderTerminalMarkdown(
   source: string,
@@ -256,10 +275,9 @@ export function renderTerminalMarkdown(
   if (!trimmed) return '';
   markdownRenderAccentHeadings = options?.accentHeadings ?? false;
   try {
-    const htmlLike = trimmed.includes('<') && trimmed.includes('>');
-    const input = htmlLike ? trimmed.replace(/<[^>]+>/g, '') : trimmed;
-    const out = marked.parse(input) as string;
-    return out.replace(/\n{3,}/g, '\n\n').trimEnd();
+    const input = normalizeMarkdownInput(trimmed);
+    const raw = marked.parse(input, { async: false }) as string;
+    return postProcessRenderedMarkdown(raw);
   } finally {
     markdownRenderAccentHeadings = false;
   }
