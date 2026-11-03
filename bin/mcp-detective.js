@@ -118,6 +118,7 @@ const CLI_SUBCOMMANDS = new Set([
   'call',
   'provider',
   'server',
+  'add-completions',
   'help',
 ]);
 

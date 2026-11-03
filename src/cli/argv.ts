@@ -66,6 +66,7 @@ export function isKnownCommand(command: string | null): boolean {
     command === 'export' ||
     command === 'call' ||
     command === 'provider' ||
-    command === 'server'
+    command === 'server' ||
+    command === 'add-completions'
   );
 }

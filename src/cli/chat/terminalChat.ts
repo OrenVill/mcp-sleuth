@@ -7,25 +7,21 @@ import type {
   AgentEvent,
   AgentMessage,
   AgentToolCall,
-  DenyReason,
   GateDecision,
   LlmConfig,
 } from '../../lib/agent/types';
 import type { ServerEntry } from '../../types';
+import { refreshVaultSessionActivity } from '../core/prelude';
 import { streamChat } from '../core/llmFetch';
 import type { ChatMcpDeps } from '../core/multiConnect';
+import { clearChatScreen, paint, writeChatBanner } from './terminalTheme';
+import { writeAssistantMarkdown } from './terminalMarkdown';
+import { promptToolCallApproval } from './toolCallApprovalPrompt';
 
 const SYSTEM = [
   'You are connected to MCP servers through MCP Detective.',
   'Use tools to answer; the user approves each call.',
 ].join(' ');
-
-const DENY_OPTIONS: { value: DenyReason; label: string }[] = [
-  { value: 'wrong_tool', label: 'Wrong tool' },
-  { value: 'bad_arguments', label: 'Bad arguments' },
-  { value: 'unsafe', label: 'Unsafe' },
-  { value: 'no_reason', label: 'Just no' },
-];
 
 function profileKey(serverId: string, toolName: string): string {
   return `${serverId}:${toolName}`;
@@ -48,17 +44,25 @@ export async function runTerminalChat(options: {
     }
   }
 
+  const serverNames = new Map(servers.map((s) => [s.id, s.name]));
+
   const messages: AgentMessage[] = [];
   const abort = new AbortController();
 
-  clack.intro('Agent Chat — empty line to exit');
+  clearChatScreen();
+  writeChatBanner('Agent Chat', 'Empty line to exit · tool calls require approval');
 
   while (true) {
-    const line = await clack.text({ message: 'You' });
+    await refreshVaultSessionActivity();
+
+    const line = await clack.text({
+      message: paint('38;5;141m', 'You'),
+    });
     if (clack.isCancel(line) || !String(line).trim()) break;
 
     messages.push({ role: 'user', text: String(line) });
     const events: AgentEvent[] = [];
+    let modelBuffer = '';
 
     for await (const event of runAgentTurn(
       {
@@ -75,32 +79,15 @@ export async function runTerminalChat(options: {
           }
           return new Promise<GateDecision>((resolve) => {
             void (async () => {
-              if (verdict === 'ask_locked') {
-                clack.log.warn('Permission Surface marks this tool as high risk.');
-              }
-              clack.log.info(`Tool: ${call.toolName} (${call.serverId})`);
-              clack.log.message(JSON.stringify(call.args, null, 2));
-              const approve = await clack.confirm({
-                message: 'Allow this tool call?',
-                active: 'Deny',
+              const decision = await promptToolCallApproval({
+                call,
+                serverName: serverNames.get(call.serverId) ?? call.serverId,
+                verdict,
               });
-              if (approve !== true) {
-                const reason = await clack.select({
-                  message: 'Deny reason',
-                  options: DENY_OPTIONS,
-                });
-                if (clack.isCancel(reason)) {
-                  resolve({ kind: 'deny', reason: 'no_reason' });
-                  return;
-                }
-                resolve({ kind: 'deny', reason: reason as DenyReason });
-                return;
-              }
-              const remember = await clack.confirm({ message: 'Always allow this tool this session?' });
-              if (remember === true) {
+              if (decision.kind === 'allow' && decision.remember) {
                 allowed = rememberAllowed(allowed, call);
               }
-              resolve({ kind: 'allow', remember: remember === true });
+              resolve(decision);
             })();
           });
         },
@@ -118,11 +105,13 @@ export async function runTerminalChat(options: {
     )) {
       events.push(event);
       if (event.type === 'model_delta') {
-        process.stdout.write(event.text);
+        modelBuffer += event.text;
       }
       if (event.type === 'model_message') {
-        process.stdout.write('\n');
+        modelBuffer = event.message.text;
         messages.push(event.message);
+        writeAssistantMarkdown(modelBuffer);
+        modelBuffer = '';
       }
       if (event.type === 'error') {
         clack.log.error(event.message);
@@ -139,5 +128,5 @@ export async function runTerminalChat(options: {
   }
 
   await deps.disconnectAll();
-  clack.outro('Chat ended');
+  clack.outro(paint('38;5;245m', 'Chat ended'));
 }

@@ -4,6 +4,12 @@ import type { GlobalCliFlags, VaultContext } from '../contracts';
 import { EXIT_USAGE } from '../exitCodes';
 import type { StoredServer } from '../../lib/storage';
 import { resolveServerByName, unlockVaultFromDisk } from './vaultSession';
+import {
+  loadCachedAesKey,
+  openVaultWithAesKey,
+  rememberUnlockedVault,
+  touchVaultSession,
+} from './vaultSessionCache';
 
 export class CliUsageError extends Error {
   constructor(message: string) {
@@ -31,8 +37,28 @@ async function readPassphrase(flags: GlobalCliFlags): Promise<string> {
 }
 
 export async function resolveVaultContext(flags: GlobalCliFlags): Promise<VaultContext> {
+  const cachedKey = await loadCachedAesKey(flags);
+  if (cachedKey) {
+    try {
+      const ctx = await openVaultWithAesKey(cachedKey);
+      await touchVaultSession();
+      return ctx;
+    } catch {
+      /* fall through to passphrase unlock */
+    }
+  }
+
   const passphrase = await readPassphrase(flags);
-  return unlockVaultFromDisk(passphrase);
+  const ctx = await unlockVaultFromDisk(passphrase);
+  if (!process.env.MCP_DETECTIVE_VAULT_PASSPHRASE && !flags.passphraseFile) {
+    await rememberUnlockedVault(ctx.aesKey);
+  }
+  return ctx;
+}
+
+/** Call once per interactive chat turn so the 30-minute vault session stays warm. */
+export async function refreshVaultSessionActivity(): Promise<void> {
+  await touchVaultSession();
 }
 
 export async function resolveVaultAndServer(

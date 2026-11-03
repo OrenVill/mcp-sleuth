@@ -46,24 +46,16 @@ mcp-detective chat               # Agent Chat in the terminal (alias: tui)
 
 Interactive runs prompt for your vault passphrase. For scripts, set `MCP_DETECTIVE_VAULT_PASSPHRASE` or `--passphrase-file` (never pass secrets on the command line).
 
+After one interactive unlock, the CLI remembers your session for **30 minutes** (`cli-vault-session.json` in the data dir, mode 0600). Each subcommand or chat turn extends the timer. Scripted passphrases (`MCP_DETECTIVE_VAULT_PASSPHRASE` / `--passphrase-file`) never use this cache.
+
 ### Shell completion (bash)
 
-Add this to `~/.bashrc` (works with `npm link`, global install, or a checkout — resolves the package next to the `mcp-detective` binary):
-
 ```bash
-# mcp-detective tab completion
-if command -v mcp-detective >/dev/null 2>&1; then
-  _mcp_detective_bin=$(command -v mcp-detective)
-  _mcp_detective_root=$(dirname "$(dirname "$(readlink -f "$_mcp_detective_bin" 2>/dev/null || echo "$_mcp_detective_bin")")")
-  if [[ -f "$_mcp_detective_root/completions/mcp-detective.bash" ]]; then
-    # shellcheck source=/dev/null
-    source "$_mcp_detective_root/completions/mcp-detective.bash"
-  fi
-  unset _mcp_detective_bin _mcp_detective_root
-fi
+mcp-detective add-completions
+source ~/.bashrc    # once per open terminal (first time)
 ```
 
-Then `source ~/.bashrc` or open a new terminal. Tab completes subcommands (`readiness`, `audit`, …), nested verbs (`export handoff`, `server list`), and common flags.
+After the managed block is in `~/.bashrc`, running `mcp-detective add-completions` again reloads completion in the current shell. Tab completes subcommands, nested verbs, and common flags.
 
 ## Update
 

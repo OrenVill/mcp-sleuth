@@ -28,7 +28,7 @@ export async function runChat(_args: string[], flags: GlobalCliFlags): Promise<n
         message: 'Model provider',
         options: ctx.llmConfigs.map((c) => ({
           value: c.id,
-          label: `${c.label} (${c.model})`,
+          label: c.model ? `${c.label} (${c.model})` : c.label,
         })),
       });
       if (clack.isCancel(picked)) throw new CliUsageError('Cancelled.');

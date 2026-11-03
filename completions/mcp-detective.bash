@@ -9,7 +9,7 @@ _mcp_detective() {
   second="${COMP_WORDS[2]}"
 
   local -a top_cmds=(
-    readiness audit export call provider server chat tui help stop
+    readiness audit export call provider server chat tui add-completions help stop
   )
   local -a daemon_opts=(--no-open)
   local -a global_flags=(

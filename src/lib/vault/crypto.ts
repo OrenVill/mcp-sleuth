@@ -47,7 +47,7 @@ export async function deriveAesGcmKey(
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    false,
+    true,
     ['encrypt', 'decrypt'],
   );
 }
@@ -76,6 +76,24 @@ export async function decryptUtf8(
     ciphertext,
   );
   return textDecoder.decode(buf);
+}
+
+export async function exportAesKeyRaw(aesKey: CryptoKey): Promise<string> {
+  const raw = await crypto.subtle.exportKey('raw', aesKey);
+  return toB64(raw);
+}
+
+export async function importAesKeyRaw(b64: string): Promise<CryptoKey> {
+  const raw = fromB64(b64);
+  const keyBytes = new Uint8Array(raw.length);
+  keyBytes.set(raw);
+  return crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt'],
+  );
 }
 
 export function buildKdfParams(salt: Uint8Array, iterations: number): VaultKdfParams {
