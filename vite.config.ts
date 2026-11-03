@@ -224,6 +224,7 @@ export default defineConfig({
       '*.test.js',
       'electron/**/*.test.js',
       'scripts/**/*.test.js',
+      'tests/cli/**/*.test.ts',
     ],
     passWithNoTests: true,
   },
