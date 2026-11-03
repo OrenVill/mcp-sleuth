@@ -19,4 +19,10 @@ describe('CLI smoke', () => {
     expect(result.stdout).not.toMatch(/started on http/);
     expect(result.stderr + result.stdout).toMatch(/vault|passphrase|Non-interactive/i);
   });
+
+  it('bash completion script is valid', () => {
+    const script = resolve(process.cwd(), 'completions/mcp-detective.bash');
+    const result = spawnSync('bash', ['-n', script], { encoding: 'utf8' });
+    expect(result.status).toBe(0);
+  });
 });

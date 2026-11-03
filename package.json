@@ -27,6 +27,7 @@
   },
   "files": [
     "bin",
+    "completions",
     "dist",
     "mcp",
     "data-dir.js",

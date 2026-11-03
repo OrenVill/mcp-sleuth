@@ -46,6 +46,25 @@ mcp-detective chat               # Agent Chat in the terminal (alias: tui)
 
 Interactive runs prompt for your vault passphrase. For scripts, set `MCP_DETECTIVE_VAULT_PASSPHRASE` or `--passphrase-file` (never pass secrets on the command line).
 
+### Shell completion (bash)
+
+Add this to `~/.bashrc` (works with `npm link`, global install, or a checkout — resolves the package next to the `mcp-detective` binary):
+
+```bash
+# mcp-detective tab completion
+if command -v mcp-detective >/dev/null 2>&1; then
+  _mcp_detective_bin=$(command -v mcp-detective)
+  _mcp_detective_root=$(dirname "$(dirname "$(readlink -f "$_mcp_detective_bin" 2>/dev/null || echo "$_mcp_detective_bin")")")
+  if [[ -f "$_mcp_detective_root/completions/mcp-detective.bash" ]]; then
+    # shellcheck source=/dev/null
+    source "$_mcp_detective_root/completions/mcp-detective.bash"
+  fi
+  unset _mcp_detective_bin _mcp_detective_root
+fi
+```
+
+Then `source ~/.bashrc` or open a new terminal. Tab completes subcommands (`readiness`, `audit`, …), nested verbs (`export handoff`, `server list`), and common flags.
+
 ## Update
 
 ```bash
