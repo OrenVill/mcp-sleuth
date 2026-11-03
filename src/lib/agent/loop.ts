@@ -36,6 +36,8 @@ export interface AgentLoopDeps {
   ): Promise<ToolResult>;
   gate(call: AgentToolCall): Promise<GateDecision>;
   resolve(llmName: string): { serverId: string; toolName: string } | null;
+  /** Re-read each model turn so mid-run discovery can expand the tool list. */
+  getTools: () => LlmToolSchema[];
   maxTurns: number;
   signal: AbortSignal;
 }
@@ -79,7 +81,7 @@ export async function* runAgentTurn(
     let final: LlmStreamEvent | null = null;
     try {
       for await (const event of deps.sendToModel(
-        { config: init.config, system: init.system, messages, tools: init.tools },
+        { config: init.config, system: init.system, messages, tools: deps.getTools() },
         deps.signal,
       )) {
         if (event.type === 'delta') {

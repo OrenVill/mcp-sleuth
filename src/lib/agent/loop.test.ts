@@ -43,6 +43,7 @@ function deps(over: Partial<Parameters<typeof runAgentTurn>[0]> = {}) {
     callTool: vi.fn(async () => okResult('tool ran')),
     gate: vi.fn(async (): Promise<GateDecision> => ({ kind: 'allow', remember: false })),
     resolve: (name: string) => ({ serverId: 's1', toolName: name }),
+    getTools: () => [],
     maxTurns: 8,
     signal: new AbortController().signal,
     ...over,
@@ -228,5 +229,43 @@ describe('runAgentTurn', () => {
     );
     // turn 1: the user message. turn 2: user + assistant + tool result.
     expect(seen).toEqual([1, 3]);
+  });
+
+  it('passes an enlarged tool list on later model turns', async () => {
+    const toolCounts: number[] = [];
+    let expanded = false;
+    const sendToModel = async function* (req: { tools: unknown[] }) {
+      toolCounts.push(req.tools.length);
+      yield {
+        type: 'final' as const,
+        response:
+          toolCounts.length === 1
+            ? { text: '', toolCalls: [{ id: 'c1', name: 'list_tools', args: {} }] }
+            : { text: 'done', toolCalls: [] },
+      };
+    };
+    const callTool = vi.fn(async () => {
+      expanded = true;
+      return okResult(JSON.stringify({ tools: [{ name: 'extra_a' }, { name: 'extra_b' }] }));
+    });
+    const schema = (name: string) => ({
+      name,
+      description: '',
+      parameters: { type: 'object' as const, properties: {} },
+    });
+    await collect(
+      runAgentTurn(
+        deps({
+          sendToModel,
+          callTool,
+          getTools: () =>
+            expanded
+              ? [schema('list_tools'), schema('extra_a'), schema('extra_b')]
+              : [schema('list_tools')],
+        }),
+        { ...init, messages: [] },
+      ),
+    );
+    expect(toolCounts).toEqual([1, 3]);
   });
 });

@@ -393,7 +393,7 @@ function isReadyVerdict(verdict: AgentReadinessVerdict): boolean {
   return verdict === 'excellent' || verdict === 'agent-ready';
 }
 
-function quickWinsFor(issues: AgentReadinessIssue[]): string[] {
+export function quickWinsFor(issues: AgentReadinessIssue[]): string[] {
   const quickWins: string[] = [];
   const ids = new Set(issues.map((issue) => issue.id));
 

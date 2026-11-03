@@ -9,6 +9,7 @@ import type {
   ToolDef,
   ToolResult,
 } from '../../../types';
+import { recordCompletedProtocolTrace } from '../../protocolTrace';
 import type { McpHost } from '../types';
 import type { LlmBridge } from './llmElectron';
 
@@ -32,6 +33,7 @@ export interface ElectronBridge extends Partial<LlmBridge> {
   invoke(channel: string, ...args: unknown[]): Promise<IpcEnvelope<unknown>>;
   onToolsChanged(handler: (serverId: string) => void): () => void;
   onClosed(handler: (serverId: string) => void): () => void;
+  onReconnected?(handler: (serverId: string) => void): () => void;
   onUpdateAvailable?(handler: (status: unknown) => void): () => void;
 }
 
@@ -49,6 +51,15 @@ export function createElectronMcpHost(bridge: ElectronBridge): McpHost {
   const connected = new Set<string>();
 
   bridge.onClosed((serverId) => connected.delete(serverId));
+
+  bridge.onReconnected?.((serverId) => {
+    connected.add(serverId);
+    recordCompletedProtocolTrace({
+      serverId,
+      method: 'initialize',
+      params: { reconnect: true },
+    });
+  });
 
   async function call<T>(channel: string, ...args: unknown[]): Promise<T> {
     return unwrapEnvelope<T>(await bridge.invoke(channel, ...args));
@@ -112,6 +123,14 @@ export function createElectronMcpHost(bridge: ElectronBridge): McpHost {
       return bridge.onToolsChanged((changedId) => {
         if (changedId === serverId) handler();
       });
+    },
+
+    onClosed(handler) {
+      return bridge.onClosed(handler);
+    },
+
+    onReconnected(handler) {
+      return bridge.onReconnected?.(handler) ?? (() => {});
     },
   };
 }

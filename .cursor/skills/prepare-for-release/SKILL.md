@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 838 tests
+npm test             # vitest run — 907 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -69,7 +69,7 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 140 tests across 30 spec files must pass. Any failure blocks the release.
+All 146 tests across 30 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
@@ -180,14 +180,14 @@ feeding the reason back; transcript text found on disk; an API key found anywher
 vault ciphertext. Everything else in the list is a defect to file, not a stop.
 
 Automated: `tests/release/26-agent-chat.spec.ts`, against `tests/fixtures/llm-server.mjs` — it
-covers the header readiness line, the gate appearing before the call runs, allow, deny with a
+covers the header readiness line, meta-tool discovery updating the exposed tool count, the gate appearing before the call runs, allow, deny with a
 reason and the run continuing, the live trace, replay capture, the working indicator across every
 gap in a run, Enter/Shift+Enter in the composer, queueing a message typed mid-run, the expander on
 a long tool result, jump-to-latest, New chat, Escape against an open picker, Retry after a failed
 turn, Stop leaving the run cancelled but retryable, the approval card taking focus without arming
 Enter, copying an assistant message as markdown source, the MCP scope popover, and the disabled
 composer. Steps 5, 7, 8, 9, and 10 above
-are the manual-only ones.
+are the manual-only ones. Also covers **Export** (Markdown/JSON copy and browser download).
 
 **§3.27 — Stored secrets never reach an edit form (manual pass):** A saved credential must not
 be recoverable from the UI that edits it. `type="password"` only draws dots; the value behind
@@ -279,7 +279,7 @@ npm run test:e2e:electron          # needs a display
 xvfb-run -a npm run test:e2e:electron   # headless machine / CI
 ```
 
-All 52 tests across 9 spec files must pass:
+All 54 tests across 10 spec files must pass:
 
 | Spec | Area |
 |------|------|
@@ -292,6 +292,7 @@ All 52 tests across 9 spec files must pass:
 | `07-updates.spec.ts` | Update notifications — banner, badge, skip/dismiss, opt-out, failed check |
 | `08-agent-chat.spec.ts` | Agent Chat — provider requests leave the main process directly, no `/__llm_proxy` |
 | `09-self-signed-tls.spec.ts` | The self-signed certificate option, applied in main and scoped to one host |
+| `10-session-recovery.spec.ts` | Stale Streamable HTTP session after server restart — transparent re-init, Reconnect when down |
 
 **Agent Chat egress (manual pass).** The desktop build has no proxy in the path, so this is a
 different code path from §3.26, not a repeat of it. With a local model running, open **Chat**, add

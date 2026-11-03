@@ -167,6 +167,9 @@ export function ServerList({
                 </div>
               )}
               {s.error && <ServerErrorMessage text={s.error} />}
+              {s.connectionNotice && !s.error && (
+                <p className="mt-1.5 text-[11px] text-emerald-400/90 leading-snug">{s.connectionNotice}</p>
+              )}
               <div className="mt-2 flex gap-1.5 items-center flex-wrap">
                 {s.status === 'connected' ? (
                   <>
@@ -236,7 +239,7 @@ export function ServerList({
                       onConnect(s.id);
                     }}
                   >
-                    {s.status === 'connecting' ? 'Connecting…' : 'Connect'}
+                    {s.status === 'connecting' ? 'Connecting…' : s.status === 'error' ? 'Reconnect' : 'Connect'}
                   </button>
                 )}
                 {s.status === 'connected' && s.tools && (

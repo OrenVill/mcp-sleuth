@@ -5,9 +5,15 @@ import {
   type AgentReadinessIssue,
   type AgentReadinessSeverity,
 } from '../lib/agentReadiness';
+import {
+  quickWinsForServerTools,
+  serverReadinessMarkdown,
+  toolReadinessMarkdown,
+} from '../lib/agentReadinessMarkdown';
 import { getAgentRunSummaries } from '../lib/agent/agentRunStore';
 import type { ServerEntry } from '../types';
 import { AgentReadinessBadge } from './AgentReadinessBadge';
+import { CopyMarkdownButton } from './CopyMarkdownButton';
 import { Select } from './Select';
 import { useProtocolTraces } from './useProtocolTraces';
 
@@ -96,6 +102,12 @@ export function AgentReadinessPanel({ servers }: Props) {
     ? selectedToolName
     : activeServerTools[0]?.toolName ?? null;
   const selectedTool = activeServerTools.find((tool) => tool.toolName === activeToolName) ?? null;
+  const activeServerName =
+    scoredServers.find(([serverId]) => serverId === activeServerId)?.[1] ?? selectedTool?.serverName ?? '';
+  const serverQuickWins = useMemo(
+    () => quickWinsForServerTools(activeServerTools),
+    [activeServerTools],
+  );
 
   if (report.toolCount === 0) {
     return (
@@ -158,9 +170,19 @@ export function AgentReadinessPanel({ servers }: Props) {
                 Choose a server and tool to see the exact readiness issues and recommended fixes.
               </p>
             </div>
-            {selectedTool && (
-              <AgentReadinessBadge score={selectedTool.score} verdict={selectedTool.verdict} />
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyMarkdownButton
+                label="Copy server report as Markdown"
+                testId="agent-readiness-copy-server"
+                disabled={activeServerTools.length === 0}
+                getText={() =>
+                  serverReadinessMarkdown(activeServerName, activeServerTools, serverQuickWins)
+                }
+              />
+              {selectedTool && (
+                <AgentReadinessBadge score={selectedTool.score} verdict={selectedTool.verdict} />
+              )}
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 mb-4">
@@ -210,10 +232,17 @@ export function AgentReadinessPanel({ servers }: Props) {
                   <div className="font-mono text-sm text-zinc-100 truncate">{selectedTool.toolName}</div>
                   <div className="text-[11px] text-zinc-600 truncate">{selectedTool.serverName}</div>
                 </div>
-                <div className="text-xs text-zinc-500">
-                  {selectedTool.issues.length === 0
-                    ? 'No issues'
-                    : `${selectedTool.issues.length} issue${selectedTool.issues.length === 1 ? '' : 's'}`}
+                <div className="flex items-center gap-2 shrink-0">
+                  <CopyMarkdownButton
+                    label="Copy as Markdown"
+                    testId="agent-readiness-copy-tool"
+                    getText={() => toolReadinessMarkdown(selectedTool)}
+                  />
+                  <div className="text-xs text-zinc-500">
+                    {selectedTool.issues.length === 0
+                      ? 'No issues'
+                      : `${selectedTool.issues.length} issue${selectedTool.issues.length === 1 ? '' : 's'}`}
+                  </div>
                 </div>
               </div>
 

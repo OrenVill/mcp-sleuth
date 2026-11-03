@@ -63,6 +63,11 @@ const api = {
     ipcRenderer.on('mcp:closed', listener);
     return () => ipcRenderer.removeListener('mcp:closed', listener);
   },
+  onReconnected(handler) {
+    const listener = (_event, serverId) => handler(serverId);
+    ipcRenderer.on('mcp:reconnected', listener);
+    return () => ipcRenderer.removeListener('mcp:reconnected', listener);
+  },
 
   // LLM traffic leaves main, so it cannot ride the generic `invoke` allowlist:
   // the response is streamed back on push channels keyed by request id.

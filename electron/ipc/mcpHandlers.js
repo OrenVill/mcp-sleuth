@@ -45,6 +45,7 @@ export function registerMcpHandlers(sessions, getWindow) {
   const unsubscribers = [
     sessions.onToolsChanged(push(CHANNELS.toolsChanged)),
     sessions.onClosed(push(CHANNELS.closed)),
+    sessions.onReconnected(push(CHANNELS.reconnected)),
   ];
 
   return () => {

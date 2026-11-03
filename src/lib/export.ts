@@ -1,5 +1,6 @@
 import type { ServerEntry, ToolDef, JsonSchema, JsonSchemaProperty } from '../types';
 import { getHost } from './host';
+import type { SaveFileResult } from './host/types';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -190,6 +191,14 @@ export function exportAsJson(server: ServerEntry): string {
 
 export function downloadFile(filename: string, content: string, mimeType: string): void {
   getHost().files.saveFile(filename, content, mimeType);
+}
+
+export async function saveDownloadFile(
+  filename: string,
+  content: string,
+  mimeType: string,
+): Promise<SaveFileResult> {
+  return getHost().files.saveFileAsync(filename, content, mimeType);
 }
 
 export function serverSlug(name: string): string {

@@ -70,7 +70,7 @@ test.describe.serial('§3.26 — Agent Chat', () => {
   test.afterAll(() => ctx.close());
 
   test('the header reports readiness and the tool count', async () => {
-    await expect(page.getByTestId('agent-chat-panel')).toContainText('5 tools exposed');
+    await expect(page.getByTestId('agent-chat-panel')).toContainText('6 tools exposed');
     await expect(page.getByTestId('agent-input')).toBeEnabled();
   });
 
@@ -106,9 +106,64 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     await expect(row).toContainText('echo_markdown');
   });
 
+  test('meta-tool discovery in chat updates the exposed tool count', async () => {
+    await closeChat(page);
+    await openChat(page);
+
+    const approval = await sendAndAwaitApproval(page, 'discover meta tools please');
+    await expect(approval).toContainText('list_tools');
+    await page
+      .getByTestId('tool-call-approval')
+      .getByRole('button', { name: 'Allow', exact: true })
+      .click();
+
+    await expect(page.getByTestId('agent-chat-panel')).toContainText('9 tools exposed', {
+      timeout: 15_000,
+    });
+  });
+
   test('a finished run can be captured as a replay suite', async () => {
     await page.getByTestId('capture-replay-suite').click();
     await expect(page.getByTestId('agent-notice')).toContainText('replay suite');
+  });
+
+  test('export copies and downloads the conversation', async () => {
+    await page.getByTestId('agent-export').click();
+    await page.getByTestId('agent-export-markdown-copy').click();
+    await expect(page.getByTestId('agent-export-markdown-copy')).toContainText('Copied');
+
+    const copied = await page.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain('# MCP Detective chat');
+    expect(copied).toContain('discover meta tools please');
+    expect(copied).toContain('list_tools');
+    expect(copied).toContain('Listed the extra tools.');
+    expect(copied).toContain('extra_sample_alpha');
+
+    await expect(page.getByTestId('agent-export-json-save')).toBeVisible();
+    const [download] = await Promise.all([
+      page.waitForEvent('download', { timeout: 5000 }),
+      page.getByTestId('agent-export-json-save').click(),
+    ]);
+    const filename = download.suggestedFilename();
+    expect(filename).toMatch(/^mcp-detective-chat-.*\.json$/);
+    const jsonPath = await download.path();
+    expect(jsonPath).toBeTruthy();
+    const { readFileSync } = await import('node:fs');
+    const parsed = JSON.parse(readFileSync(jsonPath!, 'utf8')) as {
+      format: string;
+      version: number;
+      messages: Array<{
+        role: string;
+        toolCalls?: Array<{ toolName: string; result?: { content?: { tools: unknown[] } } }>;
+      }>;
+    };
+    expect(parsed.format).toBe('mcp-detective.agent-chat');
+    expect(parsed.version).toBe(2);
+    expect(parsed.messages.length).toBeGreaterThan(0);
+    const toolTurn = parsed.messages.find((m) => m.toolCalls?.some((c) => c.toolName === 'list_tools'));
+    expect(toolTurn?.toolCalls?.[0]?.result?.content?.tools).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'extra_sample_alpha' })]),
+    );
   });
 
   test('denying a call asks why, and the run continues instead of aborting', async () => {
@@ -368,6 +423,58 @@ test.describe.serial('§3.26 — Agent Chat', () => {
     expect(copied).toContain('**We are done.**');
   });
 
+  test('clicking a model in the picker saves it and updates the header', async () => {
+    await page.getByTestId('llm-picker').click();
+    await page.getByTestId('llm-model-select').click();
+    await page.getByRole('option', { name: 'fixture-model-alt' }).click();
+    await expect(page.getByTestId('llm-picker')).toContainText('fixture-model-alt');
+    // Click outside the popover — a single Escape can dismiss Agent Chat once the
+    // model dialog is already gone.
+    await page.getByTestId('agent-input').click();
+    await expect(page.getByRole('dialog', { name: 'Model' })).toBeHidden();
+  });
+
+  test('clicking another model server in the picker switches the active config', async () => {
+    await page.getByTestId('llm-picker').click();
+    await page.getByRole('button', { name: 'Add model server' }).click();
+    const form = page.getByTestId('llm-config-form');
+    await form.getByPlaceholder('Local Ollama').fill('Fixture LLM B');
+    await page.getByRole('textbox', { name: 'Base URL' }).fill(LLM_BASE);
+    await form.getByRole('button', { name: 'Add server' }).click();
+    await expect(form).toBeHidden({ timeout: 10_000 });
+
+    await page.getByTestId('llm-picker').click();
+    await expect(page.getByTestId('llm-config-select')).toContainText('Fixture LLM B', {
+      timeout: 10_000,
+    });
+
+    await page.getByTestId('llm-config-select').click();
+    await page.getByRole('option', { name: 'Fixture LLM', exact: true }).click();
+    await expect(page.getByTestId('llm-config-select')).toContainText('Fixture LLM');
+    await page.getByTestId('agent-input').click();
+  });
+
+  test('when model discovery fails, typing a model name still saves it', async () => {
+    await page.getByTestId('llm-picker').click();
+    await page.getByRole('button', { name: 'Add model server' }).click();
+    const form = page.getByTestId('llm-config-form');
+    await form.getByPlaceholder('Local Ollama').fill('No models API');
+    await page.getByRole('textbox', { name: 'Base URL' }).fill(`${LLM_BASE}/no-models`);
+    await form.getByRole('button', { name: 'Add server' }).click();
+    await expect(form).toBeHidden({ timeout: 10_000 });
+
+    await page.getByTestId('llm-picker').click();
+    await expect(page.getByTestId('llm-models-error')).toBeVisible({ timeout: 10_000 });
+
+    const manual = page.getByTestId('llm-model-manual');
+    await manual.fill('typed-model-name');
+    await expect(page.getByTestId('llm-picker')).toContainText('typed-model-name');
+
+    await page.getByTestId('llm-config-select').click();
+    await page.getByRole('option', { name: 'Fixture LLM', exact: true }).click();
+    await page.getByTestId('agent-input').click();
+  });
+
   test('the MCP scope popover lists the connected server', async () => {
     await page.getByTestId('mcp-scope-picker').click();
     const scope = page.getByRole('dialog', { name: 'MCP servers in scope' });
@@ -393,5 +500,35 @@ test.describe.serial('§3.26 — Agent Chat', () => {
       .check();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('agent-input')).toBeEnabled();
+  });
+});
+
+test.describe('§3.26 — Agent Chat Base URL field', () => {
+  test('keeps slashes while typing and normalizes on save', async ({ page }) => {
+    await setupVault(page);
+    await addFixtureServer(page);
+    await openChat(page);
+
+    const form = page.getByTestId('llm-config-form');
+    await expect(form).toBeVisible();
+    await form.getByPlaceholder('Local Ollama').fill('Slash test');
+
+    const baseUrl = page.getByRole('textbox', { name: 'Base URL' });
+    await baseUrl.clear();
+    await baseUrl.click();
+    await page.keyboard.type(`${LLM_BASE}/`);
+    await expect(baseUrl).toHaveValue(`${LLM_BASE}/`);
+
+    await form.getByRole('button', { name: 'Add server' }).click();
+    await expect(form).toBeHidden();
+    await expect(page.getByTestId('llm-picker')).toContainText('fixture-model', {
+      timeout: 10_000,
+    });
+
+    await page.getByTestId('llm-picker').click();
+    await page.getByRole('button', { name: 'Edit “Slash test”' }).click();
+    await expect(form).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Base URL' })).toHaveValue(LLM_BASE);
+    await form.getByRole('button', { name: 'Cancel' }).click();
   });
 });

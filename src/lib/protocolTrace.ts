@@ -141,6 +141,21 @@ export async function traceProtocolCall<T>(
   }
 }
 
+/** Record a completed call (for events that happen outside mcpClient, e.g. session reconnect in main). */
+export function recordCompletedProtocolTrace(start: ProtocolTraceStart): void {
+  const finishedAt = Date.now();
+  upsertTrace({
+    id: `trace-${nextId++}`,
+    serverId: start.serverId,
+    method: start.method,
+    params: clonePayload(start.params),
+    status: 'ok',
+    startedAt: finishedAt,
+    finishedAt,
+    durationMs: 0,
+  });
+}
+
 export async function traceOptionalProtocolCall<T>(
   start: ProtocolTraceStart,
   call: () => Promise<T>,

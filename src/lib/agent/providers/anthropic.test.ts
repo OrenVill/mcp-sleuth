@@ -119,6 +119,16 @@ describe('anthropicProvider.buildRequest', () => {
     );
   });
 
+  it('does not double slashes when the saved base URL has a trailing slash', () => {
+    const trailing = {
+      ...request,
+      config: { ...config, baseUrl: 'https://api.anthropic.com/v1/' },
+    };
+    expect(anthropicProvider.buildRequest(trailing).url).toBe(
+      'https://api.anthropic.com/v1/messages',
+    );
+  });
+
   it('omits the api key header when no key is configured', () => {
     expect(anthropicProvider.buildRequest(request).headers['x-api-key']).toBeUndefined();
   });
@@ -265,6 +275,12 @@ describe('anthropicProvider model listing', () => {
     expect(req.url).toBe('https://api.anthropic.com/v1/models');
     expect(req.headers['x-api-key']).toBe('sk-ant-test');
     expect(req.headers['anthropic-version']).toBe('2023-06-01');
+  });
+
+  it('does not double slashes on the models endpoint when the base has a trailing slash', () => {
+    expect(anthropicProvider.modelsRequest({ ...config, baseUrl: 'https://api.anthropic.com/v1/' }).url).toBe(
+      'https://api.anthropic.com/v1/models',
+    );
   });
 
   it('extracts model ids', () => {

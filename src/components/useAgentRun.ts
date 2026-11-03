@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
-import type { ServerEntry } from '../types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { DiscoveredTool, ServerEntry } from '../types';
 import { getHost } from '../lib/host';
 import { callTool } from '../lib/mcpClient';
 import { getProtocolTraces } from '../lib/protocolTrace';
@@ -11,6 +11,13 @@ import { DENIAL_TEXT, runAgentTurn } from '../lib/agent/loop';
 import { recordAgentRun } from '../lib/agent/agentRunStore';
 import { historyForRetry } from '../lib/agent/retry';
 import { buildToolCatalog } from '../lib/agent/toolCatalog';
+import {
+  discoverToolsFromMetaToolResult,
+  isMetaToolCall,
+} from '../lib/discovery/chatDiscovery';
+import { invokeMaybeDiscovered } from '../lib/discovery/invoke';
+import { mergeDiscoveredTools } from '../lib/discovery/mergeDiscovered';
+import { getAllTools } from '../lib/serverTools';
 import {
   DEFAULT_MAX_TURNS,
   type AgentEvent,
@@ -43,6 +50,7 @@ export function useAgentRun(
   config: LlmConfig | null,
   selectedServerIds: string[],
   maxTurns: number = DEFAULT_MAX_TURNS,
+  onDiscovered?: (serverId: string, tools: DiscoveredTool[]) => void,
 ) {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [streamingText, setStreamingText] = useState('');
@@ -55,10 +63,51 @@ export function useAgentRun(
   const allowedRef = useRef<ReadonlySet<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
   const preRunTraceIds = useRef<Set<string>>(new Set());
+  const serversRef = useRef(servers);
+  serversRef.current = servers;
+  const onDiscoveredRef = useRef(onDiscovered);
+  onDiscoveredRef.current = onDiscovered;
+  /** Merged into the catalog until App state catches up after a meta-tool call. */
+  const pendingDiscoveredRef = useRef<Map<string, DiscoveredTool[]>>(new Map());
 
-  const catalog = useMemo(
-    () => buildToolCatalog(servers, selectedServerIds),
-    [servers, selectedServerIds],
+  /** Bumps when chat discovery adds tools so the header count re-renders. */
+  const [discoveryTick, setDiscoveryTick] = useState(0);
+
+  const catalog = useMemo(() => {
+    const withPending = servers.map((s) => {
+      const pending = pendingDiscoveredRef.current.get(s.id);
+      if (!pending?.length) return s;
+      return { ...s, discovered: mergeDiscoveredTools(s.discovered, pending) };
+    });
+    return buildToolCatalog(withPending, selectedServerIds);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- discoveryTick forces refresh after meta-tool calls
+  }, [servers, selectedServerIds, discoveryTick]);
+
+  const catalogRef = useRef(catalog);
+  catalogRef.current = catalog;
+
+  useEffect(() => {
+    for (const server of servers) {
+      const pending = pendingDiscoveredRef.current.get(server.id);
+      if (!pending?.length) continue;
+      const known = new Set((server.discovered ?? []).map((t) => t.name));
+      if (pending.every((t) => known.has(t.name))) {
+        pendingDiscoveredRef.current.delete(server.id);
+      }
+    }
+  }, [servers]);
+
+  const serversForCatalog = useCallback((): ServerEntry[] => {
+    return serversRef.current.map((s) => {
+      const pending = pendingDiscoveredRef.current.get(s.id);
+      if (!pending?.length) return s;
+      return { ...s, discovered: mergeDiscoveredTools(s.discovered, pending) };
+    });
+  }, []);
+
+  const liveCatalog = useCallback(
+    () => buildToolCatalog(serversForCatalog(), selectedServerIds),
+    [selectedServerIds, serversForCatalog],
   );
 
   const profiles = useMemo(() => {
@@ -100,7 +149,48 @@ export function useAgentRun(
     setStreamingText('');
     setError(null);
     allowedRef.current = new Set();
+    pendingDiscoveredRef.current.clear();
   }, [commit, stop]);
+
+  const agentCallTool = useCallback(
+    async (serverId: string, toolName: string, args: Record<string, unknown>) => {
+      const server = serversRef.current.find((s) => s.id === serverId);
+      if (!server) throw new Error(`Unknown server ${serverId}`);
+      const metaTools = server.metaTools ?? [];
+      const tool =
+        getAllTools(server).find((t) => t.name === toolName) ??
+        ({ name: toolName, inputSchema: { type: 'object' } } as const);
+
+      const result = await invokeMaybeDiscovered({
+        callTool: (name, innerArgs) => callTool(serverId, name, innerArgs),
+        tool,
+        args,
+        metaTools,
+      });
+
+      if (
+        onDiscoveredRef.current &&
+        isMetaToolCall(metaTools, toolName) &&
+        result.isError !== true
+      ) {
+        const meta = metaTools.find((m) => m.toolName === toolName);
+        if (meta) {
+          const discovered = discoverToolsFromMetaToolResult(meta, result);
+          if (discovered.length > 0) {
+            pendingDiscoveredRef.current.set(
+              serverId,
+              mergeDiscoveredTools(pendingDiscoveredRef.current.get(serverId), discovered),
+            );
+            onDiscoveredRef.current?.(serverId, discovered);
+            setDiscoveryTick((n) => n + 1);
+          }
+        }
+      }
+
+      return result;
+    },
+    [],
+  );
 
   /**
    * One turn against the given history. Shared by `send` and `retry` so a retry
@@ -128,7 +218,7 @@ export function useAgentRun(
         const generator = runAgentTurn(
           {
             sendToModel: (req, signal) => getHost().llm.chat(req, signal),
-            callTool,
+            callTool: agentCallTool,
             gate: (call) => {
               const verdict = gateVerdict(
                 call,
@@ -148,11 +238,12 @@ export function useAgentRun(
                 setPending({ call, verdict, serverName: serverName(call.serverId) });
               });
             },
-            resolve: catalog.resolve,
+            resolve: (name) => liveCatalog().resolve(name),
+            getTools: () => liveCatalog().tools,
             maxTurns,
             signal: controller.signal,
           },
-          { config: activeConfig, system: SYSTEM_PROMPT, tools: catalog.tools, messages: history },
+          { config: activeConfig, system: SYSTEM_PROMPT, tools: catalogRef.current.tools, messages: history },
         );
 
         for (;;) {
@@ -203,7 +294,7 @@ export function useAgentRun(
         if (selectedServerIds[0]) recordAgentRun(selectedServerIds[0], events);
       }
     },
-    [catalog, commit, maxTurns, profiles, selectedServerIds, serverName],
+    [agentCallTool, commit, liveCatalog, maxTurns, profiles, selectedServerIds, serverName],
   );
 
   const send = useCallback(

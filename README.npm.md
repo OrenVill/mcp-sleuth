@@ -55,6 +55,7 @@ The explorer auto-connects, lists all available tools, and generates input forms
 - Protocol Inspector timeline for debugging MCP calls, results, errors, and durations
 - Schema Lab for inspecting tool schemas, generating example args, and copying JSON-RPC calls
 - Permission Surface audit, Prompt Injection scan, and Observation Journal for MCP trust evaluation
+- Agent Readiness scoring with **Copy as Markdown** for a single tool or whole server from Dev Tools
 - Meta-tool discovery with one-click **Discover all tools**
 - Agent Chat — drive your own model against a connected server, with every tool call approved by you (see below)
 
@@ -90,6 +91,8 @@ What the chat does:
 - **Live trace** beside the transcript, with every call also landing in the Protocol Inspector.
 - **Capture** a run's tool calls as a Replay Suite, or **Record** any step to the Observation
   Journal.
+- **Export** the conversation as Markdown or JSON (save to file or copy), with best-effort redaction
+  of credentials before you paste it into a bug report.
 - **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-detective/`;
   the messages and raw tool output live in memory for the session.
 - **It always shows you it is working** — dots while the agent has the turn, a caret while text

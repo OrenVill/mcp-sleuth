@@ -1,10 +1,14 @@
-import type { FilesHost } from '../types';
+import type { FilesHost, SaveFileResult } from '../types';
 
 /** Same-origin HTTP path; Node/Vite serve the app-data file (see `app-data-handler.js`). */
 const APP_DATA_PATH = '/__app_data';
 
 export const browserFilesHost: FilesHost = {
   saveFile(filename, content, mimeType) {
+    void browserFilesHost.saveFileAsync(filename, content, mimeType);
+  },
+
+  async saveFileAsync(filename, content, mimeType): Promise<SaveFileResult> {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -12,6 +16,7 @@ export const browserFilesHost: FilesHost = {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    return 'saved';
   },
 
   // A 404 means "nothing stored yet" and must stay distinguishable from a failure:
