@@ -27,6 +27,11 @@ function profileKey(serverId: string, toolName: string): string {
   return `${serverId}:${toolName}`;
 }
 
+/** True when the user wants to leave Agent Chat (case-insensitive). */
+export function isChatExitInput(line: string): boolean {
+  return /^exit$/i.test(line.trim());
+}
+
 export async function runTerminalChat(options: {
   config: LlmConfig;
   deps: ChatMcpDeps;
@@ -50,7 +55,7 @@ export async function runTerminalChat(options: {
   const abort = new AbortController();
 
   clearChatScreen();
-  writeChatBanner('Agent Chat', 'Empty line to exit · tool calls require approval');
+  writeChatBanner('Agent Chat', 'Type exit to leave · tool calls require approval');
 
   while (true) {
     await refreshVaultSessionActivity();
@@ -58,9 +63,12 @@ export async function runTerminalChat(options: {
     const line = await clack.text({
       message: paint('38;5;141m', 'You'),
     });
-    if (clack.isCancel(line) || !String(line).trim()) break;
+    if (clack.isCancel(line)) break;
+    const text = String(line).trim();
+    if (!text) continue;
+    if (isChatExitInput(text)) break;
 
-    messages.push({ role: 'user', text: String(line) });
+    messages.push({ role: 'user', text });
     const events: AgentEvent[] = [];
     let modelBuffer = '';
 
