@@ -156,9 +156,9 @@ describe('anthropicProvider.buildRequest', () => {
     expect(body.stream).toBe(true);
   });
 
-  it('does not send an output token cap', () => {
+  it('always sends max_tokens, which the API requires', () => {
     const body = anthropicProvider.buildRequest(request).body as Record<string, unknown>;
-    expect(body.max_tokens).toBeUndefined();
+    expect(body.max_tokens).toBe(4096);
   });
 
   it('sends the tool catalog with input_schema', () => {

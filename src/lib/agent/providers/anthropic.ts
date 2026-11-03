@@ -8,6 +8,13 @@ import type {
 import { joinBaseUrl } from '../normalizeBaseUrl';
 import type { LlmProvider, LlmStreamParser, ProviderHttpRequest } from './types';
 
+/**
+ * Anthropic requires max_tokens on every request — there is no server-side
+ * default. 4096 is enough for a tool-calling turn without inviting a runaway
+ * response; the agent loop takes several turns anyway.
+ */
+const MAX_TOKENS = 4096;
+
 /** The wire version this adapter's request and stream shapes were written for. */
 const API_VERSION = '2023-06-01';
 
@@ -200,6 +207,7 @@ export const anthropicProvider: LlmProvider = {
   buildRequest(req: LlmRequest): ProviderHttpRequest {
     const body: Record<string, unknown> = {
       model: req.config.model,
+      max_tokens: MAX_TOKENS,
       stream: true,
       system: req.system,
       messages: toAnthropicMessages(req.messages),
