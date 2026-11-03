@@ -35,7 +35,10 @@ export const t = {
 };
 
 export function terminalColorsEnabled(): boolean {
-  return Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return false;
+  const force = process.env.FORCE_COLOR;
+  if (force === '1' || force === '2' || force === '3' || force === 'true') return true;
+  return Boolean(process.stdout.isTTY);
 }
 
 export function paint(codes: string, text: string): string {

@@ -25,15 +25,15 @@ if [[ -f "$MCP_DETECTIVE_COMPLETIONS" ]]; then
 fi
 mcp-detective() {
   if [[ "\${1:-}" == "add-completions" ]]; then
-    node "\$MCP_DETECTIVE_CLI" add-completions --write-only || return \$?
+    node "$MCP_DETECTIVE_CLI" add-completions --write-only || return $?
     # shellcheck source=/dev/null
     source "\${HOME}/.bashrc"
     echo "mcp-detective: tab completion loaded."
     return 0
   fi
-  node "\$MCP_DETECTIVE_CLI" "\$@"
+  node "$MCP_DETECTIVE_CLI" "$@"
 }
-mcp-sleuth() { mcp-detective "\$@"; }
+mcp-sleuth() { mcp-detective "$@"; }
 ${BASHRC_MARKER_END}`;
 }
 

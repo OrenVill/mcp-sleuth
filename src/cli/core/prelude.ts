@@ -42,7 +42,11 @@ export async function resolveVaultContext(flags: GlobalCliFlags): Promise<VaultC
   if (cachedKey) {
     try {
       const ctx = await openVaultWithAesKey(cachedKey);
-      await touchVaultSession();
+      try {
+        await touchVaultSession();
+      } catch {
+        /* Renewing the session file is best-effort; do not drop a valid unlock. */
+      }
       return ctx;
     } catch {
       await clearVaultSession();
@@ -52,7 +56,14 @@ export async function resolveVaultContext(flags: GlobalCliFlags): Promise<VaultC
   const passphrase = await readPassphrase(flags);
   const ctx = await unlockVaultFromDisk(passphrase);
   if (!process.env.MCP_DETECTIVE_VAULT_PASSPHRASE && !flags.passphraseFile) {
-    await rememberUnlockedVault(ctx.aesKey);
+    try {
+      await rememberUnlockedVault(ctx.aesKey);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      process.stderr.write(
+        `mcp-detective: warning — could not save vault session (${msg}); you may be prompted again.\n`,
+      );
+    }
   }
   return ctx;
 }
