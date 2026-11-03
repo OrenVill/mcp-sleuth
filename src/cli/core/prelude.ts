@@ -9,6 +9,7 @@ import {
   openVaultWithAesKey,
   rememberUnlockedVault,
   touchVaultSession,
+  clearVaultSession,
 } from './vaultSessionCache';
 
 export class CliUsageError extends Error {
@@ -44,7 +45,7 @@ export async function resolveVaultContext(flags: GlobalCliFlags): Promise<VaultC
       await touchVaultSession();
       return ctx;
     } catch {
-      /* fall through to passphrase unlock */
+      await clearVaultSession();
     }
   }
 
