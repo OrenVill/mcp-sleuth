@@ -2,7 +2,7 @@ import type { GlobalCliFlags } from '../contracts';
 import { generateClaudeDesktopConfig, generateCursorConfig } from '../../lib/clientConfigExport';
 import { generateHandoffReadme } from '../../lib/handoffReadme';
 import { loadCallHistoryForServer } from '../core/appDataNode';
-import { emitJson, emitOutput } from '../core/output';
+import { emitJson, emitMarkdown, emitOutput } from '../core/output';
 import { EXIT_OK, runCommandSafe, withConnectedTools } from '../core/runContext';
 import { EXIT_USAGE } from '../exitCodes';
 
@@ -45,7 +45,7 @@ export async function runExport(args: string[], flags: GlobalCliFlags): Promise<
           history,
           options: { includeReadiness: true, includeSchemas: false },
         });
-        await emitOutput(md, flags);
+        await emitMarkdown(md, flags);
         return;
       }
       throw new Error(`Unknown export target "${sub}"`);

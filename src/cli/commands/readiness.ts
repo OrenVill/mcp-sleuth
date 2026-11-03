@@ -1,7 +1,7 @@
 import type { GlobalCliFlags } from '../contracts';
 import { analyzeAgentReadiness } from '../../lib/agentReadiness';
 import { serverReadinessMarkdown } from '../../lib/agentReadinessMarkdown';
-import { emitJson, emitOutput } from '../core/output';
+import { emitJson, emitMarkdown } from '../core/output';
 import { EXIT_OK, runCommandSafe, withConnectedTools } from '../core/runContext';
 
 export async function runReadiness(_args: string[], flags: GlobalCliFlags): Promise<number> {
@@ -12,7 +12,7 @@ export async function runReadiness(_args: string[], flags: GlobalCliFlags): Prom
         await emitJson(report, flags);
       } else {
         const md = serverReadinessMarkdown(entry.name, report.tools, report.quickWins);
-        await emitOutput(md, flags);
+        await emitMarkdown(md, flags);
       }
     });
     return EXIT_OK;

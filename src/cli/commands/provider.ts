@@ -1,7 +1,7 @@
 import * as clack from '@clack/prompts';
 import type { GlobalCliFlags } from '../contracts';
 import type { LlmConfig } from '../../lib/agent/types';
-import { emitJson } from '../core/output';
+import { emitJson, emitMessage, emitTabList } from '../core/output';
 import {
   resolveVaultContext,
   CliUsageError,
@@ -26,9 +26,11 @@ export async function runProvider(args: string[], flags: GlobalCliFlags): Promis
       if (flags.json) {
         await emitJson(listed, flags);
       } else {
-        for (const c of listed) {
-          process.stdout.write(`${c.id}\t${c.label}\t${c.provider}\t${c.model}\n`);
-        }
+        await emitTabList(
+          ['id', 'label', 'provider', 'model'],
+          listed.map((c) => [c.id, c.label, c.provider, c.model ?? '']),
+          flags,
+        );
       }
       return EXIT_OK;
     }
@@ -72,7 +74,7 @@ export async function runProvider(args: string[], flags: GlobalCliFlags): Promis
         apiKey: String(apiKey),
       });
       await writeVaultToDisk(ctx);
-      process.stdout.write(`Added provider ${id}\n`);
+      await emitMessage(`Added provider ${id}`, flags);
       return EXIT_OK;
     }
 

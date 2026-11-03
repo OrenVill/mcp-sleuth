@@ -5,6 +5,7 @@ import {
   formatTerminalTableStacked,
   renderTerminalMarkdown,
 } from './terminalMarkdown';
+import { terminalColorsEnabled } from './terminalTheme';
 
 describe('renderTerminalMarkdown', () => {
   it('renders headings and emphasis', () => {
@@ -30,6 +31,19 @@ describe('renderTerminalMarkdown', () => {
     const out = renderTerminalMarkdown("| T |\n| --- |\n| it&#39;s ok |");
     expect(out).toContain("it's ok");
     expect(out).not.toContain('&#39;');
+  });
+
+  it('can accent headings for CLI reports', () => {
+    const prev = process.env.FORCE_COLOR;
+    process.env.FORCE_COLOR = '1';
+    const out = renderTerminalMarkdown('# Title\n\n## Section', { accentHeadings: true });
+    if (prev === undefined) delete process.env.FORCE_COLOR;
+    else process.env.FORCE_COLOR = prev;
+    expect(out).toContain('Title');
+    expect(out).toContain('Section');
+    if (terminalColorsEnabled()) {
+      expect(out).toContain('\x1b[');
+    }
   });
 });
 

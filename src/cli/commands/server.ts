@@ -1,7 +1,7 @@
 import * as clack from '@clack/prompts';
 import type { GlobalCliFlags } from '../contracts';
 import type { StoredServer } from '../../lib/storage';
-import { emitJson } from '../core/output';
+import { emitJson, emitMessage, emitTabList } from '../core/output';
 import { resolveVaultContext, CliUsageError } from '../core/prelude';
 import { writeVaultToDisk } from '../core/vaultSession';
 import { EXIT_OK, runCommandSafe } from '../core/runContext';
@@ -16,9 +16,11 @@ export async function runServer(args: string[], flags: GlobalCliFlags): Promise<
       if (flags.json) {
         await emitJson(ctx.servers, flags);
       } else {
-        for (const s of ctx.servers) {
-          process.stdout.write(`${s.id}\t${s.name}\t${s.transport ?? 'http'}\n`);
-        }
+        await emitTabList(
+          ['id', 'name', 'transport'],
+          ctx.servers.map((s) => [s.id, s.name, s.transport ?? 'http']),
+          flags,
+        );
       }
       return EXIT_OK;
     }
@@ -72,7 +74,7 @@ export async function runServer(args: string[], flags: GlobalCliFlags): Promise<
 
       ctx.servers.push(entry);
       await writeVaultToDisk(ctx);
-      process.stdout.write(`Added server ${entry.name} (${entry.id})\n`);
+      await emitMessage(`Added server ${entry.name} (${entry.id})`, flags);
       return EXIT_OK;
     }
 

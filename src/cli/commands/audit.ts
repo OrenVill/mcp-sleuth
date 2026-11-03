@@ -1,7 +1,7 @@
 import type { GlobalCliFlags } from '../contracts';
 import { auditPermissionSurface, categoryLabel } from '../../lib/permissionSurfaceAudit';
 import { scanPromptInjection, locationLabel } from '../../lib/promptInjectionScan';
-import { emitJson, emitOutput } from '../core/output';
+import { emitJson, emitMarkdown } from '../core/output';
 import { EXIT_OK, runCommandSafe, withConnectedTools } from '../core/runContext';
 import { EXIT_USAGE } from '../exitCodes';
 
@@ -45,14 +45,14 @@ export async function runAudit(args: string[], flags: GlobalCliFlags): Promise<n
         if (flags.json) {
           await emitJson(report, flags);
         } else {
-          await emitOutput(permissionMarkdown(report), flags);
+          await emitMarkdown(permissionMarkdown(report), flags);
         }
       } else {
         const report = scanPromptInjection([entry]);
         if (flags.json) {
           await emitJson(report, flags);
         } else {
-          await emitOutput(injectionMarkdown(report, entry.name), flags);
+          await emitMarkdown(injectionMarkdown(report, entry.name), flags);
         }
       }
     });

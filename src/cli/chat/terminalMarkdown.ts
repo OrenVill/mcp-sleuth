@@ -174,8 +174,11 @@ const renderer: RendererObject = {
   },
   heading({ tokens, depth }: Tokens.Heading): string {
     const inner = stripAnsi(this.parser.parseInline(tokens));
-    const prefix = depth <= 2 ? '\n' : '\n';
-    return `${prefix}${inner}\n`;
+    if (markdownRenderAccentHeadings && terminalColorsEnabled()) {
+      const code = depth === 1 ? sgr.brand : depth === 2 ? sgr.accent : sgr.label;
+      return `\n${paint(code, inner)}\n`;
+    }
+    return `\n${inner}\n`;
   },
   paragraph({ tokens }: Tokens.Paragraph): string {
     return `${stripAnsi(this.parser.parseInline(tokens))}\n\n`;
@@ -237,15 +240,29 @@ const renderer: RendererObject = {
 
 const marked = new Marked({ renderer, gfm: true, breaks: true });
 
-/** Render assistant markdown for the terminal. */
-export function renderTerminalMarkdown(source: string): string {
+let markdownRenderAccentHeadings = false;
+
+export type RenderTerminalMarkdownOptions = {
+  /** Color # / ## / ### lines (CLI reports). Chat replies stay plain. */
+  accentHeadings?: boolean;
+};
+
+/** Render markdown for the terminal (GFM tables, lists, headings). */
+export function renderTerminalMarkdown(
+  source: string,
+  options?: RenderTerminalMarkdownOptions,
+): string {
   const trimmed = source.trim();
   if (!trimmed) return '';
-  const htmlLike = trimmed.includes('<') && trimmed.includes('>');
-  const input = htmlLike ? trimmed.replace(/<[^>]+>/g, '') : trimmed;
-  const out = marked.parse(input) as string;
-  const normalized = out.replace(/\n{3,}/g, '\n\n').trimEnd();
-  return normalized;
+  markdownRenderAccentHeadings = options?.accentHeadings ?? false;
+  try {
+    const htmlLike = trimmed.includes('<') && trimmed.includes('>');
+    const input = htmlLike ? trimmed.replace(/<[^>]+>/g, '') : trimmed;
+    const out = marked.parse(input) as string;
+    return out.replace(/\n{3,}/g, '\n\n').trimEnd();
+  } finally {
+    markdownRenderAccentHeadings = false;
+  }
 }
 
 export function writeAssistantMarkdown(source: string): void {
