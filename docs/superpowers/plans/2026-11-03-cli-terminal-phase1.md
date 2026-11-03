@@ -63,7 +63,7 @@
 | `README.md`, `README.npm.md` | Terminal CLI section |
 | `vitest.config.ts` | Include `src/cli/**` if not already covered |
 
-**Phase 3–4 (TUI):** see `docs/superpowers/plans/2026-11-03-cli-terminal-tui.md`.
+**Phase 3 (chat TUI only):** see `docs/superpowers/plans/2026-11-03-cli-terminal-tui.md`. Further subcommands (`schema`, `journal`, `replay`, …) extend Wave 4 here before or in parallel with chat.
 
 ---
 
@@ -138,7 +138,7 @@
 **Interfaces:**
 - Consumes: first argv token not `stop` and not daemon path → dynamic import `../dist/cli/main.js` relative to pkg root.
 
-- [ ] **Step 1:** If `args[0]` matches known subcommand list (`tui`, `readiness`, `audit`, `export`, `call`, `provider`, `server`, `help`), `await import(...)` and call exported `runCli(argv)`.
+- [ ] **Step 1:** If `args[0]` matches known subcommand list (`chat`, `tui`, `readiness`, `audit`, `export`, `call`, `provider`, `server`, `help`), `await import(...)` and call exported `runCli(argv)` (`tui` aliases `chat`).
 
 - [ ] **Step 2:** Add `tests/cli/smoke.test.ts` spawning `node bin/mcp-detective.js help`.
 
@@ -267,8 +267,9 @@
 | call, provider, server | Tasks 10–11 |
 | Non-interactive flags | Task 5 |
 | `--discover` | Add to Task 6/7 before closing Wave 2 (optional small step in Task 7) |
-| llmFetch for TUI | Deferred to TUI plan |
-| Ink TUI | TUI plan |
+| llmFetch | Chat TUI plan (Task 13) |
+| Ink | Chat-only plan |
+| schema/journal/replay subcommands | Optional Wave 4 extensions (spec phase 2) |
 | Redaction tests | Tasks 7, 9, 11 |
 
 **Gap closed in Task 7 follow-up step:** add `--discover` flag calling `src/lib/discovery/orchestrator.ts` after connect.
@@ -277,7 +278,7 @@
 
 ## Execution handoff
 
-Plan complete. Implement **Wave 0 → 4** sequentially; merge before starting TUI plan.
+Plan complete. Implement **Wave 0 → 4** sequentially; merge before starting **chat-only** Ink plan (Phase 3).
 
 **Execution options:**
 

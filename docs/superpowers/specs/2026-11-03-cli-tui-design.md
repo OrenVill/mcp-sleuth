@@ -1,19 +1,22 @@
 # MCP Detective Terminal CLI & TUI Design
 
 **Date:** 2026-11-03  
-**Status:** Approved (brainstorming)
+**Status:** Approved (amended 2026-11-03 — chat-only TUI)
 
 ## Goal
 
-Extend `@orenvill/mcp-detective` with a **vault-first terminal experience**: unlock the same encrypted store as the browser/desktop app, connect to saved MCP servers from Node, run **scriptable subcommands** (readiness, trust audits, exports, tool calls, server/provider management), and a **full-screen TUI** that covers most in-app workflows—including **Agent Chat** with approval-gated tool calls. The existing **`mcp-detective` browser daemon** (`start` + `stop`) stays the default when no subcommand is given.
+Extend `@orenvill/mcp-detective` with a **vault-first terminal experience**: unlock the same encrypted store as the browser/desktop app, connect to saved MCP servers from Node, and run **subcommands** for almost all in-app workflows (readiness, trust audits, exports, tool/resource/prompt access, journal, schema lab, replay/scenario, server/provider management, and more). The only **Ink TUI** is **Agent Chat**—approval-gated, same loop as the web app—not a terminal clone of the 3-column browser UI.
+
+The existing **`mcp-detective` browser daemon** (`start` + `stop`) stays the default when no subcommand is given.
 
 ## Non-goals
 
 - Replacing the browser or desktop UI as the primary product surface.
+- A full-screen terminal UI for browsing servers, invoking tools, or dev-tool panels (those are **commands**).
 - Persisting Agent Chat transcripts to disk (`data.gz` or elsewhere).
 - OS keychain auto-unlock in the CLI (desktop-only today).
 - CORS proxy toggles in the CLI (Node connects directly).
-- Headless Agent Chat as a one-shot subcommand (chat lives in `mcp-detective tui`).
+- Headless one-shot Agent Chat (multi-turn chat lives in `mcp-detective chat` / `tui`).
 
 ## Approach (summary)
 
@@ -21,8 +24,8 @@ Extend `@orenvill/mcp-detective` with a **vault-first terminal experience**: unl
 
 1. **`bin/mcp-detective.js`** — thin router: no args / `stop` → existing daemon; else delegate to compiled CLI entry.
 2. **`cli-core`** — Node-only vault session, MCP session manager (shared with Electron), LLM fetch with `llm-targets.js`, optional app-data I/O, interactive prelude.
-3. **Subcommands** — thin wrappers over existing `src/lib/*` analyzers and exporters.
-4. **`mcp-detective tui`** — Ink-based terminal UI mirroring the 3-column app + dev-tool overlays + chat.
+3. **Subcommands** — thin wrappers over existing `src/lib/*` (investigation, exports, invoke, journal, replay, etc.).
+4. **`mcp-detective chat`** (alias **`tui`**) — Ink UI **only** for Agent Chat (provider pick, in-scope servers, transcript, tool approval).
 
 Business logic stays in `src/lib/`; terminal code only wires I/O and transport.
 
@@ -34,7 +37,7 @@ Business logic stays in `src/lib/`; terminal code only wires I/O and transport.
 |--------|------|
 | `mcp-detective` | *(unchanged)* Daemonize, serve `dist/`, print URL, open browser |
 | `mcp-detective stop` | *(unchanged)* Stop daemon via `daemon.json` |
-| `mcp-detective tui` | Full-screen TUI |
+| `mcp-detective chat` | Ink TUI: Agent Chat only (`tui` alias) |
 | `mcp-detective readiness [opts]` | Agent Readiness report (interactive or flags) |
 | `mcp-detective audit permission` | Permission Surface report |
 | `mcp-detective audit injection` | Prompt Injection scan report |
@@ -42,6 +45,10 @@ Business logic stays in `src/lib/`; terminal code only wires I/O and transport.
 | `mcp-detective export tools` | Tool list JSON |
 | `mcp-detective export client-config` | Claude Desktop / Cursor JSON |
 | `mcp-detective call <tool>` | Invoke one tool (JSON args) |
+| `mcp-detective resource …` / `prompt …` | Read resources / get prompt messages (phase 2+) |
+| `mcp-detective schema <tool>` | Schema Lab output for one tool (phase 2+) |
+| `mcp-detective journal …` | Observation journal export / append (phase 2+) |
+| `mcp-detective replay …` / `scenario …` | Run suite/scenario from JSON (phase 2+) |
 | `mcp-detective provider list\|add\|remove` | Vault LLM configs (for Agent Chat) |
 | `mcp-detective server list\|add\|remove` | Vault MCP servers |
 | `mcp-detective help` | Top-level help |
@@ -68,7 +75,7 @@ bin/mcp-detective.js
 
 dist/cli/main.js  (esbuild bundle from src/cli/)
   ├─ commands/*
-  ├─ tui/*          (Ink — loaded only for `tui`)
+  ├─ chat/*         (Ink — loaded only for `chat` / `tui`)
   └─ core/*
         ├─ vaultSession     → vault.json + src/lib/vault/*
         ├─ mcpSessions      → mcp/sessions.js (shared)
@@ -91,7 +98,7 @@ Update `electron-builder.yml` / `scripts/check-packaged-imports.mjs` if import p
 - In-process unlocked state for the CLI/TUI process lifetime; clear AES key on exit.
 - Warn on mutating commands when data dir may be shared with a running desktop app (last-write-wins).
 
-### LLM transport (TUI chat only)
+### LLM transport (chat TUI only)
 
 - Node `fetch` from CLI process (no `/__llm_proxy`).
 - Validate every request URL with `requireAllowedTarget(provider, url)` from `llm-targets.js`.
@@ -104,7 +111,7 @@ Update `electron-builder.yml` / `scripts/check-packaged-imports.mjs` if import p
 - Extend npm **`files`** with `dist/cli`, `mcp/sessions.js`, and any new `.d.ts` stubs.
 - New runtime deps: **`@clack/prompts`**, **`ink`**, **`react`** (Ink peer — already in devDependencies for app; promote or duplicate as dep for CLI bundle only via esbuild externals policy: bundle ink+react into CLI chunk).
 
-Dependency policy: Clack + Ink are justified for interactive CLI/TUI; no general-purpose CLI framework beyond minimal argv parsing in-house or tiny helper.
+Dependency policy: Clack for subcommand wizards; Ink **only** for `chat` (not for readiness or other reports).
 
 ---
 
@@ -140,32 +147,29 @@ Redaction rules in existing tests (`agentReadinessMarkdown.test.ts`, handoff sen
 
 ---
 
-## TUI (`mcp-detective tui`)
+## Chat TUI (`mcp-detective chat`, alias `tui`)
 
-### Layout
+Single-purpose Ink app—**Agent Chat only**. Everything else (readiness, audits, invoke, journal, replay, etc.) is a **subcommand**, not a TUI panel.
 
-- **Column 1:** Server list (connect/disconnect, add/edit modals).
-- **Column 2:** Tools | Resources | Prompts + search.
-- **Column 3:** Detail, invoke, results (reuse schema/result shaping from lib where possible).
+### Startup
 
-### Dev tools (in TUI)
+Same vault prelude as other commands, then:
 
-Panels backed by the same lib modules as `DevToolsModal` tabs:
+1. Pick **LLM provider config** from vault (prompt to run `provider add` if empty).
+2. Pick **in-scope MCP servers** (multi-select; connects each via shared MCP session manager).
+3. Enter chat UI.
 
-- Protocol Inspector (simplified in-memory trace for session)
-- Replay Suites & Scenario Runner (in-memory + JSON import/export)
-- Schema Lab (read-only)
-- Permission Surface, Prompt Injection, Agent Readiness
-- Observation Journal (persist via app-data)
+### Chat UI
 
-### Agent Chat
+- Transcript + streaming assistant text + composer.
+- Tool proposals → **approval strip** (not default-focused Allow): server, tool, args; Allow/Deny; deny reasons `wrong_tool` | `bad_arguments` | `unsafe` | `no_reason` — same as `ToolCallApproval.tsx` / `DENIAL_TEXT`.
+- Uses `runAgentTurn` with Node `llmFetch` + MCP `callTool` + `gating.ts` / `toolCatalog.ts`.
+- Key actions where feasible: **record to journal**, **capture replay suite** (same libs as web Agent Chat).
+- On run end: persist **`AgentRunSummary`** only via `agentRunStore`; **transcript never written to disk**.
 
-- Uses `runAgentTurn` from `src/lib/agent/loop.ts` with injected deps.
-- Provider/model from vault; in-scope servers selectable like `AgentModelPicker`.
-- **Approval UI:** show tool, server, args; Allow/Deny; deny reasons `wrong_tool` | `bad_arguments` | `unsafe` | `no_reason` — same semantics as `ToolCallApproval.tsx` and `DENIAL_TEXT`.
-- **Allow must not be the default focused action** on a new proposal (avoid accidental Enter).
-- On run end: persist **`AgentRunSummary`** counters via `agentRunStore`; discard transcript.
-- Optional: record to journal / capture replay suite (same libs as UI).
+### Out of scope for chat TUI
+
+Server CRUD, tool browser, Protocol Inspector, Schema Lab, standalone readiness/audit panels—use **`server`**, **`call`**, **`readiness`**, **`audit`**, etc.
 
 ---
 
@@ -174,9 +178,8 @@ Panels backed by the same lib modules as `DevToolsModal` tabs:
 | Phase | Deliverable |
 |-------|-------------|
 | **1** | Shared `mcp/sessions.js`, CLI core, build pipeline, `readiness`, `audit *`, `export handoff` |
-| **2** | `call`, `export tools|client-config`, `provider`, `server`, CI-friendly flags |
-| **3** | TUI shell: servers, tools/resources/prompts, invoke |
-| **4** | TUI dev tools + Agent Chat + replay/scenario |
+| **2** | `call`, exports, `provider`, `server`, optional `schema` / `journal` / `replay` / `scenario` / resource & prompt subcommands |
+| **3** | **`chat` TUI only** — Ink, LLM fetch, approval-gated `runAgentTurn` |
 
 Each phase is shippable without blocking the next.
 
@@ -210,14 +213,14 @@ User-facing connect errors should reuse `connectionErrorMessage` where applicabl
 - **Shared MCP:** port existing `electron/mcp/sessions` tests to `mcp/sessions.test.js`.
 - **Redaction:** CLI markdown snapshots alongside lib tests.
 - **CI smoke:** script or vitest subprocess invoking `node dist/cli/main.js readiness --help`; optional fixture MCP + temp vault for integration.
-- **TUI:** state-machine tests for approval flow; full Ink E2E optional later.
+- **Chat TUI:** approval state-machine tests; full Ink E2E optional later.
 - **Release skill:** update when user-visible CLI behavior lands; Playwright remains browser-focused; add CLI smoke to release checklist.
 
 ---
 
 ## Docs
 
-Update `README.md` and `README.npm.md` with terminal section: commands, interactive flow example, non-interactive CI pattern, `tui`, coexistence with desktop app data dir.
+Update `README.md` and `README.npm.md` with terminal section: subcommands for investigation workflows, interactive readiness example, CI env pattern, **`chat`** for Agent Chat TUI only, coexistence with desktop app data dir.
 
 ---
 
