@@ -168,6 +168,12 @@ describe('geminiProvider.buildRequest', () => {
     expect(geminiProvider.buildRequest(withHeaders).headers['X-Trace']).toBe('on');
   });
 
+  it('does not send an output token cap', () => {
+    const body = geminiProvider.buildRequest(request).body as Record<string, unknown>;
+    expect(body.maxOutputTokens).toBeUndefined();
+    expect(body.generationConfig).toBeUndefined();
+  });
+
   it('sends the system prompt as systemInstruction, not as a message', () => {
     const body = geminiProvider.buildRequest(request).body as Record<string, unknown>;
     expect(body.systemInstruction).toEqual({ parts: [{ text: 'you are a test' }] });
