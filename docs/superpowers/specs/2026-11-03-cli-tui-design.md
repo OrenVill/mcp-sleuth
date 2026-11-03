@@ -227,4 +227,5 @@ Update `README.md` and `README.npm.md` with terminal section: subcommands for in
 ## Related documents
 
 - Prior daemon design: `docs/superpowers/specs/2026-05-23-cli-daemon-design.md`
-- Implementation: `docs/superpowers/plans/2026-11-03-cli-terminal-phase1.md`, `docs/superpowers/plans/2026-11-03-cli-terminal-tui.md`
+- **Parallel execution (canonical):** `docs/superpowers/plans/2026-11-03-cli-terminal-parallel.md`
+- Task detail archives: `docs/superpowers/plans/2026-11-03-cli-terminal-phase1.md`, `docs/superpowers/plans/2026-11-03-cli-terminal-tui.md`

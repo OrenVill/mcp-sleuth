@@ -1,5 +1,7 @@
 # MCP Detective Terminal CLI — Phase 1–2 Implementation Plan
 
+> **Execution:** Use **`docs/superpowers/plans/2026-11-03-cli-terminal-parallel.md`** for wave gates and parallel agents. This file is a task reference only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship vault-first Node MCP connectivity, interactive/non-interactive subcommands for readiness, trust audits, exports, tool invoke, and vault CRUD—without breaking the existing browser daemon entry.

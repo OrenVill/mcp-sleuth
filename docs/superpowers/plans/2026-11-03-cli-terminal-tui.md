@@ -1,5 +1,7 @@
 # MCP Detective Agent Chat TUI — Phase 3 Implementation Plan
 
+> **Execution:** Use **`docs/superpowers/plans/2026-11-03-cli-terminal-parallel.md`** (Waves 9–12). This file is a task reference only.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Add `mcp-detective chat` (alias `tui`) — an Ink terminal UI **only** for approval-gated Agent Chat. All other app features stay CLI subcommands (see Phase 1–2 plan).
