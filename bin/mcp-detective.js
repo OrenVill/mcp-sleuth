@@ -124,6 +124,13 @@ const CLI_SUBCOMMANDS = new Set([
 
 const cliBundlePath = resolve(pkgRoot, 'dist/cli/main.js');
 
+function prepareCliColorEnv() {
+  if (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '') return;
+  if (process.stdout.isTTY || process.stderr.isTTY) {
+    process.env.FORCE_COLOR = '1';
+  }
+}
+
 async function runCliSubcommand() {
   if (!existsSync(cliBundlePath)) {
     process.stderr.write(
@@ -147,6 +154,7 @@ async function runCliSubcommand() {
 }
 
 if (args[0] && CLI_SUBCOMMANDS.has(args[0])) {
+  prepareCliColorEnv();
   await runCliSubcommand();
 }
 

@@ -7,7 +7,7 @@ import { runExport } from './exportCmd';
 import { runProvider } from './provider';
 import { runReadiness } from './readiness';
 import { runServer } from './server';
-import { paint, terminalColorsEnabled } from '../chat/terminalTheme';
+import { paint, sgr, terminalColorsEnabled } from '../chat/terminalTheme';
 
 export const commandRegistry: Record<string, CommandHandler> = {
   chat: runChat,
@@ -21,9 +21,9 @@ export const commandRegistry: Record<string, CommandHandler> = {
 };
 
 export function printHelp(): void {
-  const h = (text: string) => (terminalColorsEnabled() ? paint('1;38;5;213', text) : text);
-  const dim = (text: string) => (terminalColorsEnabled() ? paint('38;5;245', text) : text);
-  const cmd = (text: string) => (terminalColorsEnabled() ? paint('38;5;183', text) : text);
+  const h = (text: string) => (terminalColorsEnabled() ? paint(sgr.brand, text) : text);
+  const dim = (text: string) => (terminalColorsEnabled() ? paint(sgr.muted, text) : text);
+  const cmd = (text: string) => (terminalColorsEnabled() ? paint(sgr.accent, text) : text);
 
   process.stdout.write(`${h('mcp-detective')} ${dim('— terminal CLI')}
 
