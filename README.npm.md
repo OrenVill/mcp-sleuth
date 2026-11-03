@@ -29,7 +29,9 @@ mcp-detective --no-open    # skip opening the browser (also: OPEN=0)
 
 ### Terminal CLI
 
-Subcommands use the same vault and servers as the app (`~/.mcp-detective/vault.json`):
+Subcommands use the same vault and servers as the app (`~/.mcp-detective/vault.json`).
+
+**Git checkout:** your shell may still run an older global `mcp-detective` that only starts the browser UI. Use `node bin/mcp-detective.js …` from the repo (after `npm run build`), or `npm link` at the repo root so `which mcp-detective` points at this package.
 
 ```bash
 mcp-detective readiness          # unlock → pick server → markdown report

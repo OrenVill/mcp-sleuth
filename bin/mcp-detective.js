@@ -19,11 +19,20 @@ const paint = (codes, s) => (useColor ? `\x1b[${codes}m${s}\x1b[0m` : s);
 
 function buildSilently() {
   return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(viteBin, ['build'], {
-      cwd: pkgRoot,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
-    });
+    const npmCli = resolve(pkgRoot, 'node_modules', 'npm', 'bin', 'npm-cli.js');
+    const useNpmRunBuild = existsSync(npmCli);
+    const child = useNpmRunBuild
+      ? spawn(process.execPath, [npmCli, 'run', 'build'], {
+          cwd: pkgRoot,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+        })
+      : spawn('npm', ['run', 'build'], {
+          cwd: pkgRoot,
+          shell: true,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' },
+        });
     let out = '';
     child.stdout.on('data', (b) => (out += b.toString()));
     child.stderr.on('data', (b) => (out += b.toString()));
@@ -112,11 +121,17 @@ const CLI_SUBCOMMANDS = new Set([
   'help',
 ]);
 
+const cliBundlePath = resolve(pkgRoot, 'dist/cli/main.js');
+
 async function runCliSubcommand() {
-  const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-  const cliPath = resolve(pkgRoot, 'dist/cli/main.js');
+  if (!existsSync(cliBundlePath)) {
+    process.stderr.write(
+      'mcp-detective: CLI not built. Run npm run build from the package root.\n',
+    );
+    process.exit(1);
+  }
   try {
-    const { runCli } = await import(cliPath);
+    const { runCli } = await import(cliBundlePath);
     const code = await runCli(args[0] === 'tui' ? ['chat', ...args.slice(1)] : args);
     process.exit(code);
   } catch (err) {
@@ -132,6 +147,18 @@ async function runCliSubcommand() {
 
 if (args[0] && CLI_SUBCOMMANDS.has(args[0])) {
   await runCliSubcommand();
+}
+
+/** Never start the browser daemon when the user asked for a terminal subcommand. */
+function refuseDaemonForCliSubcommand() {
+  const hit = args.find((a) => CLI_SUBCOMMANDS.has(a));
+  if (!hit) return false;
+  process.stderr.write(
+    `mcp-detective: "${hit}" is a terminal subcommand, but this \`mcp-detective\` on your PATH does not include the CLI (or it is not built).\n` +
+      `From a git checkout: node bin/mcp-detective.js ${args.join(' ')}\n` +
+      'Or run npm link at the repo root after npm run build, then retry.\n',
+  );
+  process.exit(2);
 }
 
 // ── stop subcommand ──────────────────────────────────────────────────────────
@@ -159,6 +186,7 @@ if (args[0] === 'stop') {
 const isDaemon = args.includes('--daemon');
 
 if (!isDaemon) {
+  refuseDaemonForCliSubcommand();
   const lock = await readLock();
   if (lock && isAlive(lock.pid)) {
     console.log(
