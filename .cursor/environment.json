@@ -1,0 +1,4 @@
+{
+  "name": "mcp-detective",
+  "install": "npm ci"
+}

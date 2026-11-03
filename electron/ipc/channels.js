@@ -61,7 +61,7 @@ export const CHANNELS = {
  * sandbox, a second BrowserWindow, a webview — silently hands the main process
  * a caller that can name a command to spawn or a URL to fetch.
  *
- * Origin equality, not a prefix: `app://mcp-sleuth.evil.example` starts with the
+ * Origin equality, not a prefix: `app://mcp-detective.evil.example` starts with the
  * app origin as a string and is a different origin entirely.
  */
 export function isTrustedSenderUrl(url, { appOrigin, devUrl } = {}) {
