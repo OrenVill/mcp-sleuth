@@ -90,6 +90,12 @@ describe('openaiProvider.buildRequest', () => {
     expect(openaiProvider.buildRequest(withHeaders).headers['X-Trace']).toBe('on');
   });
 
+  it('does not send an output token cap', () => {
+    const body = openaiProvider.buildRequest(request).body as Record<string, unknown>;
+    expect(body.max_tokens).toBeUndefined();
+    expect(body.max_completion_tokens).toBeUndefined();
+  });
+
   it('sends the tool catalog as function definitions', () => {
     const body = openaiProvider.buildRequest(request).body as Record<string, unknown>;
     expect(body.tools).toEqual([
