@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { paint, terminalColorsEnabled } from './terminalTheme';
+import { paint, sgr, terminalColorsEnabled } from './terminalTheme';
 
 describe('paint', () => {
   it('does not emit a stray m when codes already end with m', () => {
     const prev = process.env.NO_COLOR;
     delete process.env.NO_COLOR;
-    const styled = paint('38;5;240m', '│');
+    const styled = paint(sgr.muted, '│');
     if (prev === undefined) delete process.env.NO_COLOR;
     else process.env.NO_COLOR = prev;
 

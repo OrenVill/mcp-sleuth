@@ -3,6 +3,7 @@ import { wrapPlainLine } from './formatToolArgsDisplay';
 import {
   colorizeAssistantBody,
   paint,
+  sgr,
   terminalColorsEnabled,
 } from './terminalTheme';
 
@@ -255,6 +256,6 @@ export function renderTerminalMarkdown(source: string): string {
 export function writeAssistantMarkdown(source: string): void {
   const rendered = renderTerminalMarkdown(source);
   if (!rendered) return;
-  const label = terminalColorsEnabled() ? paint('1;38;5;183', 'Assistant') : 'Assistant';
+  const label = terminalColorsEnabled() ? paint(sgr.assistant, 'Assistant') : 'Assistant';
   process.stdout.write(`\n${label}\n${rendered}\n`);
 }
