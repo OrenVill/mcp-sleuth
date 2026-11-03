@@ -22,6 +22,7 @@ extraMetadata:
 # launch, which is the failure this list exists to prevent.
 files:
   - dist/**
+  - mcp/**
   - electron/**
   - vault-file-handler.js
   - app-data-handler.js

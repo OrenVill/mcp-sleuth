@@ -100,6 +100,40 @@ if (migratedOnStart.length > 0 && process.stdout.isTTY) {
 
 const args = process.argv.slice(2);
 
+const CLI_SUBCOMMANDS = new Set([
+  'chat',
+  'tui',
+  'readiness',
+  'audit',
+  'export',
+  'call',
+  'provider',
+  'server',
+  'help',
+]);
+
+async function runCliSubcommand() {
+  const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const cliPath = resolve(pkgRoot, 'dist/cli/main.js');
+  try {
+    const { runCli } = await import(cliPath);
+    const code = await runCli(args[0] === 'tui' ? ['chat', ...args.slice(1)] : args);
+    process.exit(code);
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err && err.code === 'ERR_MODULE_NOT_FOUND') {
+      process.stderr.write(
+        'mcp-detective: CLI not built. Run npm run build from the package root.\n',
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
+}
+
+if (args[0] && CLI_SUBCOMMANDS.has(args[0])) {
+  await runCliSubcommand();
+}
+
 // ── stop subcommand ──────────────────────────────────────────────────────────
 if (args[0] === 'stop') {
   const lock = await readLock();
