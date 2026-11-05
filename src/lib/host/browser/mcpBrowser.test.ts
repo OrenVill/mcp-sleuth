@@ -24,6 +24,7 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
       listTools: vi.fn().mockResolvedValue({ tools: [{ name: 'echo', description: 'Echo' }] }),
       close: vi.fn().mockResolvedValue(undefined),
       setNotificationHandler: vi.fn(),
+      setRequestHandler: vi.fn(),
     };
   }),
 }));
@@ -111,7 +112,10 @@ describe('browserMcpHost.connectStdio', () => {
     expect(callOrder).toEqual(['startStdio', 'clientConnect']);
 
     const bridgeUrl = stdioBridgeMcpUrl('srv-1', 'http://127.0.0.1:4173');
-    expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(new URL(bridgeUrl), undefined);
+    expect(StreamableHTTPClientTransport).toHaveBeenCalledWith(
+      new URL(bridgeUrl),
+      expect.objectContaining({ fetch: expect.any(Function) }),
+    );
   });
 
   it('reports the session as connected afterwards', async () => {

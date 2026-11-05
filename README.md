@@ -17,6 +17,7 @@ Three ways to run it:
 - **Auto-connect on add** — registers the server and immediately connects (streamable HTTP for HTTP servers; local stdio bridge for stdio servers).
 - **Stdio transport** — spawn local MCP subprocesses (`command`, `args`, optional `cwd` and env vars); same tool UI as HTTP. In the browser build this goes through a Node-side bridge, so it requires **`npm run dev`** or the **`mcp-detective` CLI** (not plain static `dist/index.html`); the desktop app spawns them directly.
 - **Embedded local proxy mode** — optionally routes HTTP MCP requests through MCP Detective's localhost server so HTTP MCP servers do not need browser CORS support.
+- **OAuth (PKCE) for HTTP MCP servers** — discover authorization metadata, sign in in the browser, and store access/refresh tokens in the vault. Token and discovery requests use a same-origin `/__mcp_oauth` proxy (browser) or leave the Electron main process directly; no real provider credentials are required for the release tests (see `tests/release/34-mcp-oauth.spec.ts`).
 - **Self-signed certificates, per server** — tick a box to reach an `https` endpoint whose certificate no public CA signed, without disabling verification anywhere else.
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).

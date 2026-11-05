@@ -9,6 +9,7 @@ import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
+import { handleMcpOAuthProxy, isMcpOAuthProxyRequest } from './mcp-oauth-proxy.js';
 import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
 
 const appVersion = JSON.parse(
@@ -29,6 +30,7 @@ function isInterceptedRequest(url: string): boolean {
     isVaultStorageRequest(url) ||
     isAppDataRequest(url) ||
     isLlmProxyRequest(url) ||
+    isMcpOAuthProxyRequest(url) ||
     url.startsWith(STDIO_BRIDGE_PREFIX)
   );
 }
@@ -124,6 +126,37 @@ function appDataPlugin(): PluginOption {
   };
 }
 
+function mcpOAuthProxyMiddleware(
+  req: IncomingMessage,
+  res: ServerResponse,
+  next: () => void,
+) {
+  if (isMcpOAuthProxyRequest(req.url ?? '/')) {
+    void handleMcpOAuthProxy(req, res).catch((err: unknown) => {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      }
+      res.end(err instanceof Error ? err.message : String(err));
+    });
+    return;
+  }
+  next();
+}
+
+function mcpOAuthProxyPlugin(): PluginOption {
+  return {
+    name: 'mcp-detective-oauth-proxy',
+    enforce: 'pre',
+    configureServer(server) {
+      server.middlewares.use(mcpOAuthProxyMiddleware);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use(mcpOAuthProxyMiddleware);
+    },
+  };
+}
+
 function llmProxyMiddleware(
   req: IncomingMessage,
   res: ServerResponse,
@@ -196,6 +229,7 @@ export default defineConfig({
     vaultStoragePlugin(),
     appDataPlugin(),
     llmProxyPlugin(),
+    mcpOAuthProxyPlugin(),
     react(),
     tailwindcss(),
     mcpProxyPlugin(),

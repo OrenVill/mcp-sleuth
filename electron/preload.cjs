@@ -30,6 +30,7 @@ const INVOKE = [
   'mcp:updateSkip',
   'mcp:updateDismiss',
   'mcp:updateOpenRelease',
+  'mcp:oauthFetch',
 ];
 
 const api = {

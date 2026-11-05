@@ -40,6 +40,7 @@ export const CHANNELS = {
   llmChatStart: 'mcp:llmChatStart',
   llmChatAbort: 'mcp:llmChatAbort',
   llmListModels: 'mcp:llmListModels',
+  oauthFetch: 'mcp:oauthFetch',
   // files + app data
   saveFile: 'mcp:saveFile',
   readAppData: 'mcp:readAppData',

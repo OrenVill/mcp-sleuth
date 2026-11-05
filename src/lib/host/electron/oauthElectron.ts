@@ -1,0 +1,1 @@
+import type { ElectronBridge } from './mcpElectron';import type { OAuthHost } from '../types';import { unwrapEnvelope } from './mcpElectron';export function createElectronOAuthHost(b:ElectronBridge):OAuthHost{return{async fetch(target,init){return unwrapEnvelope(await b.invoke('mcp:oauthFetch',{target,...init})) as Awaited<ReturnType<OAuthHost['fetch']>>;}};}

@@ -9,6 +9,7 @@ import { handleStdioBridge, STDIO_BRIDGE_PREFIX } from './stdio-bridge.js';
 import { handleVaultStorage, isVaultStorageRequest } from './vault-file-handler.js';
 import { handleAppData, isAppDataRequest } from './app-data-handler.js';
 import { handleLlmProxy, isLlmProxyRequest } from './llm-proxy.js';
+import { handleMcpOAuthProxy, isMcpOAuthProxyRequest } from './mcp-oauth-proxy.js';
 import { migrateAllLegacyDataDirs } from './data-dir.js';
 import { allowedHostsFromEnv, guardLocalRequest, refuseLocalRequest } from './request-guard.js';
 import { CONTENT_SECURITY_POLICY, CSP_HEADER_NAME } from './content-security-policy.js';
@@ -101,6 +102,7 @@ export function start({
       isVaultStorageRequest(url) ||
       isAppDataRequest(url) ||
       isLlmProxyRequest(url) ||
+      isMcpOAuthProxyRequest(url) ||
       url.startsWith(STDIO_BRIDGE_PREFIX)
     );
   }
@@ -148,6 +150,10 @@ export function start({
     }
     if (isLlmProxyRequest(url)) {
       handleLlmProxy(req, res).catch((err) => failRequest(res, err, 'llm proxy'));
+      return;
+    }
+    if (isMcpOAuthProxyRequest(url)) {
+      handleMcpOAuthProxy(req, res).catch((err) => failRequest(res, err, 'mcp oauth proxy'));
       return;
     }
     if (url.startsWith(STDIO_BRIDGE_PREFIX)) {

@@ -17,7 +17,7 @@ export function formatConnectionError(err: unknown): string {
   if (err instanceof UnauthorizedError) {
     return join(
       'Authentication failed',
-      'The server rejected your credentials. Check the token, API key, or Basic auth in Edit server. If the server uses OAuth only, this browser build cannot complete that flow yet — use an access token or another auth method the server accepts.',
+      'The server requires sign-in or rejected your credentials. For OAuth (PKCE), choose that method in Edit server and connect again to open the provider sign-in page. You can also paste an access token under OAuth access token.',
     );
   }
 

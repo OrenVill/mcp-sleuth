@@ -62,6 +62,10 @@ const AgentChatPanel = lazy(() =>
 );
 import { loadHistory } from './lib/history';
 import { refreshConnectedServerTools } from './lib/serverRefresh';
+import { OAUTH_CALLBACK_PATH } from './lib/mcpOAuth/constants';
+import { clearPendingOAuthFlow, readPendingOAuthFlow } from './lib/mcpOAuth/provider';
+import { finishOAuthAuthorization } from './lib/mcpOAuth/connectOAuth';
+import { registerOAuthSessionWriter } from './lib/mcpOAuth/sessionRegistry';
 import type {
   DiscoveryRun,
   MetaToolBinding,
@@ -237,6 +241,43 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, []);
 
+  useEffect(() => {
+    if (window.location.pathname !== OAUTH_CALLBACK_PATH) return;
+    if (vault.phase !== 'ready') return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const flow = readPendingOAuthFlow();
+    if (!code || !flow) return;
+
+    void (async () => {
+      const server = serversRef.current.find((s) => s.id === flow.serverId);
+      if (!server?.auth || server.auth.method !== 'oauth') {
+        clearPendingOAuthFlow();
+        window.history.replaceState({}, '', flow.returnPath || '/');
+        return;
+      }
+      try {
+        await finishOAuthAuthorization({
+          serverId: flow.serverId,
+          url: flow.mcpServerUrl,
+          auth: server.auth,
+          proxyThroughLocal: flow.proxyThroughLocal,
+          options: { allowSelfSigned: flow.allowSelfSigned },
+          authorizationCode: code,
+        });
+        clearPendingOAuthFlow();
+        window.history.replaceState({}, '', flow.returnPath || '/');
+        await handleConnect(flow.serverId);
+      } catch (e) {
+        clearPendingOAuthFlow();
+        window.history.replaceState({}, '', flow.returnPath || '/');
+        updateServer(flow.serverId, { status: 'error', error: formatConnectionError(e) });
+      }
+    })();
+    // OAuth callback is a one-shot URL; vault phase gates access to stored auth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vault.phase]);
+
   /**
    * When opening from Add/Edit, pass `connection` so connect runs with the submitted URL/auth
    * even before React has committed the new/updated server row (avoids a stale `servers.find`).
@@ -247,6 +288,9 @@ export default function App() {
     setSelectedId(id);
     setSelectedToolName(null);
     updateServer(id, { status: 'connecting', error: undefined, connectionNotice: undefined });
+    const unregisterOAuth = registerOAuthSessionWriter(id, (auth) => {
+      setServers((prev) => prev.map((row) => (row.id === id ? { ...row, auth } : row)));
+    });
     try {
       let tools;
       if (transport === 'stdio') {
@@ -302,6 +346,8 @@ export default function App() {
       });
     } catch (e) {
       updateServer(id, { status: 'error', error: formatConnectionError(e) });
+    } finally {
+      unregisterOAuth();
     }
   }
 

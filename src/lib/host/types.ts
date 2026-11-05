@@ -156,6 +156,9 @@ export interface LlmHost {
   listModels(config: LlmConfig): Promise<string[]>;
 }
 
+export interface OAuthHost {
+  fetch(target: string, init?: { method?: string; headers?: Record<string, string>; body?: string }): Promise<{ ok: boolean; status: number; statusText: string; headers: Record<string, string>; body: string }>;
+}
 export interface Host {
   readonly kind: 'browser' | 'electron';
   readonly mcp: McpHost;
@@ -163,4 +166,5 @@ export interface Host {
   readonly secrets: SecretsHost;
   readonly updates: UpdateHost;
   readonly llm: LlmHost;
+  readonly oauth?: OAuthHost;
 }

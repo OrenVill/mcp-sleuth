@@ -21,7 +21,20 @@ function makeFakeMcp(overrides: Partial<McpHost> = {}): McpHost {
 }
 
 function install(mcp: McpHost): void {
-  setHost({ kind: 'browser', mcp, files: { saveFile: vi.fn(), saveFileAsync: vi.fn(async () => 'saved' as const) } } as unknown as Host);
+  setHost({
+    kind: 'browser',
+    mcp,
+    files: { saveFile: vi.fn(), saveFileAsync: vi.fn(async () => 'saved' as const) },
+    oauth: {
+      fetch: vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        body: '{}',
+      })),
+    },
+  } as unknown as Host);
 }
 
 let mcp: McpHost;

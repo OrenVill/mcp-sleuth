@@ -43,7 +43,7 @@ const secretInputClass =
   'px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-100 text-sm placeholder-zinc-600 focus:outline-none transition-colors';
 
 /** UI-only distinction: both map to `ServerAuth.method === 'bearer'`. */
-type AuthChoice = 'none' | 'oauth_access' | 'bearer' | 'api_key' | 'basic';
+type AuthChoice = 'none' | 'oauth' | 'oauth_access' | 'bearer' | 'api_key' | 'basic';
 type EnvRow = { key: string; value: string; storedKey?: string };
 
 const EMPTY_ENV_ROW: EnvRow = { key: '', value: '' };
@@ -57,6 +57,11 @@ const AUTH_OPTIONS: {
   hint?: string;
 }[] = [
   { choice: 'none', title: 'No authentication' },
+  {
+    choice: 'oauth',
+    title: 'OAuth (PKCE sign-in)',
+    hint: 'Discover the authorization server and sign in in your browser. Tokens stay in the vault.',
+  },
   {
     choice: 'oauth_access',
     title: 'OAuth access token',
@@ -81,6 +86,7 @@ const AUTH_OPTIONS: {
 
 function choiceFromAuth(auth?: ServerAuth): AuthChoice {
   if (!auth || auth.method === 'none') return 'none';
+  if (auth.method === 'oauth') return 'oauth';
   if (auth.method === 'bearer') return 'bearer';
   if (auth.method === 'api_key') return 'api_key';
   if (auth.method === 'basic') return 'basic';
@@ -199,6 +205,12 @@ export function ServerFormDialog({
     switch (authChoice) {
       case 'none':
         return undefined;
+      case 'oauth':
+        return {
+          method: 'oauth',
+          oauth:
+            initialValues?.auth?.method === 'oauth' ? initialValues.auth.oauth : undefined,
+        };
       case 'oauth_access':
       case 'bearer':
         return { method: 'bearer', bearerToken: bearerToken.trim() };
@@ -222,6 +234,8 @@ export function ServerFormDialog({
   function validateAuth(): string | null {
     switch (authChoice) {
       case 'none':
+        return null;
+      case 'oauth':
         return null;
       case 'oauth_access':
       case 'bearer':
@@ -516,6 +530,13 @@ export function ServerFormDialog({
 
               {selectedHint && authChoice !== 'none' && (
                 <p className="text-[11px] text-zinc-500 pt-0.5">{selectedHint}</p>
+              )}
+
+              {authChoice === 'oauth' && (
+                <p className="text-[11px] text-zinc-500 pt-1">
+                  Connect once to open the provider sign-in page. After authorization, access and
+                  refresh tokens are stored encrypted and never shown again.
+                </p>
               )}
 
               {(authChoice === 'oauth_access' || authChoice === 'bearer') && (

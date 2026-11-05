@@ -4,6 +4,7 @@ import { browserFilesHost } from './filesBrowser';
 import { browserSecretsHost } from './secretsBrowser';
 import { browserUpdateHost } from './updatesBrowser';
 import { llmBrowser } from './llmBrowser';
+import { oauthBrowserHost } from './oauthBrowser';
 
 export const browserHost: Host = {
   kind: 'browser',
@@ -12,4 +13,5 @@ export const browserHost: Host = {
   secrets: browserSecretsHost,
   updates: browserUpdateHost,
   llm: llmBrowser,
+  oauth: oauthBrowserHost,
 };

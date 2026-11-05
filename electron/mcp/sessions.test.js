@@ -14,6 +14,7 @@ function fakeClient() {
     listPrompts: vi.fn(async () => ({ prompts: [] })),
     getPrompt: vi.fn(async () => ({ messages: [] })),
     setNotificationHandler: vi.fn(),
+    setRequestHandler: vi.fn(),
   };
 }
 

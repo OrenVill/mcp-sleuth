@@ -10,6 +10,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import { createInsecureFetch } from '../electron/mcp/insecureFetch.js';
+import { chainHandler, isConnectionDeadError, isSessionLostError, isSseDisconnectSuspect } from '../electron/mcp/sessionRecovery.js';
 import { attachReverseRequestHandlers, DETECTIVE_CLIENT_CAPABILITIES } from '../mcp/reverseHandlers.js';
 
 const SERVER_ID = /^[A-Za-z0-9_-]{1,128}$/;
