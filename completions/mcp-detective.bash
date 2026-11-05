@@ -9,11 +9,12 @@ _mcp_detective() {
   second="${COMP_WORDS[2]}"
 
   local -a top_cmds=(
-    readiness audit export call provider server chat tui add-completions help stop
+    readiness check audit export call provider server chat tui add-completions help stop
   )
   local -a daemon_opts=(--no-open)
   local -a global_flags=(
     --json --discover --server --passphrase-file --provider-id --servers
+    --min-readiness --fail-on-injection --replay
     -o --output --args
   )
 
@@ -27,7 +28,7 @@ _mcp_detective() {
 
   # Value-taking flags: no completion after the flag name.
   case "$prev" in
-    -o | --output | --server | --passphrase-file | --provider-id | --servers | --args)
+    -o | --output | --server | --passphrase-file | --provider-id | --servers | --args | --min-readiness | --replay)
       return 0
       ;;
   esac
@@ -64,7 +65,7 @@ _mcp_detective() {
         _mcp_detective_complete_flags
       fi
       ;;
-    call | readiness | chat | tui | help)
+    call | readiness | check | chat | tui | help)
       _mcp_detective_complete_flags
       ;;
     stop)

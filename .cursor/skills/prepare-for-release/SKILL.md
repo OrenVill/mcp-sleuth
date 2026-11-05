@@ -47,6 +47,15 @@ mcp-detective stop
 
 Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-detective.js` for the lock path).
 
+**CI gate (`check`):** With the vault passphrase in env and a server already saved, run:
+
+```bash
+mcp-detective check --server "<name>" --json --fail-on-injection
+echo $?
+```
+
+Confirm JSON on stdout includes `ok`, `readiness`, and `injection`. Exit codes: `0` pass, `10` readiness below `--min-readiness` (default 70), `11` injection findings with `--fail-on-injection`, `12` replay failure with `--replay`. Connection or vault errors exit `1`; missing `--server` exits `2`.
+
 **Why this matters:** The daemon/lock-file and stop subcommand were added in v0.6.0. If either is broken, the CLI is the user's primary entry point and the release is a regression.
 
 ---

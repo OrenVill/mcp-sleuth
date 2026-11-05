@@ -113,6 +113,7 @@ const CLI_SUBCOMMANDS = new Set([
   'chat',
   'tui',
   'readiness',
+  'check',
   'audit',
   'export',
   'call',
