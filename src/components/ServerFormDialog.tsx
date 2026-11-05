@@ -3,6 +3,7 @@ import type { ServerAuth, ServerStdioConfig, ServerTransport } from '../types';
 import { envRowsToMap, hasDuplicateEnvKeys, parseArgsLines } from '../lib/stdioParse';
 import { isKeptSecret } from '../lib/secretFields';
 import { isHttpsUrl } from '../lib/serverUrl';
+import { oauthRedirectUrl } from '../lib/mcpOAuth/constants';
 import { SecretInput } from './SecretInput';
 
 export interface ServerFormValues {
@@ -60,7 +61,7 @@ const AUTH_OPTIONS: {
   {
     choice: 'oauth',
     title: 'OAuth (PKCE sign-in)',
-    hint: 'Discover the authorization server and sign in in your browser. Tokens stay in the vault.',
+    hint: 'Sign in in your browser. Servers without automatic registration (e.g. GitHub MCP) need an OAuth app Client ID in the fields below.',
   },
   {
     choice: 'oauth_access',
@@ -150,6 +151,12 @@ export function ServerFormDialog({
   const [basicPassword, setBasicPassword] = useState(() =>
     initialValues?.auth?.method === 'basic' ? (initialValues.auth.basicPassword ?? '') : '',
   );
+  const [oauthClientId, setOauthClientId] = useState(() =>
+    initialValues?.auth?.method === 'oauth' ? (initialValues.auth.oauth?.clientId ?? '') : '',
+  );
+  const [oauthClientSecret, setOauthClientSecret] = useState(() =>
+    initialValues?.auth?.method === 'oauth' ? (initialValues.auth.oauth?.clientSecret ?? '') : '',
+  );
   const [stdioCommand, setStdioCommand] = useState(() => initialStdioCommand);
   const [stdioArgsText, setStdioArgsText] = useState(() => initialStdioArgsText);
   const [stdioCwd, setStdioCwd] = useState(() => initialStdioCwd);
@@ -180,11 +187,18 @@ export function ServerFormDialog({
     initialValues?.auth?.method === 'basic' ? (initialValues.auth.basicUsername ?? '') : '';
   const initialBasicPassword =
     initialValues?.auth?.method === 'basic' ? (initialValues.auth.basicPassword ?? '') : '';
+  const initialOauthClientId =
+    initialValues?.auth?.method === 'oauth' ? (initialValues.auth.oauth?.clientId ?? '') : '';
+  const initialOauthClientSecret =
+    initialValues?.auth?.method === 'oauth' ? (initialValues.auth.oauth?.clientSecret ?? '') : '';
   // A masked initial value is the form's only evidence that the server already
   // has a credential here — it never receives the credential itself.
   const hasStoredBearer = isKeptSecret(initialBearerToken);
   const hasStoredApiKey = isKeptSecret(initialApiKeyValue);
   const hasStoredBasicPassword = isKeptSecret(initialBasicPassword);
+  const hasStoredOauthClientSecret = isKeptSecret(initialOauthClientSecret);
+  const oauthCallbackUrl =
+    typeof window !== 'undefined' ? oauthRedirectUrl(window.location.origin) : '/oauth/callback';
   const httpFieldsEdited =
     url !== initialUrl ||
     proxyThroughLocal !== initialProxyThroughLocal ||
@@ -194,7 +208,9 @@ export function ServerFormDialog({
     apiKeyHeader !== initialApiKeyHeader ||
     apiKeyValue !== initialApiKeyValue ||
     basicUser !== initialBasicUser ||
-    basicPassword !== initialBasicPassword;
+    basicPassword !== initialBasicPassword ||
+    oauthClientId !== initialOauthClientId ||
+    oauthClientSecret !== initialOauthClientSecret;
   const stdioFieldsEdited =
     stdioCommand !== initialStdioCommand ||
     stdioArgsText !== initialStdioArgsText ||
@@ -205,12 +221,18 @@ export function ServerFormDialog({
     switch (authChoice) {
       case 'none':
         return undefined;
-      case 'oauth':
+      case 'oauth': {
+        const prev =
+          initialValues?.auth?.method === 'oauth' ? initialValues.auth.oauth : undefined;
         return {
           method: 'oauth',
-          oauth:
-            initialValues?.auth?.method === 'oauth' ? initialValues.auth.oauth : undefined,
+          oauth: {
+            ...prev,
+            clientId: oauthClientId.trim() || undefined,
+            clientSecret: oauthClientSecret,
+          },
         };
+      }
       case 'oauth_access':
       case 'bearer':
         return { method: 'bearer', bearerToken: bearerToken.trim() };
@@ -235,8 +257,16 @@ export function ServerFormDialog({
     switch (authChoice) {
       case 'none':
         return null;
-      case 'oauth':
+      case 'oauth': {
+        const needsClientId =
+          /githubcopilot\.com/i.test(url.trim()) &&
+          !oauthClientId.trim() &&
+          !initialOauthClientId.trim();
+        if (needsClientId) {
+          return 'GitHub MCP requires an OAuth app Client ID (GitHub does not register clients automatically). Create a GitHub OAuth App and paste its Client ID below.';
+        }
         return null;
+      }
       case 'oauth_access':
       case 'bearer':
         if (!bearerToken.trim()) return 'Access token is required for this auth method';
@@ -533,10 +563,41 @@ export function ServerFormDialog({
               )}
 
               {authChoice === 'oauth' && (
-                <p className="text-[11px] text-zinc-500 pt-1">
-                  Connect once to open the provider sign-in page. After authorization, access and
-                  refresh tokens are stored encrypted and never shown again.
-                </p>
+                <div className="space-y-3 pt-1">
+                  <p className="text-[11px] text-zinc-500">
+                    Connect to open the provider sign-in page. Access and refresh tokens are stored
+                    encrypted. For GitHub Copilot MCP, create an OAuth app at github.com/settings/developers
+                    and register this callback URL:
+                  </p>
+                  <p className="text-[11px] font-mono text-zinc-400 break-all">{oauthCallbackUrl}</p>
+                  <label className="block text-xs text-zinc-400 font-medium">
+                    OAuth app Client ID
+                    <input
+                      type="text"
+                      autoComplete="off"
+                      value={oauthClientId}
+                      onChange={(e) => setOauthClientId(e.target.value)}
+                      placeholder="Required when the server has no dynamic registration"
+                      className={`${inputClass} font-mono text-xs`}
+                    />
+                  </label>
+                  <div>
+                    <label htmlFor="auth-oauth-client-secret" className="block text-xs text-zinc-400 font-medium">
+                      OAuth app Client secret (optional)
+                    </label>
+                    <div className="mt-1.5">
+                      <SecretInput
+                        id="auth-oauth-client-secret"
+                        label="OAuth app Client secret"
+                        value={oauthClientSecret}
+                        onChange={setOauthClientSecret}
+                        hasStored={hasStoredOauthClientSecret}
+                        placeholder="Confidential apps only"
+                        className={secretInputClass}
+                      />
+                    </div>
+                  </div>
+                </div>
               )}
 
               {(authChoice === 'oauth_access' || authChoice === 'bearer') && (

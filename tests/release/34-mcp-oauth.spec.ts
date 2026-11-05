@@ -9,12 +9,13 @@ test.describe('§3.34 MCP OAuth', () => {
     await setupVault(page);
   });
 
-  test('add-server dialog offers OAuth PKCE sign-in', async ({ page }) => {
+  test('add-server dialog offers OAuth PKCE sign-in and pre-registered client fields', async ({ page }) => {
     await page.getByRole('button', { name: 'Add' }).click();
     const pkce = page.getByRole('radio', { name: 'OAuth (PKCE sign-in)' });
     await pkce.check();
     await expect(pkce).toBeChecked();
     await expect(page.getByText(/sign-in page/i)).toBeVisible();
+    await expect(page.getByLabel('OAuth app Client ID')).toBeVisible();
     await expect(page.locator('#auth-bearer-token')).toHaveCount(0);
   });
 

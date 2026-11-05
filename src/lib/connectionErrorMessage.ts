@@ -206,5 +206,19 @@ function formatGenericMessage(message: string): string {
     );
   }
 
+  if (lower.includes('does not support dynamic client registration')) {
+    return join(
+      'OAuth app registration required',
+      'This MCP server does not register OAuth clients automatically (GitHub Copilot MCP is one example). Edit the server, choose OAuth (PKCE sign-in), and enter the Client ID from your OAuth app. If the app is confidential, enter its Client secret too. Add the callback URL shown in that form as an authorized redirect URI on the OAuth app, then connect again.',
+    );
+  }
+
+  if (lower.includes('protected resource') && lower.includes('does not match expected')) {
+    return join(
+      'OAuth resource mismatch',
+      'The server’s OAuth metadata did not match this connection URL. If you use the local MCP proxy, pull the latest build and try again. You can also paste an access token under OAuth access token.',
+    );
+  }
+
   return join('Connection failed', message);
 }
