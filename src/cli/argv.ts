@@ -44,6 +44,18 @@ export function parseArgv(argv: string[]): {
       flags.servers = argv[++i];
       continue;
     }
+    if (arg === '--min-readiness') {
+      flags.minReadiness = Number(argv[++i]);
+      continue;
+    }
+    if (arg === '--fail-on-injection') {
+      flags.failOnInjection = true;
+      continue;
+    }
+    if (arg === '--replay') {
+      flags.replay = argv[++i];
+      continue;
+    }
     if (arg.startsWith('-')) {
       continue;
     }
@@ -67,6 +79,7 @@ export function isKnownCommand(command: string | null): boolean {
     command === 'call' ||
     command === 'provider' ||
     command === 'server' ||
+    command === 'check' ||
     command === 'add-completions'
   );
 }

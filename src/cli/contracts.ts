@@ -9,6 +9,9 @@ export type GlobalCliFlags = {
   discover?: boolean;
   providerId?: string;
   servers?: string;
+  minReadiness?: number;
+  failOnInjection?: boolean;
+  replay?: string;
 };
 
 export type VaultContext = {
