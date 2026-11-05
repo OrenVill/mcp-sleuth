@@ -72,5 +72,11 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },
+    {
+      command: 'node tests/fixtures/reverse-mcp-server.mjs',
+      port: 3006,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
   ],
 });

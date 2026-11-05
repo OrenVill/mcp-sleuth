@@ -78,14 +78,14 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 150 tests across 32 spec files must pass. Any failure blocks the release.
+All 151 tests across 33 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.32 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.33 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
@@ -94,7 +94,7 @@ tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
 Journal), error handling, the absence of the desktop update notice, Agent Chat, stored
 secrets never reaching an edit form, untrusted content from a connected server, the
 self-signed certificate option, per-server refresh of tools (without disconnecting),
-client config import, and contract drift snapshots.
+client config import, contract drift snapshots, and server-initiated MCP requests.
 
 **§3.31 — Client config import (manual pass):** From the server sidebar, click **Import**, paste
 a Cursor/Claude/VS Code `mcp.json` snippet (or choose a file), confirm the preview counts, and
@@ -106,6 +106,11 @@ the environment via `mcp-detective server import`. Automated:
 **§3.32 — Contract drift (manual pass):** Dev Tools → **Contract Drift** → capture a labeled
 snapshot; confirm **Saved snapshots** and an unchanged drift summary when the server is stable.
 Automated: `tests/release/32-contract-drift.spec.ts`.
+
+**§3.33 — Server requests (manual pass):** Dev Tools → **Server Requests** shows the empty state when
+nothing is pending; when a server uses elicitation or sampling, a card appears for approve/deny.
+Inbound logging/progress notifications appear in Protocol Inspector as inbound traces. Automated:
+`tests/release/33-mcp-reverse-requests.spec.ts`.
 
 **§3.30 — Per-server refresh (manual pass):** With the fixture server connected, click **Refresh**
 beside **Disconnect** in the server list. The row shows **Refreshing…** briefly, stays green

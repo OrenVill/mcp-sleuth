@@ -18,6 +18,11 @@ import {
   isSessionLostError,
   isSseDisconnectSuspect,
 } from '../../mcpSessionRecovery';
+import {
+  attachReverseRequestHandlers,
+  DETECTIVE_CLIENT_CAPABILITIES,
+} from '../../mcpReverseHandlers';
+import { clearPendingReverseRequestsForServer } from '../../mcpReverseRequests';
 import { recordCompletedProtocolTrace } from '../../protocolTrace';
 import { stdioBridgeMcpUrl } from '../../stdioParse';
 import { startStdioSession, stopStdioSession } from '../../stdioSession';
@@ -138,6 +143,7 @@ async function releaseHttpConnection(serverId: string, { notifyClosed = false } 
     transports.delete(serverId);
   }
   connectionMeta.delete(serverId);
+  clearPendingReverseRequestsForServer(serverId);
   if (notifyClosed) emitClosed(serverId);
 }
 
@@ -184,8 +190,12 @@ async function openHttpSession(
     transportUrlForServer(url, proxyThroughLocal, undefined, options),
     requestInit ? { requestInit } : undefined,
   );
-  const client = new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: {} });
+  const client = new Client(
+    { name: 'mcp-detective', version: '0.1.0' },
+    { capabilities: DETECTIVE_CLIENT_CAPABILITIES },
+  );
 
+  attachReverseRequestHandlers(client, serverId);
   await client.connect(transport);
   attachTransportHandlers(serverId, client, transport);
   clients.set(serverId, client);
