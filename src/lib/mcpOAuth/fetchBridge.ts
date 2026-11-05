@@ -2,6 +2,13 @@ import type { FetchLike } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { getHost } from '../host';
 import { MCP_OAUTH_PROXY_PATH } from './constants';
 
+/** @internal testable — null means call fetch(input) directly (MCP proxy on same origin). */
+export function oauthProxyWrapTarget(href: string, pageOrigin: string): string | null {
+  const resolved = new URL(href, pageOrigin);
+  if (resolved.origin === pageOrigin) return null;
+  return `${pageOrigin}${MCP_OAUTH_PROXY_PATH}?target=${encodeURIComponent(href)}`;
+}
+
 export function createMcpOAuthFetch(): FetchLike {
   return getHost().kind === 'electron'
     ? async (input, init) => {
@@ -30,9 +37,12 @@ export function createMcpOAuthFetch(): FetchLike {
           headers: result.headers,
         });
       }
-    : async (input, init) =>
-        fetch(
-          `${window.location.origin}${MCP_OAUTH_PROXY_PATH}?target=${encodeURIComponent(typeof input === 'string' ? input : input.href)}`,
-          init,
-        );
+    : async (input, init) => {
+        const href = typeof input === 'string' ? input : input.href;
+        const wrapped = oauthProxyWrapTarget(href, window.location.origin);
+        if (wrapped === null) {
+          return fetch(input, init);
+        }
+        return fetch(wrapped, init);
+      };
 }
