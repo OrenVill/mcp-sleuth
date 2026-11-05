@@ -21,6 +21,7 @@ interface Props {
   onEdit: (id: string) => void;
   onRemove: (id: string) => void;
   onAddClick: () => void;
+  onImportClick?: () => void;
 }
 
 function ServerErrorMessage({ text }: { text: string }) {
@@ -61,6 +62,7 @@ export function ServerList({
   onEdit,
   onRemove,
   onAddClick,
+  onImportClick,
 }: Props) {
   return (
     <aside className="w-80 shrink-0 border-r border-zinc-800/80 flex flex-col h-full bg-zinc-950/40">
@@ -71,16 +73,27 @@ export function ServerList({
           </h2>
           <span className="text-[11px] text-zinc-600">{servers.length}</span>
         </div>
-        <button
-          type="button"
-          onClick={onAddClick}
-          className="text-xs px-2.5 py-1 rounded-md bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-medium shadow-sm shadow-violet-950/50 transition-colors flex items-center gap-1"
-        >
+        <div className="flex items-center gap-1.5">
+          {onImportClick && (
+            <button
+              type="button"
+              onClick={onImportClick}
+              className="text-xs px-2 py-1 rounded-md border border-zinc-700 text-zinc-300 hover:text-zinc-100 hover:border-zinc-600 transition-colors"
+            >
+              Import
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onAddClick}
+            className="text-xs px-2.5 py-1 rounded-md bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white font-medium shadow-sm shadow-violet-950/50 transition-colors flex items-center gap-1"
+          >
           <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
           Add
         </button>
+        </div>
       </div>
       <ul className="flex-1 overflow-y-auto py-1">
         {servers.length === 0 && (

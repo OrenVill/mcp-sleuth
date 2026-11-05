@@ -46,6 +46,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useVault } from './hooks/useVault';
 import { makeId } from './lib/serverRecord';
+import { ImportClientConfigDialog } from './components/ImportClientConfigDialog';
 
 // Both live behind a toggle and together account for ~2,600 lines that used to
 // sit in the initial bundle. Loading them on demand keeps first paint lean for
@@ -110,6 +111,7 @@ export default function App() {
   }, [selectedId]);
   /** Bumps when the add/edit modal opens so the form remounts with fresh initial state (no reset-in-effect). */
   const [dialogFormKey, setDialogFormKey] = useState(0);
+  const [importConfigOpen, setImportConfigOpen] = useState(false);
 
   const clearSelection = useCallback(() => {
     setSelectedId(null);
@@ -432,6 +434,18 @@ export default function App() {
     setDialogFormKey((k) => k + 1);
     setEditingId(null);
     setDialogMode('add');
+  }
+
+  function handleImportConfigClick() {
+    setImportConfigOpen(true);
+  }
+
+  function handleImportConfigClose() {
+    setImportConfigOpen(false);
+  }
+
+  function handleImportConfigApply(next: ServerEntry[]) {
+    setServers(next);
   }
 
   function handleEditClick(id: string) {
@@ -793,6 +807,7 @@ export default function App() {
           onEdit={handleEditClick}
           onRemove={handleRemove}
           onAddClick={handleAddClick}
+          onImportClick={handleImportConfigClick}
         />
         <ServerBrowser
           server={selectedServer}
@@ -857,6 +872,13 @@ export default function App() {
         onSubmit={handleSubmit}
         validate={dialogValidate}
       />
+      {importConfigOpen && (
+        <ImportClientConfigDialog
+          servers={servers}
+          onImport={handleImportConfigApply}
+          onClose={handleImportConfigClose}
+        />
+      )}
       <GlobalSearch
         servers={servers}
         onSelectTool={handleGlobalSelectTool}

@@ -5,14 +5,12 @@ import { runCall } from './call';
 import { runChat } from './chat';
 import { runExport } from './exportCmd';
 import { runProvider } from './provider';
-import { runCheck } from './check';
 import { runReadiness } from './readiness';
 import { runServer } from './server';
 import { paint, sgr, terminalColorsEnabled } from '../chat/terminalTheme';
 
 export const commandRegistry: Record<string, CommandHandler> = {
   chat: runChat,
-  check: runCheck,
   readiness: runReadiness,
   audit: runAudit,
   export: runExport,
@@ -31,18 +29,16 @@ export function printHelp(): void {
 
 ${dim('Subcommands:')}
   ${cmd('readiness')}              Agent Readiness report
-  ${cmd('check')}                  CI gate (readiness, optional injection + replay)
-  ${cmd('audit')} permission|injection
+  ${cmd('audit')} permission|injection|contract
   ${cmd('export')} handoff|tools|client-config
   ${cmd('call')} <tool> [--args JSON]
   ${cmd('provider')} list|add|remove
-  ${cmd('server')} list|add|remove
+  ${cmd('server')} list|add|remove|import
   ${cmd('chat')}                   Agent Chat (alias: tui)
   ${cmd('add-completions')}        Install bash tab completion (~/.bashrc)
   ${cmd('help')}
 
 ${dim('Global flags:')} --server, --json, -o/--output, --passphrase-file, --discover
-${dim('check:')} --min-readiness (default 70), --fail-on-injection, --replay path.json
 ${dim('Env:')} MCP_DETECTIVE_VAULT_PASSPHRASE, MCP_DETECTIVE_DATA_DIR
 
 ${dim('Vault:')} interactive unlock is remembered for 30 minutes (cli-vault-session.json in the data dir).
