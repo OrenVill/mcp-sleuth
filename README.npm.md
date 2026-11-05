@@ -37,6 +37,7 @@ Subcommands use the same vault and servers as the app (`~/.mcp-detective/vault.j
 mcp-detective readiness          # unlock → pick server → markdown report
 mcp-detective readiness --server "My API" --json   # CI (set MCP_DETECTIVE_VAULT_PASSPHRASE)
 mcp-detective audit permission
+mcp-detective audit contract
 mcp-detective export handoff -o handoff.md
 mcp-detective call my_tool --args '{"key":"value"}'
 mcp-detective provider list

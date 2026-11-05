@@ -1,6 +1,7 @@
 import type { AgentRunSummaries } from './agent/types';
 import { getHost } from './host';
 import type { CallRecord } from './history';
+import type { ContractSnapshotsStore } from './contractSnapshots';
 import type { ObservationJournalsStore } from './observationJournal';
 
 export interface AppData {
@@ -10,6 +11,7 @@ export interface AppData {
   observationJournals: ObservationJournalsStore;
   /** Derived per-server agent-run signal. Transcripts are never stored here. */
   agentRuns: AgentRunSummaries;
+  contractSnapshots?: ContractSnapshotsStore;
 }
 
 const DEFAULT: AppData = {
@@ -18,6 +20,7 @@ const DEFAULT: AppData = {
   history: [],
   observationJournals: {},
   agentRuns: {},
+  contractSnapshots: {},
 };
 const LS_BOOKMARKS = 'mcp-detective:bookmarks';
 const LS_HISTORY = 'mcp-detective:call-history';
@@ -64,7 +67,17 @@ function parseAppData(raw: unknown): AppData {
       obj.agentRuns && typeof obj.agentRuns === 'object' && !Array.isArray(obj.agentRuns)
         ? (obj.agentRuns as AgentRunSummaries)
         : {},
+    contractSnapshots:
+      obj.contractSnapshots &&
+      typeof obj.contractSnapshots === 'object' &&
+      !Array.isArray(obj.contractSnapshots)
+        ? (obj.contractSnapshots as ContractSnapshotsStore)
+        : {},
   };
+}
+
+export function parseAppDataJson(raw: unknown): AppData {
+  return parseAppData(raw);
 }
 
 function loadFromLocalStorage(): AppData {
