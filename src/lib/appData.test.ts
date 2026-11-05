@@ -27,7 +27,7 @@ describe('appData (localStorage fallback path)', () => {
     const d = getAppData();
     expect(d.bookmarks).toEqual([]);
     expect(d.history).toEqual([]);
-    expect(d.observationJournals).toEqual({});
+    expect(d.contractSnapshots).toEqual({});
   });
 
   it('initAppData loads from localStorage bookmark key', async () => {

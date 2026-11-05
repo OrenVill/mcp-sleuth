@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react';
 import type { ServerEntry, ToolResult } from '../types';
 import { AgentReadinessPanel } from './AgentReadinessPanel';
+import { ContractDriftPanel } from './ContractDriftPanel';
 import { ObservationJournalPanel } from './ObservationJournalPanel';
 import { PermissionSurfacePanel } from './PermissionSurfacePanel';
 import { PromptInjectionPanel } from './PromptInjectionPanel';
 import { ProtocolInspectorPanel } from './ProtocolInspectorPanel';
 import { ReplaySuitesPanel } from './ReplaySuitesPanel';
 import { SchemaLabPanel } from './SchemaLabPanel';
+import { ReverseRequestsPanel } from './ReverseRequestsPanel';
 
 export type DevToolsTab =
   | 'protocol'
+  | 'reverse'
   | 'replay'
   | 'schema'
   | 'permission'
   | 'injection'
   | 'journal'
-  | 'readiness';
+  | 'readiness'
+  | 'contract';
 
 interface Props {
   open: boolean;
@@ -46,12 +50,14 @@ interface ModalContentProps {
 
 const TABS: Array<{ id: DevToolsTab; label: string }> = [
   { id: 'protocol', label: 'Protocol Inspector' },
+  { id: 'reverse', label: 'Server Requests' },
   { id: 'replay', label: 'Replay Suites' },
   { id: 'schema', label: 'Schema Lab' },
   { id: 'permission', label: 'Permission Surface' },
   { id: 'injection', label: 'Prompt Injection' },
   { id: 'journal', label: 'Observation Journal' },
   { id: 'readiness', label: 'Agent Readiness' },
+  { id: 'contract', label: 'Contract Drift' },
 ];
 
 function DevToolsModalContent({
@@ -117,6 +123,9 @@ function DevToolsModalContent({
           <div hidden={activeTab !== 'protocol'} className="h-full min-h-0 overflow-hidden">
             <ProtocolInspectorPanel servers={servers} />
           </div>
+          <div hidden={activeTab !== 'reverse'} className="h-full min-h-0 overflow-hidden">
+            <ReverseRequestsPanel servers={servers} />
+          </div>
           <div hidden={activeTab !== 'replay'} className="h-full min-h-0 overflow-hidden">
             <ReplaySuitesPanel servers={servers} onReplayToolCall={onReplayToolCall} />
           </div>
@@ -139,6 +148,9 @@ function DevToolsModalContent({
               selectedServerId={selectedServerId}
               selectedToolName={selectedToolName}
             />
+          </div>
+          <div hidden={activeTab !== 'contract'} className="h-full min-h-0 overflow-hidden">
+            <ContractDriftPanel servers={servers} selectedServerId={selectedServerId} />
           </div>
           <div hidden={activeTab !== 'readiness'} className="h-full min-h-0 overflow-hidden">
             <AgentReadinessPanel servers={servers} />
