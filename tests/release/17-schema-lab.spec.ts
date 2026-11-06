@@ -100,7 +100,7 @@ test.describe.serial('§3.17 — Schema Lab', () => {
     await page.locator('aside + aside ul li').filter({ hasText: /./ }).first().click();
     await page.waitForTimeout(300);
 
-    const schemaLabLink = page.getByRole('button', { name: /schema lab/i }).first();
+    const schemaLabLink = page.getByRole('button', { name: /open in schema lab/i }).first();
     if (await schemaLabLink.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await schemaLabLink.click();
       await page.waitForTimeout(500);

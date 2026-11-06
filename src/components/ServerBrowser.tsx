@@ -65,26 +65,43 @@ export function ServerBrowser({
     <>
     <aside className="w-72 shrink-0 border-r border-zinc-800/80 flex flex-col h-full bg-zinc-950/20">
       {(tabs.length > 1 || hasContent) && (
-        <div className="flex items-center border-b border-zinc-800/80 px-2 pt-1">
-          <div className="flex flex-1">
-            {tabs.length > 1 && tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onTabChange(tab.id)}
-                className={[
-                  'px-3 py-2 text-[11px] font-medium transition-colors border-b-2 -mb-px',
-                  resolvedTab === tab.id
-                    ? 'border-violet-500 text-zinc-100'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300',
-                ].join(' ')}
+        <div className="flex items-center border-b border-zinc-800/80 px-2 py-2 gap-2">
+          <div className="flex flex-1 min-w-0">
+            {tabs.length > 1 && (
+              <div
+                className="flex w-full rounded-lg bg-zinc-900/80 p-0.5 border border-zinc-800/90"
+                role="tablist"
+                aria-label="Server content"
               >
-                {tab.label}
-                <span className={['ml-1.5', resolvedTab === tab.id ? 'text-zinc-400' : 'text-zinc-600'].join(' ')}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={resolvedTab === tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={[
+                      'flex-1 min-w-0 px-2 py-1.5 text-[11px] font-medium rounded-md transition-colors',
+                      resolvedTab === tab.id
+                        ? 'bg-zinc-800 text-zinc-100 shadow-sm shadow-black/20'
+                        : 'text-zinc-500 hover:text-zinc-300',
+                    ].join(' ')}
+                  >
+                    <span className="block truncate text-center">
+                      {tab.label}
+                      <span
+                        className={[
+                          'ml-1 tabular-nums',
+                          resolvedTab === tab.id ? 'text-zinc-400' : 'text-zinc-600',
+                        ].join(' ')}
+                      >
+                        {tab.count}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {hasContent && (
             <button

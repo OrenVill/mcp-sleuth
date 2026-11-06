@@ -93,7 +93,7 @@ The explorer auto-connects, lists all available tools, and generates input forms
 
 ## Agent Chat
 
-Click **Chat** in the toolbar to point a model you supply at a connected MCP server and watch how
+Open **Automate → Chat** in the toolbar to point a model you supply at a connected MCP server and watch how
 it actually uses the tools. It is a test-bench for the server, not a chat client — the output is
 evidence about the server, not a conversation worth keeping.
 

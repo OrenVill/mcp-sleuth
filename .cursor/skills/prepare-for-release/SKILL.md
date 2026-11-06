@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 990 tests
+npm test             # vitest run — 1001 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -78,7 +78,7 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-**Header Tools menu:** **Dev Tools** and **Scenarios** live under the header **Tools** dropdown (⌘K search and **Chat** stay as their own buttons). Manual passes that say "open Dev Tools" mean **Tools → Dev Tools**.
+**Header menus:** **Dev Tools** lives under **Tools**. **Chat** and **Scenarios** live under **Automate** (⌘K search stays its own button). Manual passes that say "open Dev Tools" mean **Tools → Dev Tools**; **Agent Chat** means **Automate → Chat**.
 
 All 154 tests across 34 spec files must pass. Any failure blocks the release.
 
@@ -155,7 +155,7 @@ ollama serve            # then: ollama pull <a tool-capable model>
 npm run dev             # or: mcp-detective
 ```
 
-With the fixture server (or any real server) connected, click **Chat** in the toolbar, add an LLM
+With the fixture server (or any real server) connected, open **Automate → Chat**, add an LLM
 server (Type *OpenAI-compatible*, Base URL `http://127.0.0.1:11434/v1`, no API key), and confirm
 MCP Detective lists that server's models rather than leaving the model box empty. Then, in order:
 

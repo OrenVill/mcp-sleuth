@@ -820,6 +820,65 @@ export default function App() {
                   </svg>
                   <span>Dev Tools</span>
                 </button>
+              </div>
+            )}
+          </Popover>
+          <Popover
+            align="right"
+            testId="header-automate-menu"
+            aria-label="Automate menu"
+            panelClassName="p-1 min-w-[11rem]"
+            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1"
+            trigger={({ open }) => (
+              <>
+                <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                  <path
+                    d="M8 2v2.5M8 11.5V14M3 8h2.5M10.5 8H13M4.75 4.75l1.75 1.75M9.5 9.5l1.75 1.75M4.75 11.25l1.75-1.75M9.5 4.25l1.75-1.75"
+                    stroke="currentColor"
+                    strokeWidth="1.25"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span>Automate</span>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className={['w-2.5 h-2.5 text-zinc-500 transition-transform', open ? 'rotate-180' : ''].join(' ')}
+                  aria-hidden
+                >
+                  <path
+                    d="m4 6 4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </>
+            )}
+          >
+            {({ close }) => (
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  title="Agent Chat"
+                  data-testid="open-agent-chat"
+                  className="w-full text-left rounded-md px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  onClick={() => {
+                    close();
+                    setAgentChatOpen(true);
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 shrink-0 text-zinc-400" aria-hidden>
+                    <path
+                      d="M2.5 3.5h11v7h-6l-3.5 2.5v-2.5h-1.5z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>Chat</span>
+                </button>
                 <button
                   type="button"
                   title="Scenario Runner"
@@ -838,23 +897,6 @@ export default function App() {
               </div>
             )}
           </Popover>
-          <button
-            type="button"
-            onClick={() => setAgentChatOpen(true)}
-            title="Agent Chat"
-            data-testid="open-agent-chat"
-            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1"
-          >
-            <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
-              <path
-                d="M2.5 3.5h11v7h-6l-3.5 2.5v-2.5h-1.5z"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span>Chat</span>
-          </button>
           <button
             type="button"
             onClick={() => {
