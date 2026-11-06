@@ -224,15 +224,17 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion.version),
   },
-  // Pin the default port and fail fast if 5173 is taken — `electron:dev` and the
-  // Electron main process default to http://localhost:5173 for the dev URL.
+  // Dev / preview must listen on all interfaces so dev containers and Docker port
+  // forwards work (host browser → container). localhost-only bindings are unreachable
+  // from outside the container. Prefer 5173/4173; if busy, Vite picks the next port
+  // unless strictPort is set — match `MCP_DETECTIVE_DEV_URL` for Electron to that URL.
   server: {
+    host: true,
     port: 5173,
-    strictPort: true,
   },
   preview: {
+    host: true,
     port: 4173,
-    strictPort: true,
   },
   plugins: [
     localEndpointGuardPlugin(),
