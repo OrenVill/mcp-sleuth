@@ -23,6 +23,7 @@ export function isTrustedSender(event) {
   }
   return isTrustedSenderUrl(url, {
     appOrigin: APP_ORIGIN,
-    devUrl: process.env.MCP_SLEUTH_DEV_URL,
+    // Match main.js / window.js: electron:dev sets MCP_DETECTIVE_DEV_URL; legacy rename still uses MCP_SLEUTH_DEV_URL.
+    devUrl: process.env.MCP_DETECTIVE_DEV_URL ?? process.env.MCP_SLEUTH_DEV_URL,
   });
 }
