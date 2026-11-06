@@ -274,7 +274,7 @@ loose on the server and showing you what it does.
 It is a **test-bench for the server, not a chat client.** There is no cross-session memory, no
 attachments, and no productivity workflow. The output is evidence about the server.
 
-Open it with **Automate → Chat** in the toolbar.
+Open it with **Automate → Chat** in the toolbar. Chat opens in the same kind of **centered modal** as Dev Tools and Scenario Runner — dimmed backdrop, **Close** in the header, and **Escape** still closes it unless a picker or approval card has focus.
 
 ### Bring your own model
 

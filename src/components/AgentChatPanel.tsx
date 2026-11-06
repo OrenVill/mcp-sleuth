@@ -331,8 +331,10 @@ export function AgentChatPanel({
 
   return (
     <div
-      data-testid="agent-chat-panel"
-      className="fixed inset-0 z-50 bg-zinc-950 flex flex-col"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
     >
       {/*
         `app-header` is load-bearing on the desktop build, not decoration: it is
@@ -341,29 +343,17 @@ export function AgentChatPanel({
         moved at all while the chat is open. WindowControls below restores
         minimise/maximise/close for the same reason.
       */}
-      <header className="app-header shrink-0 flex items-center gap-3 pl-3 pr-3 h-16 border-b border-zinc-800 bg-gradient-to-b from-zinc-900/80 to-zinc-900/30">
-        <button
-          type="button"
-          onClick={onClose}
-          title="Back to servers"
-          aria-label="Back to servers"
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-zinc-500 hover:text-zinc-100 hover:bg-zinc-800/80 transition-colors"
-        >
-          <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" aria-hidden>
-            <path
-              d="M10 3.5 5.5 8l4.5 4.5"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </button>
-
-        <div className="h-5 w-px bg-zinc-800" aria-hidden />
-
-        <div className="flex items-center gap-2.5 min-w-0">
-          <span className="flex items-center justify-center w-8 h-8 rounded-lg border border-violet-800/50 bg-violet-950/40 text-violet-300">
+      <div
+        data-testid="agent-chat-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="agent-chat-title"
+        className="relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-[min(96rem,calc(100vw-2rem))] mx-4 h-[min(90vh,52rem)] overflow-hidden"
+        onClick={(event) => event.stopPropagation()}
+      >
+      <header className="app-header shrink-0 flex items-center gap-3 pl-5 pr-3 min-h-[4rem] py-2 border-b border-zinc-800/80 bg-zinc-900">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <span className="flex items-center justify-center w-8 h-8 rounded-lg border border-violet-800/50 bg-violet-950/40 text-violet-300 shrink-0">
             <svg viewBox="0 0 16 16" fill="none" className="w-4 h-4" aria-hidden>
               <path
                 d="M2.5 3.5h11v7h-6l-3.5 2.5v-2.5h-1.5z"
@@ -374,7 +364,9 @@ export function AgentChatPanel({
             </svg>
           </span>
           <div className="flex flex-col min-w-0 leading-tight">
-            <span className="text-sm font-medium text-zinc-100">Agent Chat</span>
+            <span id="agent-chat-title" className="text-sm font-semibold text-zinc-100">
+              Agent Chat
+            </span>
             {/*
               A status line rather than a bare tool count: whether the chat can
               run at all is the thing a reader needs first, and it was previously
@@ -462,6 +454,17 @@ export function AgentChatPanel({
               )
             }
           />
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close agent chat"
+            aria-label="Close agent chat"
+            className="text-zinc-500 hover:text-zinc-200 transition-colors rounded-md p-1 hover:bg-zinc-800 shrink-0"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4" aria-hidden>
+              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+          </button>
           <WindowControls />
         </div>
       </header>
@@ -470,7 +473,7 @@ export function AgentChatPanel({
         <div
           data-testid="agent-notice"
           role="status"
-          className="pointer-events-none absolute left-1/2 top-16 z-10 -translate-x-1/2"
+          className="pointer-events-none absolute left-1/2 top-[4.5rem] z-10 -translate-x-1/2"
         >
           <p className="rounded-full border border-violet-800/60 bg-violet-950/90 px-3.5 py-1.5 text-[11px] text-violet-200 shadow-lg backdrop-blur">
             {notice}
@@ -841,6 +844,7 @@ export function AgentChatPanel({
             )}
           </div>
         </aside>
+      </div>
       </div>
     </div>
   );
