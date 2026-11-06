@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Cursor — local rules, skills, agent state (not part of the published tree)
+.cursor/
+.cursorrules
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
