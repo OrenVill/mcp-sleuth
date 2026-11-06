@@ -154,8 +154,11 @@ npm run package           # installers for the current platform
 npm run package:linux     # AppImage + deb
 ```
 
-`npm run electron:dev` sets `MCP_DETECTIVE_DEV_URL=http://localhost:5173`, so run `npm run dev` in
-another terminal alongside it; renderer edits then hot-reload into the Electron window.
+`npm run electron:dev` sets `MCP_DETECTIVE_DEV_URL=http://localhost:5173` (via a small Node launcher so
+this works on Windows too), so run `npm run dev` in another terminal alongside it; renderer edits then
+hot-reload into the Electron window. The Vite dev server is pinned to **5173** (`strictPort`) so it does not
+silently jump to another port and leave Electron pointing at a blank URL — if 5173 is busy, free it or set
+`MCP_DETECTIVE_DEV_URL` to match your Vite URL before running Electron.
 
 ## Data directory
 
