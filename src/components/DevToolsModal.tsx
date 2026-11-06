@@ -79,7 +79,7 @@ function DevToolsModalContent({
       aria-hidden={false}
     >
       <div
-        className="pointer-events-auto relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-[min(100vw-2rem,48rem)] max-h-[min(84vh,calc(100vh-2rem))]"
+        className="pointer-events-auto relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-[min(100vw-1rem,92rem)] h-[min(92vh,calc(100vh-1rem))]"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
