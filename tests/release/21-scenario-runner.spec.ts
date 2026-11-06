@@ -5,6 +5,14 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
   let ctx: BrowserContext;
   let page: Page;
 
+  /** Pick the fixture server's echo_markdown tool on a scenario step (combobox + portalled listbox). */
+  async function selectEchoMarkdown(stepIndex: number) {
+    const panel = page.getByTestId('scenario-runner-panel');
+    await panel.getByTestId(`scenario-step-tool-select-${stepIndex}`).click();
+    await page.getByRole('option', { name: /Fixture.*echo_markdown|echo_markdown/i }).first().click();
+    await page.waitForTimeout(200);
+  }
+
   test.beforeAll(async ({ browser }) => {
     ctx = await browser.newContext();
     page = await ctx.newPage();
@@ -63,17 +71,40 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
     await page.keyboard.press('Escape');
   });
 
-  test('invalid JSON in Arguments field shows inline error', async () => {
-    const argsField = page.locator('textarea').first();
-    if (await argsField.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await argsField.fill('{ invalid json');
+  test('adding another step collapses the previous step', async () => {
+    const addStepBtn = page.getByRole('button', { name: /add step/i }).first();
+    await addStepBtn.click();
+    await page.waitForTimeout(300);
+
+    await expect(page.getByTestId('scenario-step-collapsed-0')).toBeVisible({ timeout: 3_000 });
+    await expect(
+      page.getByTestId('scenario-step-collapsed-0').getByText('Select a tool…'),
+    ).toBeVisible({ timeout: 2_000 });
+    await expect(page.getByTestId('scenario-step-tool-select-1')).toBeVisible({ timeout: 3_000 });
+  });
+
+  test('schema-based step shows message field; invalid JSON in override shows error', async () => {
+    const panel = page.getByTestId('scenario-runner-panel');
+    if (!await panel.isVisible({ timeout: 1_000 }).catch(() => false)) {
+      await page.getByTestId('header-automate-menu').click();
+      await page.getByTestId('open-scenarios').click();
       await page.waitForTimeout(300);
-      await page.screenshot({ path: 'test-results/21-invalid-json-error.png' });
-      const errorMsg = page.locator('text=/invalid|error/i').first();
-      await expect(errorMsg).toBeVisible({ timeout: 2_000 });
-      await argsField.fill('{}');
-      await page.waitForTimeout(200);
     }
+    await selectEchoMarkdown(1);
+    await expect(page.getByTestId('scenario-step-args-form-1')).toBeVisible({ timeout: 3_000 });
+    await expect(page.locator('label').filter({ hasText: 'message' }).first()).toBeVisible({
+      timeout: 2_000,
+    });
+
+    await page.getByRole('button', { name: 'Edit as JSON' }).click();
+    await page.waitForTimeout(200);
+    const argsJson = page.getByTestId('scenario-step-args-json-1');
+    await argsJson.fill('{ invalid json');
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: 'test-results/21-invalid-json-error.png' });
+    await expect(page.locator('text=Invalid JSON').first()).toBeVisible({ timeout: 2_000 });
+    await argsJson.fill('{}');
+    await page.waitForTimeout(200);
   });
 
   test('assertion type selector shows all five types', async () => {
@@ -84,11 +115,14 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
       await addAssertionBtn.click();
       await page.waitForTimeout(300);
     }
-    const assertionTypeSelect = page.getByTestId('scenario-assertion-type-select-0').first();
+    const assertionTypeSelect = page.getByTestId('scenario-assertion-type-select-1').first();
     if (await assertionTypeSelect.isVisible({ timeout: 2_000 }).catch(() => false)) {
       await assertionTypeSelect.click();
-      const options = await page.getByRole('option').allTextContents();
-      await page.keyboard.press('Escape');
+      const optionCount = await page.getByRole('option').count();
+      const options = optionCount > 0 ? await page.getByRole('option').allTextContents() : [];
+      if (optionCount > 0) {
+        await page.keyboard.press('Escape');
+      }
       const types = options.map((t) => t.toLowerCase());
       expect(types.some((t) => t.includes('status'))).toBe(true);
       expect(types.some((t) => t.includes('field') || t.includes('exist'))).toBe(true);
@@ -98,23 +132,54 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
   });
 
   test('clicking Run executes scenario and shows pass/fail badge', async () => {
-    const assertionTypeSelect = page.getByTestId('scenario-assertion-type-select-0').first();
+    const panel = page.getByTestId('scenario-runner-panel');
+    await expect(panel).toBeVisible({ timeout: 3_000 });
+
+    async function ensureExpanded(stepNum: number) {
+      const expand = panel.getByRole('button', { name: `Expand step ${stepNum}` });
+      if (await expand.isVisible({ timeout: 800 }).catch(() => false)) {
+        await expand.click();
+        await page.waitForTimeout(150);
+      }
+    }
+    await ensureExpanded(1);
+    await ensureExpanded(2);
+    await selectEchoMarkdown(0);
+    await selectEchoMarkdown(1);
+
+    const form0 = panel.getByTestId('scenario-step-args-form-0');
+    const json0 = panel.getByTestId('scenario-step-args-json-0');
+    if (await form0.isVisible({ timeout: 1_500 }).catch(() => false)) {
+      await form0.locator('input[type="text"]').fill('run-a');
+    } else {
+      await json0.fill(JSON.stringify({ message: 'run-a' }));
+    }
+    const form1 = panel.getByTestId('scenario-step-args-form-1');
+    const json1 = panel.getByTestId('scenario-step-args-json-1');
+    if (await form1.isVisible({ timeout: 1_500 }).catch(() => false)) {
+      await form1.locator('input[type="text"]').fill('run-b');
+    } else {
+      await json1.fill(JSON.stringify({ message: 'run-b' }));
+    }
+
+    const assertionTypeSelect = panel.getByTestId('scenario-assertion-type-select-1').first();
     if (await assertionTypeSelect.isVisible({ timeout: 1_000 }).catch(() => false)) {
       await assertionTypeSelect.click();
       await page.getByRole('option', { name: 'Status', exact: true }).click();
       await page.waitForTimeout(200);
     }
-    const runBtn = page.getByRole('button', { name: /▶|run/i }).first();
+
+    const runBtn = panel.getByRole('button', { name: /Run/ });
     await expect(runBtn).toBeVisible({ timeout: 3_000 });
+    await expect(runBtn).toBeEnabled({ timeout: 2_000 });
     await runBtn.click();
-    await page.waitForTimeout(3_000);
+    await expect(panel.getByText(/\d+\/\d+ passed/)).toBeVisible({ timeout: 15_000 });
 
     await page.screenshot({ path: 'test-results/21-run-results.png', fullPage: true });
 
-    const badge = page.locator('text=/pass|fail/i').first();
-    await expect(badge).toBeVisible({ timeout: 5_000 });
+    await expect(panel.locator('text=/✓ Pass|✗ Fail/')).toHaveCount(2, { timeout: 5_000 });
 
-    const header = page.locator('text=/\\d+\\/\\d+ pass/i').first();
+    const header = panel.getByText(/\d+\/\d+ passed/);
     await expect(header).toBeVisible({ timeout: 3_000 });
   });
 

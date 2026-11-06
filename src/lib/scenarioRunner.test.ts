@@ -4,6 +4,7 @@ import {
   addStep,
   evaluateStep,
   runScenario,
+  cleanToolArgs,
   type Scenario,
   type ScenarioStep,
   type StepAssertion,
@@ -22,6 +23,12 @@ function step(overrides: Partial<ScenarioStep> = {}): ScenarioStep {
 }
 
 describe('scenarioRunner', () => {
+  describe('cleanToolArgs', () => {
+    test('drops undefined and empty string keys', () => {
+      expect(cleanToolArgs({ a: 1, b: '', c: undefined, d: 'x' })).toEqual({ a: 1, d: 'x' });
+    });
+  });
+
   describe('createScenario', () => {
     test('creates scenario with generated id and empty steps', () => {
       const scenario = createScenario('My Scenario');

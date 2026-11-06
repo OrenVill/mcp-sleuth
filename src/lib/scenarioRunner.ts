@@ -213,6 +213,11 @@ function evaluateAssertion(
 // Public API
 // ---------------------------------------------------------------------------
 
+/** Drop undefined and empty-string values so optional fields match Invoke behavior. */
+export function cleanToolArgs(args: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(args).filter(([, v]) => v !== undefined && v !== ''));
+}
+
 /** Create a new empty scenario. */
 export function createScenario(name: string): Scenario {
   return {

@@ -106,6 +106,21 @@ export function Select({
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, [open]);
 
+  // When the listbox is portalled, focus may be on an option — still close on Escape
+  // without letting the event reach ancestor dialogs (e.g. Scenario Runner overlay).
+  useEffect(() => {
+    if (!open) return;
+    const onEscapeCapture = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setOpen(false);
+      triggerRef.current?.focus();
+    };
+    document.addEventListener('keydown', onEscapeCapture, true);
+    return () => document.removeEventListener('keydown', onEscapeCapture, true);
+  }, [open]);
+
   const openList = useCallback(() => {
     if (disabled) return;
     setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
@@ -137,6 +152,7 @@ export function Select({
       switch (event.key) {
         case 'Escape':
           event.preventDefault();
+          event.stopPropagation();
           setOpen(false);
           triggerRef.current?.focus();
           return;

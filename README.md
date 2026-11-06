@@ -30,6 +30,7 @@ Three ways to run it:
 - **Observation Journal** — per-server trust notes, tool annotations, invocation observations, and approve/reject decisions; persisted under `~/.mcp-detective/` and exportable as Markdown.
 - **Agent Readiness** — scores connected tools for agent-friendliness; copy a per-tool or per-server report as Markdown from Dev Tools.
 - **Agent Chat** — drive a model you supply (local or cloud) against a connected server and watch how it actually uses the tools. Every tool call is approval-gated, the run's calls can be captured as a Replay Suite or recorded to the Observation Journal, and refusals feed Agent Readiness. See [Agent Chat](#agent-chat).
+- **Scenario Runner** (toolbar **Automate → Scenarios**) — build ordered tool-call chains with **the same schema-driven argument forms as Invoke**; use **Edit as JSON** only when you need raw JSON. New steps start with **no tool selected**; pick one from the list before **Run**. Adding a step **collapses** earlier steps and focuses the new one; expand any step with the chevron when you need several open at once.
 - **Meta-tool discovery** — recognizes tools that exist to discover *other* tools (`list_tools`, `search_tools`, `invoke_tool`, `get_manifest`, etc.) and surfaces a one-click **Discover all tools** button. Discovered tools appear in a collapsible section in the tool list and can be invoked directly or routed through a proxy meta-tool.
 
 ## Tech
