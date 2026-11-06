@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MIDDLE_COLUMN_SHELL } from '../lib/middleColumnLayout';
 import type { ServerEntry, ToolDef } from '../types';
 import { analyzeToolReadiness } from '../lib/agentReadiness';
 import { AgentReadinessBadge } from './AgentReadinessBadge';
@@ -35,7 +36,7 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
   if (!server) {
     if (embedded) return null;
     return (
-      <div className="w-72 shrink-0 border-r border-zinc-800/80 p-6 text-sm text-zinc-500 bg-zinc-950/20">
+      <div className={`${MIDDLE_COLUMN_SHELL} p-6 text-sm text-zinc-500`}>
         <div className="text-zinc-600 text-xs uppercase tracking-wider mb-2">Tools</div>
         Select a server from the left.
       </div>
@@ -45,7 +46,7 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
   if (server.status !== 'connected') {
     if (embedded) return null;
     return (
-      <div className="w-72 shrink-0 border-r border-zinc-800/80 p-6 text-sm bg-zinc-950/20">
+      <div className={`${MIDDLE_COLUMN_SHELL} p-6 text-sm`}>
         <div className="text-zinc-600 text-xs uppercase tracking-wider mb-2">Tools</div>
         <p className="text-zinc-400">
           Connect to <span className="text-zinc-200 font-medium">{server.name}</span> to discover tools.
@@ -125,7 +126,7 @@ export function ToolList({ server, selectedToolName, onSelect, embedded = false 
   }
 
   return (
-    <aside className="w-72 shrink-0 border-r border-zinc-800/80 flex flex-col h-full bg-zinc-950/20">
+    <aside className={`${MIDDLE_COLUMN_SHELL} flex flex-col h-full`}>
       <div className="px-4 py-3.5 border-b border-zinc-800/80 flex items-center justify-between">
         <h2 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400">
           Tools

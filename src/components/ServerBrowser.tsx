@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MIDDLE_COLUMN_SHELL } from '../lib/middleColumnLayout';
 import type { ServerEntry } from '../types';
 import type { CallRecord } from '../lib/history';
 import type { ReplaySuite } from '../lib/replaySuites';
@@ -63,7 +64,7 @@ export function ServerBrowser({
 
   return (
     <>
-    <aside className="min-w-[17.5rem] w-[clamp(17.5rem,22vw,26rem)] shrink-0 border-r border-zinc-800/80 flex flex-col h-full bg-zinc-950/20">
+    <aside className={`${MIDDLE_COLUMN_SHELL} flex flex-col h-full`}>
       {(tabs.length > 1 || hasContent) && (
         <div className="flex items-center border-b border-zinc-800/80 px-2 py-2 gap-2 min-w-0">
           <div className="flex flex-1 min-w-0">
