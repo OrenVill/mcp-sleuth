@@ -12,6 +12,18 @@ dist
 dist-ssr
 *.local
 
+# Cursor — local rules, skills, agent state (not part of the published tree)
+.cursor/
+.cursorrules
+
+# Local devcontainer / devbox (machine-specific)
+.devbox/
+.devcontainer/
+
+# Core dumps (e.g. crashed Electron / native code)
+core
+core.*
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

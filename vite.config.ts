@@ -224,6 +224,18 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion.version),
   },
+  // Dev / preview must listen on all interfaces so dev containers and Docker port
+  // forwards work (host browser → container). localhost-only bindings are unreachable
+  // from outside the container. Prefer 5173/4173; if busy, Vite picks the next port
+  // unless strictPort is set — match `MCP_DETECTIVE_DEV_URL` for Electron to that URL.
+  server: {
+    host: true,
+    port: 5173,
+  },
+  preview: {
+    host: true,
+    port: 4173,
+  },
   plugins: [
     localEndpointGuardPlugin(),
     vaultStoragePlugin(),

@@ -74,7 +74,7 @@ test.describe.serial('Electron — Agent Chat', () => {
       'Add a model to start',
     );
 
-    await page.getByRole('button', { name: 'Back to servers' }).click();
+    await page.getByRole('button', { name: 'Close agent chat' }).click();
     await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
   });
 
@@ -89,7 +89,7 @@ test.describe.serial('Electron — Agent Chat', () => {
     await page.keyboard.type(`${LLM_BASE_URL}/`);
     await expect(baseUrl).toHaveValue(`${LLM_BASE_URL}/`);
     await form.getByRole('button', { name: 'Cancel' }).click();
-    await page.getByRole('button', { name: 'Back to servers' }).click();
+    await page.getByRole('button', { name: 'Close agent chat' }).click();
     await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
   });
 

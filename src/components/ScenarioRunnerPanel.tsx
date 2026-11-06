@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { ServerEntry } from '../types';
 import { Select } from './Select';
 import {
@@ -393,26 +393,58 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
 
   const currentRun = activeScenario ? runResults.get(activeScenario.id) : null;
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      if (document.querySelector('body > [role="listbox"], body > [role="dialog"]')) return;
+      onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div data-selectable className="relative flex bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+      <div
+        data-selectable
+        data-testid="scenario-runner-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="scenario-runner-title"
+        className="relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-4xl mx-4 h-[84vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800/80 shrink-0">
+          <div>
+            <h2 id="scenario-runner-title" className="text-sm font-semibold text-zinc-100">
+              Scenario Runner
+            </h2>
+            <p className="text-xs text-zinc-500 mt-0.5 max-w-2xl">
+              Build ordered tool-call chains, run them, and inspect pass/fail per step.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-zinc-500 hover:text-zinc-200 transition-colors rounded-md p-1 hover:bg-zinc-800"
+            aria-label="Close scenario runner"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4" aria-hidden>
+              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Sidebar — scenario list */}
-        <div className="w-56 shrink-0 border-r border-zinc-800 flex flex-col">
-          <div className="px-3 pt-4 pb-3 border-b border-zinc-800 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-zinc-100">Scenarios</h2>
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-zinc-500 hover:text-zinc-200 transition-colors rounded-md p-1 -mr-1"
-              aria-label="Close"
-            >
-              <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4" aria-hidden>
-                <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
-              </svg>
-            </button>
+        <div className="w-56 shrink-0 border-r border-zinc-800 flex flex-col min-h-0">
+          <div className="px-3 pt-3 pb-2 border-b border-zinc-800 shrink-0">
+            <h3 className="text-[11px] font-semibold tracking-[0.08em] uppercase text-zinc-500">Scenarios</h3>
           </div>
 
           {/* New scenario form */}
@@ -469,7 +501,7 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
         </div>
 
         {/* Main pane */}
-        <div className="flex-1 flex flex-col min-w-0 max-h-[90vh]">
+        <div className="flex-1 flex flex-col min-w-0 min-h-0">
           {!activeScenario ? (
             <div className="flex-1 flex items-center justify-center text-zinc-600 text-sm">
               Select or create a scenario
@@ -545,6 +577,7 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
               </div>
             </>
           )}
+        </div>
         </div>
       </div>
     </div>

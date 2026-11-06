@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MIDDLE_COLUMN_SHELL } from '../lib/middleColumnLayout';
 import type { ServerEntry } from '../types';
 import type { CallRecord } from '../lib/history';
 import type { ReplaySuite } from '../lib/replaySuites';
@@ -63,35 +64,54 @@ export function ServerBrowser({
 
   return (
     <>
-    <aside className="w-72 shrink-0 border-r border-zinc-800/80 flex flex-col h-full bg-zinc-950/20">
+    <aside className={`${MIDDLE_COLUMN_SHELL} flex flex-col h-full`}>
       {(tabs.length > 1 || hasContent) && (
-        <div className="flex items-center border-b border-zinc-800/80 px-2 pt-1">
-          <div className="flex flex-1">
-            {tabs.length > 1 && tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => onTabChange(tab.id)}
-                className={[
-                  'px-3 py-2 text-[11px] font-medium transition-colors border-b-2 -mb-px',
-                  resolvedTab === tab.id
-                    ? 'border-violet-500 text-zinc-100'
-                    : 'border-transparent text-zinc-500 hover:text-zinc-300',
-                ].join(' ')}
+        <div className="flex items-center border-b border-zinc-800/80 px-2 py-2 gap-2 min-w-0">
+          <div className="flex flex-1 min-w-0">
+            {tabs.length > 1 && (
+              <div
+                className="flex w-full min-w-0 overflow-hidden rounded-lg bg-zinc-900/80 p-0.5 border border-zinc-800/90"
+                role="tablist"
+                aria-label="Server content"
               >
-                {tab.label}
-                <span className={['ml-1.5', resolvedTab === tab.id ? 'text-zinc-400' : 'text-zinc-600'].join(' ')}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={resolvedTab === tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    title={`${tab.label} (${tab.count})`}
+                    className={[
+                      'flex-1 min-w-0 px-1.5 sm:px-2 py-1.5 text-[11px] font-medium rounded-md transition-colors',
+                      resolvedTab === tab.id
+                        ? 'bg-zinc-800 text-zinc-100 shadow-sm shadow-black/20'
+                        : 'text-zinc-500 hover:text-zinc-300',
+                    ].join(' ')}
+                  >
+                    {/* Grid so the label can truncate with ellipsis on narrow tabs; count stays full width. */}
+                    <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1">
+                      <span className="min-w-0 truncate text-left">{tab.label}</span>
+                      <span
+                        className={[
+                          'tabular-nums shrink-0',
+                          resolvedTab === tab.id ? 'text-zinc-400' : 'text-zinc-600',
+                        ].join(' ')}
+                      >
+                        {tab.count}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           {hasContent && (
             <button
               type="button"
               onClick={() => setExportOpen(true)}
               title="Export server documentation"
-              className="mb-1 flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors"
+              className="mb-1 shrink-0 flex items-center gap-1 px-2 py-1 text-[10px] font-medium rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800/60 transition-colors"
             >
               <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3" aria-hidden>
                 <path d="M2.75 14A1.75 1.75 0 0 1 1 12.25v-2.5a.75.75 0 0 1 1.5 0v2.5c0 .138.112.25.25.25h10.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 14Z" />

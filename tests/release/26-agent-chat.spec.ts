@@ -24,7 +24,7 @@ async function openChat(page: Page): Promise<void> {
 }
 
 async function closeChat(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Back to servers' }).click();
+  await page.getByRole('button', { name: 'Close agent chat' }).click();
   await expect(page.getByTestId('agent-chat-panel')).toBeHidden();
 }
 

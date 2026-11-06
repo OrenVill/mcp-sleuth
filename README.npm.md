@@ -87,13 +87,13 @@ The explorer auto-connects, lists all available tools, and generates input forms
 - Protocol Inspector timeline for debugging MCP calls, results, errors, and durations
 - Schema Lab for inspecting tool schemas, generating example args, and copying JSON-RPC calls
 - Permission Surface audit, Prompt Injection scan, and Observation Journal for MCP trust evaluation
-- Agent Readiness scoring with **Copy as Markdown** for a single tool or whole server from Dev Tools
+- Agent Readiness scoring with **Copy as Markdown** for a single tool or whole server from Dev Tools (toolbar **Tools** — open **Traffic**, **Testing**, or **Trust & risk**)
 - Meta-tool discovery with one-click **Discover all tools**
 - Agent Chat — drive your own model against a connected server, with every tool call approved by you (see below)
 
 ## Agent Chat
 
-Click **Chat** in the toolbar to point a model you supply at a connected MCP server and watch how
+Open **Automate → Chat** in the toolbar to point a model you supply at a connected MCP server and watch how
 it actually uses the tools. It is a test-bench for the server, not a chat client — the output is
 evidence about the server, not a conversation worth keeping.
 

@@ -133,15 +133,7 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
 
   return (
     <main className="flex-1 overflow-y-auto bg-zinc-950">
-      <div className="max-w-3xl mx-auto px-8 py-8 space-y-6">
-        {metaBinding && discoveryRun && (
-          <DiscoveryHeader
-            meta={metaBinding}
-            run={discoveryRun}
-            onDiscover={(opts) => onDiscover(metaBinding.toolName, opts)}
-            onStop={() => onStop(metaBinding.toolName)}
-          />
-        )}
+      <div className="max-w-3xl mx-auto px-8 py-8 space-y-8">
         <header className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
             <span className="text-zinc-500">{server.name}</span>
@@ -159,70 +151,108 @@ function ToolDetailSession({ server, tool, metaBinding, discoveryRun, onDiscover
           )}
         </header>
 
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400">
-              Arguments
-            </h2>
-            <button
-              type="button"
-              onClick={onOpenSchemaLab}
-              className="text-xs px-2 py-1 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors"
-            >
-              Schema Lab
-            </button>
-          </div>
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-5">
-            <SchemaForm
-              schema={tool.inputSchema}
-              values={values}
-              onChange={(k, v) => setValues((prev) => ({ ...prev, [k]: v }))}
-            />
-            <div className="mt-5 pt-4 border-t border-zinc-800/60 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={run}
-                disabled={loading}
-                className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 active:bg-violet-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium shadow-sm shadow-violet-950/50 transition-colors flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
-                      <path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                    </svg>
-                    Running…
-                  </>
-                ) : (
-                  <>
-                    <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
-                      <path d="M4 2.5v11l9-5.5-9-5.5z" />
-                    </svg>
-                    Run tool
-                  </>
-                )}
-              </button>
-              <code className="text-[11px] text-zinc-500 font-mono truncate flex-1">
-                {Object.keys(cleanedArgs).length > 0
-                  ? JSON.stringify(cleanedArgs)
-                  : '{}'}
-              </code>
+        <section aria-labelledby="tool-invoke-heading" className="space-y-4">
+          <h2
+            id="tool-invoke-heading"
+            className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400"
+          >
+            Invoke
+          </h2>
+          <div>
+            <h3 className="text-xs font-medium text-zinc-300 mb-3">Arguments</h3>
+            <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-5">
+              <SchemaForm
+                schema={tool.inputSchema}
+                values={values}
+                onChange={(k, v) => setValues((prev) => ({ ...prev, [k]: v }))}
+              />
+              <div className="mt-5 pt-4 border-t border-zinc-800/60 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={run}
+                  disabled={loading}
+                  className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 active:bg-violet-700 disabled:opacity-50 disabled:cursor-wait text-white text-sm font-medium shadow-sm shadow-violet-950/50 transition-colors flex items-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+                        <path d="M12 2a10 10 0 0110 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                      </svg>
+                      Running…
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
+                        <path d="M4 2.5v11l9-5.5-9-5.5z" />
+                      </svg>
+                      Run tool
+                    </>
+                  )}
+                </button>
+                <code className="text-[11px] text-zinc-500 font-mono truncate flex-1">
+                  {Object.keys(cleanedArgs).length > 0
+                    ? JSON.stringify(cleanedArgs)
+                    : '{}'}
+                </code>
+              </div>
             </div>
           </div>
         </section>
 
-        <section>
-          <h2 className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400 mb-3">
+        <section aria-labelledby="tool-result-heading" className="space-y-3">
+          <h2
+            id="tool-result-heading"
+            className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400"
+          >
             Result
           </h2>
           <ResultPane key={resultEpoch} result={result} error={error} loading={loading} />
         </section>
 
-        <CallHistory
-          history={history}
-          onReplay={handleReplay}
-          onClear={() => { clearHistory(); setHistory([]); }}
-        />
+        <section aria-labelledby="tool-history-heading" className="space-y-3">
+          <h2 id="tool-history-heading" className="sr-only">
+            Call history
+          </h2>
+          <CallHistory
+            history={history}
+            onReplay={handleReplay}
+            onClear={() => { clearHistory(); setHistory([]); }}
+          />
+        </section>
+
+        <section
+          aria-labelledby="tool-explore-heading"
+          className="pt-6 border-t border-zinc-800/70 space-y-4"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2
+              id="tool-explore-heading"
+              className="text-[11px] font-semibold tracking-[0.12em] uppercase text-zinc-400"
+            >
+              Explore
+            </h2>
+            <button
+              type="button"
+              onClick={onOpenSchemaLab}
+              className="text-xs px-2 py-1 rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors shrink-0"
+            >
+              Open in Schema Lab
+            </button>
+          </div>
+          <p className="text-xs text-zinc-500 leading-relaxed">
+            Meta-tool discovery and schema analysis live here so the invoke flow above stays focused on
+            calling the tool.
+          </p>
+          {metaBinding && discoveryRun && (
+            <DiscoveryHeader
+              meta={metaBinding}
+              run={discoveryRun}
+              onDiscover={(opts) => onDiscover(metaBinding.toolName, opts)}
+              onStop={() => onStop(metaBinding.toolName)}
+            />
+          )}
+        </section>
       </div>
     </main>
   );

@@ -22,6 +22,7 @@ Three ways to run it:
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).
 - **Live tool invocation** with text + structured result display.
+- **Dev Tools (toolbar → Tools)** — three floating panels (**Traffic**, **Testing**, **Trust & risk**). Each opens its own window (stacked when several are open); inside, pick Protocol Inspector, Schema Lab, Replay Suites, and the other inspection panels as before.
 - **Protocol Inspector** — session-local MCP call timeline with method, params, result/error, status, and duration for debugging server behavior.
 - **Schema Lab** — inspect tool input schemas, highlight required fields, generate example arguments, and copy JSON-RPC `tools/call` payloads.
 - **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).
@@ -154,8 +155,11 @@ npm run package           # installers for the current platform
 npm run package:linux     # AppImage + deb
 ```
 
-`npm run electron:dev` sets `MCP_DETECTIVE_DEV_URL=http://localhost:5173`, so run `npm run dev` in
-another terminal alongside it; renderer edits then hot-reload into the Electron window.
+`npm run electron:dev` sets `MCP_DETECTIVE_DEV_URL=http://localhost:5173` (via a small Node launcher so
+this works on Windows too), so run `npm run dev` in another terminal alongside it; renderer edits then
+hot-reload into the Electron window. Vite listens on **`0.0.0.0`** (see `vite.config.ts`) so **dev
+containers** and port forwarding reach it from your host browser. If Vite prints a different port because
+5173 is busy, set `MCP_DETECTIVE_DEV_URL` to that URL before `electron:dev`.
 
 ## Data directory
 
@@ -274,7 +278,7 @@ loose on the server and showing you what it does.
 It is a **test-bench for the server, not a chat client.** There is no cross-session memory, no
 attachments, and no productivity workflow. The output is evidence about the server.
 
-Open it with **Chat** in the toolbar.
+Open it with **Automate → Chat** in the toolbar. Chat opens in the same kind of **centered modal** as Dev Tools and Scenario Runner — dimmed backdrop, **Close** in the header, and **Escape** still closes it unless a picker or approval card has focus.
 
 ### Bring your own model
 

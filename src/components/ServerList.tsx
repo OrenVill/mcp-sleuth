@@ -201,7 +201,7 @@ export function ServerList({
                       title="Refresh tools"
                       aria-label="Refresh tools"
                       disabled={refreshingIds?.has(s.id)}
-                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-wait text-zinc-200 font-medium transition-colors"
+                      className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md bg-zinc-800/80 hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-wait text-zinc-200 font-medium transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
                         onRefresh(s.id);
@@ -224,7 +224,7 @@ export function ServerList({
                               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                             />
                           </svg>
-                          Refreshing…
+                          <span>Refreshing…</span>
                         </>
                       ) : (
                         <>
@@ -237,7 +237,7 @@ export function ServerList({
                               strokeLinejoin="round"
                             />
                           </svg>
-                          Refresh
+                          <span className="max-sm:sr-only">Refresh</span>
                         </>
                       )}
                     </button>
