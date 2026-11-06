@@ -29,6 +29,9 @@ describe('DetectiveOAuthProvider', () => {
       proxyUrl,
       'https://api.githubcopilot.com/mcp',
     );
+    if (!resource) {
+      throw new Error('expected validateResourceURL to return a URL');
+    }
     expect(resource.href).toBe('https://api.githubcopilot.com/mcp');
   });
 });

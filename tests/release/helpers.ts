@@ -78,13 +78,33 @@ export async function selectServer(page: Page, name: string): Promise<void> {
   await page.locator('aside li').filter({ hasText: name }).click();
 }
 
+function devToolsMenuTestIdForTab(tab: string): string {
+  const t = tab.toLowerCase();
+  if (
+    t.includes('protocol') ||
+    t.includes('server requests') ||
+    t.includes('reverse')
+  ) {
+    return 'open-dev-tools-traffic';
+  }
+  if (
+    t.includes('replay') ||
+    t.includes('schema') ||
+    t.includes('contract')
+  ) {
+    return 'open-dev-tools-testing';
+  }
+  return 'open-dev-tools-trust';
+}
+
 export async function openDevTools(page: Page, tab?: string): Promise<void> {
   await page.getByTestId('header-tools-menu').click();
-  await page.getByTestId('open-dev-tools').click();
+  const menuId = tab ? devToolsMenuTestIdForTab(tab) : 'open-dev-tools-traffic';
+  await page.getByTestId(menuId).click();
   if (tab) {
     await page.getByRole('button', { name: tab }).click();
   }
-  // wait for modal to settle
+  // wait for floating dev tools shell to settle (title is "Dev Tools — …")
   await page.locator('text=Dev Tools').first().waitFor({ timeout: 3_000 });
 }
 

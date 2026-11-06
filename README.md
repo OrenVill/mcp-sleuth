@@ -22,6 +22,7 @@ Three ways to run it:
 - **Auto-discovered tool list** — calls `tools/list` after connecting.
 - **Generated input forms** from each tool's JSON Schema (strings, numbers, booleans, enums, JSON for objects/arrays).
 - **Live tool invocation** with text + structured result display.
+- **Dev Tools (toolbar → Tools)** — three floating panels (**Traffic**, **Testing**, **Trust & risk**). Each opens its own window (stacked when several are open); inside, pick Protocol Inspector, Schema Lab, Replay Suites, and the other inspection panels as before.
 - **Protocol Inspector** — session-local MCP call timeline with method, params, result/error, status, and duration for debugging server behavior.
 - **Schema Lab** — inspect tool input schemas, highlight required fields, generate example arguments, and copy JSON-RPC `tools/call` payloads.
 - **Permission Surface** — static audit of tool schemas inferring filesystem, network, shell, and data-access risk (summary per server, not a pass/fail score).

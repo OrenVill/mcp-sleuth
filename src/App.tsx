@@ -7,7 +7,12 @@ import { PromptDetail } from './components/PromptDetail';
 import { VaultLockButton } from './components/VaultLockButton';
 import { VaultSetup } from './components/VaultSetup';
 import { VaultUnlock } from './components/VaultUnlock';
-import type { DevToolsTab } from './components/DevToolsModal';
+import {
+  TAB_GROUP_META,
+  tabToDevToolsGroup,
+  type DevToolsGroupId,
+  type DevToolsTab,
+} from './lib/devToolsGroups';
 
 import {
   ServerFormDialog,
@@ -98,8 +103,10 @@ export default function App() {
   const [selectedPromptName, setSelectedPromptName] = useState<string | null>(null);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [devToolsOpen, setDevToolsOpen] = useState(false);
-  const [devToolsInitialTab, setDevToolsInitialTab] = useState<DevToolsTab>('protocol');
+  /** One floating Dev Tools window per section (Traffic / Testing / Trust & risk); order is stack order. */
+  const [devToolsWindows, setDevToolsWindows] = useState<
+    Array<{ id: string; group: DevToolsGroupId; initialTab: DevToolsTab }>
+  >([]);
   const [scenarioRunnerOpen, setScenarioRunnerOpen] = useState(false);
   const [agentChatOpen, setAgentChatOpen] = useState(false);
   const [refreshingServerIds, setRefreshingServerIds] = useState<Set<string>>(() => new Set());
@@ -653,8 +660,24 @@ export default function App() {
   const connectedCount = servers.filter((s) => s.status === 'connected').length;
 
   function openDevTools(tab: DevToolsTab) {
-    setDevToolsInitialTab(tab);
-    setDevToolsOpen(true);
+    const group = tabToDevToolsGroup(tab);
+    setDevToolsWindows((prev) => {
+      const next = [...prev.filter((w) => w.group !== group), { id: crypto.randomUUID(), group, initialTab: tab }];
+      return next;
+    });
+  }
+
+  function openDevToolsGroup(group: DevToolsGroupId) {
+    const defaults: Record<DevToolsGroupId, DevToolsTab> = {
+      traffic: 'protocol',
+      testing: 'replay',
+      trust: 'permission',
+    };
+    openDevTools(defaults[group]);
+  }
+
+  function closeDevToolsWindow(id: string) {
+    setDevToolsWindows((prev) => prev.filter((w) => w.id !== id));
   }
 
   function handleGlobalSelectTool(serverId: string, toolName: string) {
@@ -807,18 +830,54 @@ export default function App() {
               <div className="flex flex-col gap-0.5">
                 <button
                   type="button"
-                  title="Dev Tools"
-                  data-testid="open-dev-tools"
+                  title={TAB_GROUP_META.traffic.description}
+                  data-testid={TAB_GROUP_META.traffic.menuTestId}
                   className="w-full text-left rounded-md px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
                   onClick={() => {
                     close();
-                    openDevTools('protocol');
+                    openDevToolsGroup('traffic');
                   }}
                 >
                   <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 shrink-0 text-zinc-400" aria-hidden>
                     <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   </svg>
-                  <span>Dev Tools</span>
+                  <span>{TAB_GROUP_META.traffic.stackLabel}</span>
+                </button>
+                <button
+                  type="button"
+                  title={TAB_GROUP_META.testing.description}
+                  data-testid={TAB_GROUP_META.testing.menuTestId}
+                  className="w-full text-left rounded-md px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  onClick={() => {
+                    close();
+                    openDevToolsGroup('testing');
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 shrink-0 text-zinc-400" aria-hidden>
+                    <rect x="3" y="3" width="10" height="11" rx="1" stroke="currentColor" strokeWidth="1.2" />
+                    <path d="M5 6h6M5 9h4M5 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  </svg>
+                  <span>{TAB_GROUP_META.testing.stackLabel}</span>
+                </button>
+                <button
+                  type="button"
+                  title={TAB_GROUP_META.trust.description}
+                  data-testid={TAB_GROUP_META.trust.menuTestId}
+                  className="w-full text-left rounded-md px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  onClick={() => {
+                    close();
+                    openDevToolsGroup('trust');
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 shrink-0 text-zinc-400" aria-hidden>
+                    <path
+                      d="M8 2.2 12.5 4v3.2c0 2.8-1.9 5.4-4.5 6.1-2.6-.7-4.5-3.3-4.5-6.1V4L8 2.2z"
+                      stroke="currentColor"
+                      strokeWidth="1.15"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <span>{TAB_GROUP_META.trust.stackLabel}</span>
                 </button>
               </div>
             )}
@@ -1016,19 +1075,22 @@ export default function App() {
         onSelectResource={handleGlobalSelectResource}
         onSelectPrompt={handleGlobalSelectPrompt}
       />
-      {devToolsOpen && (
-        <Suspense fallback={null}>
+      {devToolsWindows.map((win, index) => (
+        <Suspense key={win.id} fallback={null}>
           <DevToolsModal
-            open={devToolsOpen}
-            initialTab={devToolsInitialTab}
-        servers={servers}
+            windowId={win.id}
+            stackIndex={index}
+            isTopmost={index === devToolsWindows.length - 1}
+            group={win.group}
+            initialTab={win.initialTab}
+            servers={servers}
             selectedServerId={selectedServer?.id ?? null}
-        selectedToolName={selectedToolName}
+            selectedToolName={selectedToolName}
             onReplayToolCall={(serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}
-            onClose={() => setDevToolsOpen(false)}
+            onClose={() => closeDevToolsWindow(win.id)}
           />
         </Suspense>
-      )}
+      ))}
       {scenarioRunnerOpen && (
         <Suspense fallback={null}>
           <ScenarioRunnerPanel

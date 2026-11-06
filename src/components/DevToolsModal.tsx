@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ServerEntry, ToolResult } from '../types';
+import { TAB_GROUP_META, TAB_GROUPS, type DevToolsGroupId, type DevToolsTab } from '../lib/devToolsGroups';
 import { AgentReadinessPanel } from './AgentReadinessPanel';
 import { ContractDriftPanel } from './ContractDriftPanel';
 import { ObservationJournalPanel } from './ObservationJournalPanel';
@@ -10,19 +11,13 @@ import { ReplaySuitesPanel } from './ReplaySuitesPanel';
 import { SchemaLabPanel } from './SchemaLabPanel';
 import { ReverseRequestsPanel } from './ReverseRequestsPanel';
 
-export type DevToolsTab =
-  | 'protocol'
-  | 'reverse'
-  | 'replay'
-  | 'schema'
-  | 'permission'
-  | 'injection'
-  | 'journal'
-  | 'readiness'
-  | 'contract';
-
 interface Props {
-  open: boolean;
+  windowId: string;
+  /** Stack order (0 = bottom); used for z-index and visual offset. */
+  stackIndex: number;
+  /** Only the frontmost window should handle Escape so one keypress closes one layer. */
+  isTopmost: boolean;
+  group: DevToolsGroupId;
   initialTab: DevToolsTab;
   servers: ServerEntry[];
   selectedServerId: string | null;
@@ -36,7 +31,12 @@ interface Props {
 }
 
 interface ModalContentProps {
+  stackIndex: number;
+  group: DevToolsGroupId;
   initialTab: DevToolsTab;
+  groupHeading: string;
+  groupDescription: string;
+  items: Array<{ id: DevToolsTab; label: string }>;
   servers: ServerEntry[];
   selectedServerId: string | null;
   selectedToolName: string | null;
@@ -48,78 +48,59 @@ interface ModalContentProps {
   onClose: () => void;
 }
 
-/** Grouped navigation: same `label` strings as before so Playwright helpers stay stable. */
-const TAB_GROUPS: Array<{
-  heading: string;
-  description: string;
-  items: Array<{ id: DevToolsTab; label: string }>;
-}> = [
-  {
-    heading: 'Traffic',
-    description: 'Live protocol timeline and inbound server traffic.',
-    items: [
-      { id: 'protocol', label: 'Protocol Inspector' },
-      { id: 'reverse', label: 'Server Requests' },
-    ],
-  },
-  {
-    heading: 'Testing',
-    description: 'Replay calls, inspect schemas, and compare contract drift.',
-    items: [
-      { id: 'replay', label: 'Replay Suites' },
-      { id: 'schema', label: 'Schema Lab' },
-      { id: 'contract', label: 'Contract Drift' },
-    ],
-  },
-  {
-    heading: 'Trust & risk',
-    description: 'Static audits, injection scan, journal, and readiness score.',
-    items: [
-      { id: 'permission', label: 'Permission Surface' },
-      { id: 'injection', label: 'Prompt Injection' },
-      { id: 'journal', label: 'Observation Journal' },
-      { id: 'readiness', label: 'Agent Readiness' },
-    ],
-  },
-];
-
 function DevToolsModalContent({
+  stackIndex,
+  group,
   initialTab,
+  groupHeading,
+  groupDescription,
+  items,
   servers,
   selectedServerId,
   selectedToolName,
   onReplayToolCall,
   onClose,
 }: ModalContentProps) {
-  const [activeTab, setActiveTab] = useState<DevToolsTab>(() => initialTab);
+  const allowed = new Set(items.map((i) => i.id));
+  const firstTab = items[0]?.id ?? 'protocol';
+  const [activeTab, setActiveTab] = useState<DevToolsTab>(() =>
+    allowed.has(initialTab) ? initialTab : firstTab,
+  );
+
+  const titleId = `dev-tools-title-${group}-${stackIndex}`;
+  /** Above Scenario Runner / Agent Chat overlays (z-50) so stacked Dev Tools stay visible. */
+  const z = 60 + stackIndex;
+  const nudge = stackIndex * 14;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+      className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] pointer-events-none"
+      style={{ zIndex: z }}
+      aria-hidden={false}
     >
       <div
-        className="relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-6xl mx-4 h-[84vh]"
+        className="pointer-events-auto relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-[min(100vw-2rem,48rem)] max-h-[min(84vh,calc(100vh-2rem))]"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dev-tools-title"
+        aria-labelledby={titleId}
+        style={{
+          transform: `translate(${nudge}px, ${nudge}px)`,
+          boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.5)',
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800/80 shrink-0">
           <div>
-            <h2 id="dev-tools-title" className="text-sm font-semibold text-zinc-100">
-              Dev Tools
+            <h2 id={titleId} className="text-sm font-semibold text-zinc-100">
+              Dev Tools — {groupHeading}
             </h2>
-            <p className="text-xs text-zinc-500 mt-0.5 max-w-2xl">
-              MCP inspection and trust tooling — pick a panel from the sidebar.
-            </p>
+            <p className="text-xs text-zinc-500 mt-0.5 max-w-2xl">{groupDescription}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-200 transition-colors rounded-md p-1 hover:bg-zinc-800"
-            aria-label="Close dev tools"
+            aria-label={`Close dev tools (${groupHeading})`}
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4" aria-hidden>
               <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
@@ -127,41 +108,33 @@ function DevToolsModalContent({
           </button>
         </div>
 
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 min-w-0">
           <nav
-            className="w-56 shrink-0 border-r border-zinc-800/80 bg-zinc-950/50 overflow-y-auto py-3 px-2 flex flex-col gap-4"
-            aria-label="Dev tools panels"
+            className="w-52 shrink-0 border-r border-zinc-800/80 bg-zinc-950/50 overflow-y-auto py-3 px-2"
+            aria-label={`Dev tools panels (${groupHeading})`}
           >
-            {TAB_GROUPS.map((group) => (
-              <div key={group.heading}>
-                <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  {group.heading}
-                </p>
-                <p className="px-2 mb-2 text-[10px] leading-snug text-zinc-600">{group.description}</p>
-                <ul className="flex flex-col gap-0.5">
-                  {group.items.map((tab) => {
-                    const selected = activeTab === tab.id;
-                    return (
-                      <li key={tab.id}>
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab(tab.id)}
-                          aria-current={selected ? 'page' : undefined}
-                          className={[
-                            'w-full text-left rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
-                            selected
-                              ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/40'
-                              : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200',
-                          ].join(' ')}
-                        >
-                          {tab.label}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+            <ul className="flex flex-col gap-0.5">
+              {items.map((tab) => {
+                const selected = activeTab === tab.id;
+                return (
+                  <li key={tab.id}>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(tab.id)}
+                      aria-current={selected ? 'page' : undefined}
+                      className={[
+                        'w-full text-left rounded-md px-2 py-1.5 text-xs font-medium transition-colors',
+                        selected
+                          ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-500/40'
+                          : 'text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200',
+                      ].join(' ')}
+                    >
+                      {tab.label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </nav>
 
           {/* data-selectable: dev tools panels are read-only inspection surfaces
@@ -210,7 +183,10 @@ function DevToolsModalContent({
 }
 
 export function DevToolsModal({
-  open,
+  windowId,
+  stackIndex,
+  isTopmost,
+  group,
   initialTab,
   servers,
   selectedServerId,
@@ -218,23 +194,29 @@ export function DevToolsModal({
   onReplayToolCall,
   onClose,
 }: Props) {
+  const meta = TAB_GROUP_META[group];
+  const groupDef = TAB_GROUPS.find((g) => g.id === group);
+  const items = groupDef?.items ?? TAB_GROUPS[0]!.items;
+
   useEffect(() => {
-    if (!open) return;
-
+    if (!isTopmost) return;
     const handler = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape') return;
+      onClose();
     };
-
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  }, [isTopmost, onClose]);
 
   return (
     <DevToolsModalContent
-      key={initialTab}
+      key={`${windowId}-${initialTab}`}
+      stackIndex={stackIndex}
+      group={group}
       initialTab={initialTab}
+      groupHeading={meta.heading}
+      groupDescription={meta.description}
+      items={items}
       servers={servers}
       selectedServerId={selectedServerId}
       selectedToolName={selectedToolName}
