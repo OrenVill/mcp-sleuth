@@ -69,7 +69,7 @@ export function ServerBrowser({
           <div className="flex flex-1 min-w-0">
             {tabs.length > 1 && (
               <div
-                className="flex w-full min-w-0 overflow-x-auto rounded-lg bg-zinc-900/80 p-0.5 border border-zinc-800/90"
+                className="flex w-full min-w-0 overflow-hidden rounded-lg bg-zinc-900/80 p-0.5 border border-zinc-800/90"
                 role="tablist"
                 aria-label="Server content"
               >
@@ -88,8 +88,9 @@ export function ServerBrowser({
                         : 'text-zinc-500 hover:text-zinc-300',
                     ].join(' ')}
                   >
-                    <span className="flex items-center justify-center gap-1 whitespace-nowrap text-center">
-                      <span className="min-w-0">{tab.label}</span>
+                    {/* Grid so the label can truncate with ellipsis on narrow tabs; count stays full width. */}
+                    <span className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-1">
+                      <span className="min-w-0 truncate text-left">{tab.label}</span>
                       <span
                         className={[
                           'tabular-nums shrink-0',
