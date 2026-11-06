@@ -78,6 +78,8 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
+**Header Tools menu:** **Dev Tools** and **Scenarios** live under the header **Tools** dropdown (⌘K search and **Chat** stay as their own buttons). Manual passes that say "open Dev Tools" mean **Tools → Dev Tools**.
+
 All 154 tests across 34 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
@@ -105,18 +107,18 @@ click **Import into vault**. The new server row appears without reloading. Snipp
 the environment via `mcp-detective server import`. Automated:
 `tests/release/31-client-config-import.spec.ts`.
 
-**§3.32 — Contract drift (manual pass):** Dev Tools → **Contract Drift** → capture a labeled
+**§3.32 — Contract drift (manual pass):** **Tools** → Dev Tools → **Contract Drift** → capture a labeled
 snapshot; confirm **Saved snapshots** and an unchanged drift summary when the server is stable.
 Automated: `tests/release/32-contract-drift.spec.ts`.
 
-**§3.33 — Server requests (manual pass):** Dev Tools → **Server Requests** shows the empty state when
+**§3.33 — Server requests (manual pass):** **Tools** → Dev Tools → **Server Requests** shows the empty state when
 nothing is pending; when a server uses elicitation or sampling, a card appears for approve/deny.
 Inbound logging/progress notifications appear in Protocol Inspector as inbound traces. Automated:
 `tests/release/33-mcp-reverse-requests.spec.ts`.
 
 **§3.30 — Per-server refresh (manual pass):** With the fixture server connected, click **Refresh**
 beside **Disconnect** in the server list. The row shows **Refreshing…** briefly, stays green
-(connected), and the tool count is unchanged when the server did not change. Open Dev Tools →
+(connected), and the tool count is unchanged when the server did not change. Open **Tools** → Dev Tools →
 Protocol Inspector and confirm a `tools/list` entry whose params include `"refresh": true`. Stop
 or block the fixture (`Ctrl+C` on the fixture process, or block the MCP URL in devtools), click
 **Refresh** again: an error appears on the row and the server stays connected with its previous
@@ -131,7 +133,7 @@ In particular no name or description may contain the word "fixture", because
 
 **§3.22 — Stdio transport (manual pass):** Add a stdio server with command `node` (or `process.execPath`) and args pointing at `tests/fixtures/stdio-mcp-server.mjs`; confirm the sidebar shows connected (green dot), the `echo` tool appears, invoking with a message returns that text in the result pane, and disconnect/reconnect still works. Automated: `tests/release/22-stdio-transport.spec.ts` (no HTTP fixture server required).
 
-**§3.23 — Trust evaluators (manual pass):** With the fixture server connected, open Dev Tools and
+**§3.23 — Trust evaluators (manual pass):** With the fixture server connected, open **Tools** → Dev Tools and
 in the sidebar under **Trust & risk**, check each of the three panels renders for that server:
 **Permission Surface** (a per-category risk summary, not a pass/fail score), **Prompt Injection**
 (findings with the matched text highlighted), **Observation Journal** (add a note, set an
@@ -169,7 +171,7 @@ MCP Detective lists that server's models rather than leaving the model box empty
 5. **A risk-locked tool asks every time.** Pick a tool the Permission Surface audit tags
    destructive, shell, credential, or admin: the card shows the risk-locked badge and offers no
    "always allow". Being able to session-allowlist such a tool blocks release.
-6. **Capture** the run as a replay suite, then open Dev Tools → Replay Suites and confirm it is
+6. **Capture** the run as a replay suite, then open **Tools** → Dev Tools → Replay Suites and confirm it is
    there with the run's successful calls. **Record** a tool step and confirm it lands in that
    server's Observation Journal.
 7. **Agent Readiness** for that server now lists the deny reasons as issues (wrong tool picked /

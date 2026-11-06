@@ -79,7 +79,8 @@ export async function selectServer(page: Page, name: string): Promise<void> {
 }
 
 export async function openDevTools(page: Page, tab?: string): Promise<void> {
-  await page.getByRole('button', { name: 'Dev Tools' }).click();
+  await page.getByTestId('header-tools-menu').click();
+  await page.getByTestId('open-dev-tools').click();
   if (tab) {
     await page.getByRole('button', { name: tab }).click();
   }

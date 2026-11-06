@@ -15,7 +15,8 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
   test.afterAll(() => ctx.close());
 
   test('Scenarios button opens panel with empty sidebar', async () => {
-    await page.getByRole('button', { name: 'Scenarios' }).click();
+    await page.getByTestId('header-tools-menu').click();
+    await page.getByTestId('open-scenarios').click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'test-results/21-scenarios-empty.png', fullPage: true });
 

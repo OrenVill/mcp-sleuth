@@ -43,6 +43,7 @@ import { UpdateBanner } from './components/UpdateBanner';
 import { VersionPill } from './components/VersionPill';
 import { useUpdateStatus } from './components/useUpdateStatus';
 import { ConfirmDialog } from './components/ConfirmDialog';
+import { Popover } from './components/Popover';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useVault } from './hooks/useVault';
 import { makeId } from './lib/serverRecord';
@@ -773,28 +774,70 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           <VaultLockButton onLock={vault.lock} />
-          <button
-            type="button"
-            onClick={() => openDevTools('protocol')}
-            title="Dev Tools"
-            className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1 font-mono"
-          >
-            <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
-              <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-            <span>Dev Tools</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setScenarioRunnerOpen(true)}
-            title="Scenario Runner"
+          <Popover
+            align="right"
+            testId="header-tools-menu"
+            aria-label="Tools menu"
+            panelClassName="p-1 min-w-[11rem]"
             className="text-xs px-2 py-1 rounded-md border border-zinc-700/80 bg-zinc-900/60 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600 transition-colors flex items-center gap-1"
+            trigger={({ open }) => (
+              <>
+                <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3" aria-hidden>
+                  <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+                <span>Tools</span>
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  className={['w-2.5 h-2.5 text-zinc-500 transition-transform', open ? 'rotate-180' : ''].join(' ')}
+                  aria-hidden
+                >
+                  <path
+                    d="m4 6 4 4 4-4"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </>
+            )}
           >
-            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3 h-3" aria-hidden>
-              <path d="M2.5 2.5a1 1 0 0 1 1.5-.87l9 5.2a1 1 0 0 1 0 1.74l-9 5.2A1 1 0 0 1 2.5 13V3a1 1 0 0 1 0-.5Z" />
-            </svg>
-            <span>Scenarios</span>
-          </button>
+            {({ close }) => (
+              <div className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  title="Dev Tools"
+                  data-testid="open-dev-tools"
+                  className="w-full text-left rounded-md px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  onClick={() => {
+                    close();
+                    openDevTools('protocol');
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" fill="none" className="w-3.5 h-3.5 shrink-0 text-zinc-400" aria-hidden>
+                    <path d="M2.5 4.5h11M2.5 8h7M2.5 11.5h11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                  <span>Dev Tools</span>
+                </button>
+                <button
+                  type="button"
+                  title="Scenario Runner"
+                  data-testid="open-scenarios"
+                  className="w-full text-left rounded-md px-2.5 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800 flex items-center gap-2"
+                  onClick={() => {
+                    close();
+                    setScenarioRunnerOpen(true);
+                  }}
+                >
+                  <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 shrink-0 text-zinc-400" aria-hidden>
+                    <path d="M2.5 2.5a1 1 0 0 1 1.5-.87l9 5.2a1 1 0 0 1 0 1.74l-9 5.2A1 1 0 0 1 2.5 13V3a1 1 0 0 1 0-.5Z" />
+                  </svg>
+                  <span>Scenarios</span>
+                </button>
+              </div>
+            )}
+          </Popover>
           <button
             type="button"
             onClick={() => setAgentChatOpen(true)}
