@@ -311,7 +311,7 @@ CLI and the desktop app at once is last-write-wins.
 | Update preferences | `<data dir>/update-state.json` (desktop only) | Auto-check flag, skipped and dismissed versions, last check time |
 | CLI daemon lock | `<data dir>/daemon.json` (CLI only) | Daemon PID + port |
 | Protocol traces | In-memory only (never persisted) | MCP call timeline for the current session |
-| Agent Chat transcripts | In-memory only (**never persisted**) | Messages, tool arguments, and raw tool output. A transcript holds raw output from the server under investigation, which must not land in `data.gz`; only the derived counters above survive a run. |
+| Agent Chat workspaces | `appData` → `<data dir>/data.gz`, or `localStorage` fallback | Three tabbed chats; each saves model choice, MCP scope, draft text, and the **last portion** of messages (bounded). Raw tool output from MCP remains sensitive — treat exported or synced app data accordingly. |
 | Replay suites | In-memory + optional JSON export | Captured call sets for replay |
 
 ### Pre-rename fallbacks — read-only, do not "fix"

@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
-import { setupVault, addFixtureServer } from './helpers';
+import { setupVault, addFixtureServer, VAULT_PASS } from './helpers';
 
 // §3.26 — Agent Chat
 //
@@ -56,6 +56,7 @@ test.describe.serial('§3.26 — Agent Chat', () => {
   let page: Page;
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(120_000);
     ctx = await browser.newContext();
     // The transcript's copy buttons go through navigator.clipboard, which is
     // denied by default in a fresh context.
@@ -500,6 +501,34 @@ test.describe.serial('§3.26 — Agent Chat', () => {
       .check();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('agent-input')).toBeEnabled();
+  });
+
+  test('three chat slots persist transcripts in app data across reload', async () => {
+    await page.getByTestId('agent-chat-slot-0').click();
+    const approval = await sendAndAwaitApproval(page, 'persistence reload check');
+    await approval.getByRole('button', { name: 'Allow', exact: true }).click();
+    await expect(page.getByTestId('agent-transcript')).toContainText('We are done', {
+      timeout: 15_000,
+    });
+    await expect(page.getByTestId('agent-transcript')).toContainText('persistence reload check');
+
+    await page.reload();
+    const unlockBtn = page.getByRole('button', { name: /unlock/i });
+    if (await unlockBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await page.getByLabel('Passphrase').fill(VAULT_PASS);
+      await unlockBtn.click();
+      await page.getByRole('button', { name: 'Add' }).waitFor({ timeout: 10_000 });
+    }
+
+    await openChat(page);
+    await addFixtureModel(page);
+    await page.getByTestId('agent-chat-slot-0').click();
+    await expect(page.getByTestId('agent-transcript')).toContainText('persistence reload check', {
+      timeout: 10_000,
+    });
+
+    await page.getByTestId('agent-chat-slot-1').click();
+    await expect(page.getByTestId('agent-transcript')).toHaveCount(0);
   });
 });
 

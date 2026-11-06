@@ -1,4 +1,9 @@
 import type { AgentRunSummaries } from './agent/types';
+import {
+  createDefaultAgentChatSlots,
+  parseAgentChatSlots,
+  type AgentChatSlotPersisted,
+} from './agent/chatSessions';
 import { getHost } from './host';
 import type { CallRecord } from './history';
 import type { ContractSnapshotsStore } from './contractSnapshots';
@@ -12,6 +17,11 @@ export interface AppData {
   /** Derived per-server agent-run signal. Transcripts are never stored here. */
   agentRuns: AgentRunSummaries;
   contractSnapshots?: ContractSnapshotsStore;
+  /**
+   * Three Agent Chat workspaces: messages, model selection, scope, and draft
+   * text per slot. Full chat history is capped elsewhere at slice time if needed.
+   */
+  agentChatSlots?: AgentChatSlotPersisted[];
 }
 
 const DEFAULT: AppData = {
@@ -21,6 +31,7 @@ const DEFAULT: AppData = {
   observationJournals: {},
   agentRuns: {},
   contractSnapshots: {},
+  agentChatSlots: createDefaultAgentChatSlots(),
 };
 const LS_BOOKMARKS = 'mcp-detective:bookmarks';
 const LS_HISTORY = 'mcp-detective:call-history';
@@ -53,6 +64,7 @@ let initialized = false;
 function parseAppData(raw: unknown): AppData {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return { ...DEFAULT };
   const obj = raw as Record<string, unknown>;
+  const parsedSlots = parseAgentChatSlots(obj.agentChatSlots);
   return {
     version: typeof obj.version === 'number' ? obj.version : 2,
     bookmarks: Array.isArray(obj.bookmarks)
@@ -73,6 +85,7 @@ function parseAppData(raw: unknown): AppData {
       !Array.isArray(obj.contractSnapshots)
         ? (obj.contractSnapshots as ContractSnapshotsStore)
         : {},
+    agentChatSlots: parsedSlots ?? createDefaultAgentChatSlots(),
   };
 }
 
@@ -96,6 +109,7 @@ function loadFromLocalStorage(): AppData {
       history: rawHistory ? (JSON.parse(rawHistory) as CallRecord[]) : [],
       observationJournals: {},
       agentRuns: {},
+      agentChatSlots: createDefaultAgentChatSlots(),
     };
   } catch {
     return { ...DEFAULT };
@@ -200,7 +214,11 @@ export function patchAppData(patch: Partial<AppData>): void {
 
 /** For tests only — seed cache without fetching. */
 export function _seedCache(data: AppData): void {
-  cache = { ...data };
+  cache = {
+    ...DEFAULT,
+    ...data,
+    agentChatSlots: data.agentChatSlots ?? DEFAULT.agentChatSlots,
+  };
   initialized = true;
 }
 

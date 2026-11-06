@@ -1,8 +1,22 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from 'react';
 import type { ServerEntry, DiscoveredTool } from '../types';
 import { addInvocationObservation } from '../lib/observationJournal';
 import { updateObservationJournal } from '../lib/observationJournalStore';
-import type { LlmConfig } from '../lib/agent/types';
+import type { AgentMessage, LlmConfig } from '../lib/agent/types';
+import {
+  AGENT_CHAT_SLOT_COUNT,
+  createDefaultAgentChatSlots,
+  type AgentChatSlotPersisted,
+} from '../lib/agent/chatSessions';
+import { getAppData, patchAppData } from '../lib/appData';
 import { useProtocolTraces } from './useProtocolTraces';
 import { AgentModelPicker } from './AgentModelPicker';
 import { AgentChatExportMenu } from './AgentChatExportMenu';
@@ -24,6 +38,9 @@ interface Props {
 /** The conversation and the composer share one column so text keeps a readable measure. */
 const COLUMN = 'w-full max-w-3xl mx-auto px-6';
 
+/** Bound persisted history so app data stays small; oldest turns drop first. */
+const MAX_PERSISTED_AGENT_MESSAGES = 200;
+
 /** Milliseconds, but readable once a call runs into seconds. */
 function formatDuration(ms: number): string {
   return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
@@ -35,6 +52,14 @@ function toolNameOf(trace: { params?: unknown }): string | null {
   if (!params || typeof params !== 'object') return null;
   const name = (params as { name?: unknown }).name;
   return typeof name === 'string' ? name : null;
+}
+
+function defaultSelectedServers(servers: ServerEntry[], activeServerId: string | null): string[] {
+  const connected = servers.filter((s) => s.status === 'connected');
+  if (activeServerId && connected.some((s) => s.id === activeServerId)) {
+    return [activeServerId];
+  }
+  return connected.length === 1 ? [connected[0].id] : [];
 }
 
 function EmptyState({
@@ -94,25 +119,32 @@ function EmptyState({
   );
 }
 
-export function AgentChatPanel({
+function AgentChatSessionInner({
+  slotSwitcher,
+  slot,
+  persistSlot,
   servers,
   llmConfigs,
   onSaveLlmConfigs,
   activeServerId,
   onDiscovered,
   onClose,
-}: Props) {
-  const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
-  const [selectedServerIds, setSelectedServerIds] = useState<string[]>(() => {
-    const connected = servers.filter((s) => s.status === 'connected');
-    // The server being investigated, when it is actually connected; otherwise
-    // the only connected one, since there is nothing to disambiguate.
-    if (activeServerId && connected.some((s) => s.id === activeServerId)) {
-      return [activeServerId];
-    }
-    return connected.length === 1 ? [connected[0].id] : [];
-  });
-  const [input, setInput] = useState('');
+}: {
+  slotSwitcher: ReactNode;
+  slot: AgentChatSlotPersisted;
+  persistSlot: (patch: Partial<AgentChatSlotPersisted>) => void;
+  servers: ServerEntry[];
+  llmConfigs: LlmConfig[];
+  onSaveLlmConfigs: (configs: LlmConfig[]) => void;
+  activeServerId: string | null;
+  onDiscovered?: (serverId: string, tools: DiscoveredTool[]) => void;
+  onClose: () => void;
+}) {
+  const [activeConfigId, setActiveConfigId] = useState<string | null>(() => slot.activeConfigId);
+  const [selectedServerIds, setSelectedServerIds] = useState<string[]>(() =>
+    slot.selectedServerIds.length > 0 ? slot.selectedServerIds : defaultSelectedServers(servers, activeServerId),
+  );
+  const [input, setInput] = useState(() => slot.inputDraft);
   /**
    * Text typed while a run was in flight. `send` refuses mid-run, so without
    * this the message would be dropped between the composer clearing and the
@@ -137,15 +169,41 @@ export function AgentChatPanel({
   const wasRunningRef = useRef(false);
   const focusedOnceRef = useRef(false);
 
+  const inputDraftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const traces = useProtocolTraces();
+
   /**
-   * Derived rather than synced in an effect: with no explicit choice — at first
-   * paint, or right after the active config was deleted — the first config is
-   * the active one. An effect would set the same value one render later.
+   * Which vault LLM entry actually drives this slot. Slots persist `activeConfigId`
+   * but `null` and deleted ids are common — the run and picker must agree on the
+   * same resolution without requiring an Edit→Save just to normalize.
    */
-  const effectiveConfigId = activeConfigId ?? llmConfigs[0]?.id ?? null;
+  const effectiveConfigId = useMemo(() => {
+    if (llmConfigs.length === 0) return null;
+    if (activeConfigId && llmConfigs.some((c) => c.id === activeConfigId)) {
+      return activeConfigId;
+    }
+    return llmConfigs[0].id;
+  }, [activeConfigId, llmConfigs]);
+
   const config = llmConfigs.find((c) => c.id === effectiveConfigId) ?? null;
-  const run = useAgentRun(servers, config, selectedServerIds, undefined, onDiscovered);
+
+  const onMessagesChange = useCallback(
+    (messages: AgentMessage[]) => {
+      persistSlot({ messages });
+    },
+    [persistSlot],
+  );
+
+  const run = useAgentRun(
+    servers,
+    config,
+    selectedServerIds,
+    undefined,
+    onDiscovered,
+    slot.messages,
+    onMessagesChange,
+  );
 
   const connectedIds = useMemo(
     () => servers.filter((s) => s.status === 'connected').map((s) => s.id),
@@ -160,6 +218,20 @@ export function AgentChatPanel({
   const ready =
     Boolean(config) && selectedServerIds.some((id) => connectedIds.includes(id));
   const approvalOpen = run.pending !== null;
+
+  useEffect(() => {
+    persistSlot({ activeConfigId: effectiveConfigId, selectedServerIds });
+  }, [effectiveConfigId, selectedServerIds, persistSlot]);
+
+  useEffect(() => {
+    if (inputDraftTimerRef.current) clearTimeout(inputDraftTimerRef.current);
+    inputDraftTimerRef.current = setTimeout(() => {
+      persistSlot({ inputDraft: input });
+    }, 400);
+    return () => {
+      if (inputDraftTimerRef.current) clearTimeout(inputDraftTimerRef.current);
+    };
+  }, [input, persistSlot]);
 
   /*
    * Follow the conversation as it grows, but only when the reader is already at
@@ -314,8 +386,9 @@ export function AgentChatPanel({
     setInput('');
     clearQueue();
     setNotice(null);
+    persistSlot({ messages: [], inputDraft: '' });
     inputRef.current?.focus();
-  }, [clearQueue, run]);
+  }, [clearQueue, persistSlot, run]);
 
   const runTraces = traces.filter((trace) => trace.method === 'tools/call').slice(0, 40);
   const traceStats = {
@@ -351,6 +424,7 @@ export function AgentChatPanel({
         className="relative flex flex-col bg-zinc-900 border border-zinc-700/80 rounded-xl shadow-2xl w-full max-w-[min(96rem,calc(100vw-2rem))] mx-4 h-[min(90vh,52rem)] overflow-hidden"
         onClick={(event) => event.stopPropagation()}
       >
+        {slotSwitcher}
       <header className="app-header shrink-0 flex items-center gap-3 pl-5 pr-3 min-h-[4rem] py-2 border-b border-zinc-800/80 bg-zinc-900">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <span className="flex items-center justify-center w-8 h-8 rounded-lg border border-violet-800/50 bg-violet-950/40 text-violet-300 shrink-0">
@@ -687,7 +761,8 @@ export function AgentChatPanel({
                 )}
               </div>
               <p className="mt-2 text-[10px] text-zinc-600">
-                Every tool call is approved by you before it runs. Transcripts are never saved.
+                Every tool call is approved by you before it runs. Up to three chats are saved
+                with your app data (each keeps the last {MAX_PERSISTED_AGENT_MESSAGES} messages).
               </p>
             </form>
           </div>
@@ -847,5 +922,85 @@ export function AgentChatPanel({
       </div>
       </div>
     </div>
+  );
+}
+
+export function AgentChatPanel({
+  servers,
+  llmConfigs,
+  onSaveLlmConfigs,
+  activeServerId,
+  onDiscovered,
+  onClose,
+}: Props) {
+  const [slots, setSlots] = useState<AgentChatSlotPersisted[]>(
+    () => getAppData().agentChatSlots ?? createDefaultAgentChatSlots(),
+  );
+  const [activeSlotIndex, setActiveSlotIndex] = useState(0);
+
+  const persistSlot = useCallback((index: number, patch: Partial<AgentChatSlotPersisted>) => {
+    setSlots((prev) => {
+      const baseList = [...prev];
+      while (baseList.length < AGENT_CHAT_SLOT_COUNT) {
+        baseList.push(createDefaultAgentChatSlots()[baseList.length]);
+      }
+      const prevSlot = baseList[index] ?? createDefaultAgentChatSlots()[index];
+      let next: AgentChatSlotPersisted = { ...prevSlot, ...patch, updatedAt: Date.now() };
+      if (next.messages.length > MAX_PERSISTED_AGENT_MESSAGES) {
+        next = { ...next, messages: next.messages.slice(-MAX_PERSISTED_AGENT_MESSAGES) };
+      }
+      baseList[index] = next;
+      patchAppData({ agentChatSlots: baseList });
+      return baseList;
+    });
+  }, []);
+
+  const activeSlot = slots[activeSlotIndex] ?? createDefaultAgentChatSlots()[activeSlotIndex];
+
+  const slotSwitcher = (
+    <div
+      className="shrink-0 flex gap-1 px-4 pt-3 pb-0 border-b border-zinc-800/60 bg-zinc-900"
+      role="tablist"
+      aria-label="Agent chat workspaces"
+    >
+      {Array.from({ length: AGENT_CHAT_SLOT_COUNT }, (_, i) => {
+        const s = slots[i] ?? createDefaultAgentChatSlots()[i];
+        const selected = i === activeSlotIndex;
+        return (
+          <button
+            key={s.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            data-testid={`agent-chat-slot-${i}`}
+            onClick={() => setActiveSlotIndex(i)}
+            className={[
+              'text-[11px] px-3 py-1.5 rounded-t-md border border-b-0 transition-colors min-w-0 max-w-[7rem] truncate',
+              selected
+                ? 'border-zinc-700 bg-zinc-800/90 text-zinc-100'
+                : 'border-transparent text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40',
+            ].join(' ')}
+            title={s.label}
+          >
+            {s.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <AgentChatSessionInner
+      key={activeSlotIndex}
+      slotSwitcher={slotSwitcher}
+      slot={activeSlot}
+      persistSlot={(patch) => persistSlot(activeSlotIndex, patch)}
+      servers={servers}
+      llmConfigs={llmConfigs}
+      onSaveLlmConfigs={onSaveLlmConfigs}
+      activeServerId={activeServerId}
+      onDiscovered={onDiscovered}
+      onClose={onClose}
+    />
   );
 }
