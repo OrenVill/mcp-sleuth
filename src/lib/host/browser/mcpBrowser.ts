@@ -15,9 +15,19 @@ import type {
 import {
   chainHandler,
   isConnectionDeadError,
+  isOAuthUnauthorizedError,
   isSessionLostError,
   isSseDisconnectSuspect,
 } from '../../mcpSessionRecovery';
+import {
+  attachReverseRequestHandlers,
+  DETECTIVE_CLIENT_CAPABILITIES,
+} from '../../mcpReverseHandlers';
+import { clearPendingReverseRequestsForServer } from '../../mcpReverseRequests';
+import { beginOAuthRedirect, createDetectiveOAuthProvider } from '../../mcpOAuth/provider';
+import { createMcpOAuthFetch } from '../../mcpOAuth/fetchBridge';
+import { refreshOAuthSessionOnce } from '../../mcpOAuth/refreshOnce';
+import { writeOAuthSession } from '../../mcpOAuth/sessionRegistry';
 import { recordCompletedProtocolTrace } from '../../protocolTrace';
 import { stdioBridgeMcpUrl } from '../../stdioParse';
 import { startStdioSession, stopStdioSession } from '../../stdioSession';
@@ -80,7 +90,7 @@ function utf8ToBase64(value: string): string {
 
 /** Builds RequestInit headers from persisted MCP auth (StreamableHTTPClientTransport merges these on every request). */
 export function requestInitFromAuth(auth: ServerAuth | undefined): RequestInit | undefined {
-  if (!auth || auth.method === 'none') return undefined;
+  if (!auth || auth.method === 'none' || auth.method === 'oauth') return undefined;
 
   const headers = new Headers();
 
@@ -138,6 +148,7 @@ async function releaseHttpConnection(serverId: string, { notifyClosed = false } 
     transports.delete(serverId);
   }
   connectionMeta.delete(serverId);
+  clearPendingReverseRequestsForServer(serverId);
   if (notifyClosed) emitClosed(serverId);
 }
 
@@ -179,13 +190,38 @@ async function openHttpSession(
   proxyThroughLocal: boolean,
   options: McpConnectOptions = {},
 ): Promise<void> {
+  let liveAuth = auth;
   const requestInit = requestInitFromAuth(auth);
+  const transportOptions: NonNullable<ConstructorParameters<typeof StreamableHTTPClientTransport>[1]> =
+    { fetch: createMcpOAuthFetch() };
+  if (requestInit) transportOptions.requestInit = requestInit;
+  if (auth?.method === 'oauth') {
+    transportOptions.authProvider = createDetectiveOAuthProvider(window.location.origin, {
+      getAuth: () => liveAuth,
+      onSessionChange: (oauthSession) => {
+        liveAuth = { method: 'oauth', oauth: oauthSession };
+        writeOAuthSession(serverId, liveAuth);
+        const meta = connectionMeta.get(serverId);
+        if (meta?.kind === 'http') {
+          connectionMeta.set(serverId, { ...meta, auth: liveAuth });
+        }
+      },
+      onRedirect: (authorizationUrl) => {
+        beginOAuthRedirect(serverId, url, proxyThroughLocal, options, authorizationUrl);
+        window.location.assign(authorizationUrl.toString());
+      },
+    });
+  }
   const transport = new StreamableHTTPClientTransport(
     transportUrlForServer(url, proxyThroughLocal, undefined, options),
-    requestInit ? { requestInit } : undefined,
+    transportOptions,
   );
-  const client = new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: {} });
+  const client = new Client(
+    { name: 'mcp-detective', version: '0.1.0' },
+    { capabilities: DETECTIVE_CLIENT_CAPABILITIES },
+  );
 
+  attachReverseRequestHandlers(client, serverId);
   await client.connect(transport);
   attachTransportHandlers(serverId, client, transport);
   clients.set(serverId, client);
@@ -247,6 +283,27 @@ async function withSessionRecovery<T>(serverId: string, fn: () => Promise<T>): P
   try {
     return await fn();
   } catch (err) {
+    const meta = connectionMeta.get(serverId);
+    if (
+      meta?.kind === 'http' &&
+      meta.auth &&
+      isOAuthUnauthorizedError(err, meta.auth)
+    ) {
+      const nextAuth = await refreshOAuthSessionOnce(meta.auth, meta.url);
+      if (nextAuth) {
+        const saved = { ...meta, auth: nextAuth };
+        await releaseHttpConnection(serverId);
+        await openHttpSession(
+          serverId,
+          saved.url,
+          saved.auth,
+          saved.proxyThroughLocal,
+          saved.options,
+        );
+        connectionMeta.set(serverId, saved);
+        return await fn();
+      }
+    }
     if (isSessionLostError(err)) {
       await reconnectSession(serverId);
       return await fn();

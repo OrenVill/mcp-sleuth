@@ -48,7 +48,10 @@
     "content-security-policy.js",
     "content-security-policy.d.ts",
     "llm-targets.js",
-    "llm-targets.d.ts"
+    "llm-targets.d.ts",
+    "mcp-oauth-proxy.js",
+    "mcp-oauth-proxy.d.ts",
+    "mcp-oauth-targets.js"
   ],
   "scripts": {
     "dev": "vite",

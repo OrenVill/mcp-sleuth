@@ -46,6 +46,7 @@ import { ConfirmDialog } from './components/ConfirmDialog';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useVault } from './hooks/useVault';
 import { makeId } from './lib/serverRecord';
+import { ImportClientConfigDialog } from './components/ImportClientConfigDialog';
 
 // Both live behind a toggle and together account for ~2,600 lines that used to
 // sit in the initial bundle. Loading them on demand keeps first paint lean for
@@ -61,6 +62,10 @@ const AgentChatPanel = lazy(() =>
 );
 import { loadHistory } from './lib/history';
 import { refreshConnectedServerTools } from './lib/serverRefresh';
+import { OAUTH_CALLBACK_PATH } from './lib/mcpOAuth/constants';
+import { clearPendingOAuthFlow, readPendingOAuthFlow } from './lib/mcpOAuth/provider';
+import { finishOAuthAuthorization } from './lib/mcpOAuth/connectOAuth';
+import { registerOAuthSessionWriter } from './lib/mcpOAuth/sessionRegistry';
 import type {
   DiscoveryRun,
   MetaToolBinding,
@@ -110,6 +115,7 @@ export default function App() {
   }, [selectedId]);
   /** Bumps when the add/edit modal opens so the form remounts with fresh initial state (no reset-in-effect). */
   const [dialogFormKey, setDialogFormKey] = useState(0);
+  const [importConfigOpen, setImportConfigOpen] = useState(false);
 
   const clearSelection = useCallback(() => {
     setSelectedId(null);
@@ -235,6 +241,43 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, []);
 
+  useEffect(() => {
+    if (window.location.pathname !== OAUTH_CALLBACK_PATH) return;
+    if (vault.phase !== 'ready') return;
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const flow = readPendingOAuthFlow();
+    if (!code || !flow) return;
+
+    void (async () => {
+      const server = serversRef.current.find((s) => s.id === flow.serverId);
+      if (!server?.auth || server.auth.method !== 'oauth') {
+        clearPendingOAuthFlow();
+        window.history.replaceState({}, '', flow.returnPath || '/');
+        return;
+      }
+      try {
+        await finishOAuthAuthorization({
+          serverId: flow.serverId,
+          url: flow.mcpServerUrl,
+          auth: server.auth,
+          proxyThroughLocal: flow.proxyThroughLocal,
+          options: { allowSelfSigned: flow.allowSelfSigned },
+          authorizationCode: code,
+        });
+        clearPendingOAuthFlow();
+        window.history.replaceState({}, '', flow.returnPath || '/');
+        await handleConnect(flow.serverId);
+      } catch (e) {
+        clearPendingOAuthFlow();
+        window.history.replaceState({}, '', flow.returnPath || '/');
+        updateServer(flow.serverId, { status: 'error', error: formatConnectionError(e) });
+      }
+    })();
+    // OAuth callback is a one-shot URL; vault phase gates access to stored auth.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vault.phase]);
+
   /**
    * When opening from Add/Edit, pass `connection` so connect runs with the submitted URL/auth
    * even before React has committed the new/updated server row (avoids a stale `servers.find`).
@@ -245,6 +288,9 @@ export default function App() {
     setSelectedId(id);
     setSelectedToolName(null);
     updateServer(id, { status: 'connecting', error: undefined, connectionNotice: undefined });
+    const unregisterOAuth = registerOAuthSessionWriter(id, (auth) => {
+      setServers((prev) => prev.map((row) => (row.id === id ? { ...row, auth } : row)));
+    });
     try {
       let tools;
       if (transport === 'stdio') {
@@ -300,6 +346,8 @@ export default function App() {
       });
     } catch (e) {
       updateServer(id, { status: 'error', error: formatConnectionError(e) });
+    } finally {
+      unregisterOAuth();
     }
   }
 
@@ -432,6 +480,18 @@ export default function App() {
     setDialogFormKey((k) => k + 1);
     setEditingId(null);
     setDialogMode('add');
+  }
+
+  function handleImportConfigClick() {
+    setImportConfigOpen(true);
+  }
+
+  function handleImportConfigClose() {
+    setImportConfigOpen(false);
+  }
+
+  function handleImportConfigApply(next: ServerEntry[]) {
+    setServers(next);
   }
 
   function handleEditClick(id: string) {
@@ -793,6 +853,7 @@ export default function App() {
           onEdit={handleEditClick}
           onRemove={handleRemove}
           onAddClick={handleAddClick}
+          onImportClick={handleImportConfigClick}
         />
         <ServerBrowser
           server={selectedServer}
@@ -857,6 +918,13 @@ export default function App() {
         onSubmit={handleSubmit}
         validate={dialogValidate}
       />
+      {importConfigOpen && (
+        <ImportClientConfigDialog
+          servers={servers}
+          onImport={handleImportConfigApply}
+          onClose={handleImportConfigClose}
+        />
+      )}
       <GlobalSearch
         servers={servers}
         onSelectTool={handleGlobalSelectTool}

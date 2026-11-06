@@ -53,3 +53,13 @@ export function isConnectionDeadError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
   return /econnrefused|enotfound|failed to fetch|network error|networkerror/i.test(msg);
 }
+
+export function isOAuthUnauthorizedError(
+  err: unknown,
+  auth: { method?: string } | undefined,
+): boolean {
+  if (auth?.method !== 'oauth') return false;
+  if (err instanceof UnauthorizedError) return true;
+  if (err instanceof StreamableHTTPError && err.code === 401) return true;
+  return false;
+}

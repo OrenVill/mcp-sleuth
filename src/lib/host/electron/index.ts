@@ -4,6 +4,7 @@ import { createElectronFilesHost } from './filesElectron';
 import { createElectronSecretsHost } from './secretsElectron';
 import { createElectronUpdateHost } from './updatesElectron';
 import { createLlmElectron, type LlmBridge } from './llmElectron';
+import { createElectronOAuthHost } from './oauthElectron';
 
 export function createElectronHost(bridge: ElectronBridge): Host {
   return {
@@ -13,5 +14,6 @@ export function createElectronHost(bridge: ElectronBridge): Host {
     secrets: createElectronSecretsHost(bridge),
     updates: createElectronUpdateHost(bridge),
     llm: createLlmElectron(bridge as unknown as LlmBridge),
+    oauth: createElectronOAuthHost(bridge),
   };
 }

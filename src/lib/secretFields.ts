@@ -70,6 +70,18 @@ export function maskAuthSecrets(auth: ServerAuth | undefined): ServerAuth | unde
       return { ...auth, apiKeyValue: maskStoredSecret(auth.apiKeyValue) };
     case 'basic':
       return { ...auth, basicPassword: maskStoredSecret(auth.basicPassword) };
+    case 'oauth':
+      return {
+        ...auth,
+        oauth: auth.oauth
+          ? {
+              ...auth.oauth,
+              accessToken: maskStoredSecret(auth.oauth.accessToken),
+              refreshToken: maskStoredSecret(auth.oauth.refreshToken),
+              clientSecret: maskStoredSecret(auth.oauth.clientSecret),
+            }
+          : undefined,
+      };
     default:
       return auth;
   }
@@ -95,6 +107,27 @@ export function resolveAuthSecrets(
       return {
         ...submitted,
         basicPassword: resolveStoredSecret(submitted.basicPassword, sameMethod?.basicPassword),
+      };
+    case 'oauth':
+      return {
+        ...submitted,
+        oauth: submitted.oauth
+          ? {
+              ...submitted.oauth,
+              accessToken: resolveStoredSecret(
+                submitted.oauth.accessToken,
+                sameMethod?.oauth?.accessToken,
+              ),
+              refreshToken: resolveStoredSecret(
+                submitted.oauth.refreshToken,
+                sameMethod?.oauth?.refreshToken,
+              ),
+              clientSecret: resolveStoredSecret(
+                submitted.oauth.clientSecret,
+                sameMethod?.oauth?.clientSecret,
+              ),
+            }
+          : undefined,
       };
     default:
       return submitted;

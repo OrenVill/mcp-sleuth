@@ -30,6 +30,7 @@ files:
   - data-dir.js
   - content-security-policy.js
   - llm-targets.js
+  - mcp-oauth-targets.js
   - package.json
   - '!**/*.test.js'
   - '!**/*.map'

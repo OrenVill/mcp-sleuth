@@ -1,0 +1,1 @@
+import type { ServerAuth } from '../../types';const m=new Map<string,(a:ServerAuth)=>void>();export function registerOAuthSessionWriter(id:string,fn:(a:ServerAuth)=>void){m.set(id,fn);return()=>m.delete(id);}export function writeOAuthSession(id:string,a:ServerAuth){m.get(id)?.(a);}

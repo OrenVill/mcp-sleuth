@@ -10,10 +10,22 @@ export interface ServerStdioConfig {
 }
 
 /** Persisted auth configuration for MCP HTTP requests (merged into StreamableHTTPClientTransport requestInit). */
-export type ServerAuthMethod = 'none' | 'bearer' | 'api_key' | 'basic';
+export type ServerAuthMethod = 'none' | 'bearer' | 'api_key' | 'basic' | 'oauth';
+
+export interface ServerOAuthSession {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number;
+  tokenType?: string;
+  scope?: string;
+  clientId?: string;
+  clientSecret?: string;
+  discovery?: Record<string, unknown>;
+}
 
 export interface ServerAuth {
   method: ServerAuthMethod;
+  oauth?: ServerOAuthSession;
   /** Authorization: Bearer … */
   bearerToken?: string;
   /** Custom header name (e.g. X-API-Key, Authorization) */

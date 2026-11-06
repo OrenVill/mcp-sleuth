@@ -1,5 +1,7 @@
 export type ProtocolTraceStatus = 'pending' | 'ok' | 'unsupported' | 'error';
 
+export type ProtocolTraceDirection = 'outbound' | 'inbound';
+
 export interface ProtocolTraceEvent {
   id: string;
   serverId: string;
@@ -11,6 +13,8 @@ export interface ProtocolTraceEvent {
   startedAt: number;
   finishedAt?: number;
   durationMs?: number;
+  /** Detective-initiated vs server-initiated MCP traffic. */
+  direction?: ProtocolTraceDirection;
 }
 
 export interface ProtocolTraceStart {
@@ -114,6 +118,7 @@ export async function traceProtocolCall<T>(
     params: clonePayload(start.params),
     status: 'pending',
     startedAt,
+    direction: 'outbound',
   };
   upsertTrace(event);
 
@@ -143,6 +148,32 @@ export async function traceProtocolCall<T>(
 
 /** Record a completed call (for events that happen outside mcpClient, e.g. session reconnect in main). */
 export function recordCompletedProtocolTrace(start: ProtocolTraceStart): void {
+  recordCompletedProtocolTraceWithDirection(start, 'outbound');
+}
+
+export function recordInboundProtocolTrace(
+  start: ProtocolTraceStart & { result?: unknown; error?: string; status?: ProtocolTraceStatus },
+): void {
+  const finishedAt = Date.now();
+  upsertTrace({
+    id: `trace-${nextId++}`,
+    serverId: start.serverId,
+    method: start.method,
+    params: clonePayload(start.params),
+    result: clonePayload(start.result),
+    error: start.error,
+    status: start.status ?? 'ok',
+    startedAt: finishedAt,
+    finishedAt,
+    durationMs: 0,
+    direction: 'inbound',
+  });
+}
+
+function recordCompletedProtocolTraceWithDirection(
+  start: ProtocolTraceStart,
+  direction: ProtocolTraceDirection,
+): void {
   const finishedAt = Date.now();
   upsertTrace({
     id: `trace-${nextId++}`,
@@ -153,6 +184,7 @@ export function recordCompletedProtocolTrace(start: ProtocolTraceStart): void {
     startedAt: finishedAt,
     finishedAt,
     durationMs: 0,
+    direction,
   });
 }
 
@@ -169,6 +201,7 @@ export async function traceOptionalProtocolCall<T>(
     params: clonePayload(start.params),
     status: 'pending',
     startedAt,
+    direction: 'outbound',
   };
   upsertTrace(event);
 

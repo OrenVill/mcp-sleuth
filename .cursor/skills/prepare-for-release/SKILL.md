@@ -17,7 +17,7 @@ Run all three in parallel — they are independent:
 ```bash
 npm run build        # tsc -b + vite build → dist/
 npm run lint         # eslint — src/, electron/, and the root Node modules
-npm test             # vitest run — 907 tests
+npm test             # vitest run — 990 tests
 ```
 
 All three must exit 0. A failing build means the published package is broken. A lint error or test failure blocks release.
@@ -47,6 +47,15 @@ mcp-detective stop
 
 Confirm the process exits cleanly and the lock file is removed (check `bin/mcp-detective.js` for the lock path).
 
+**CI gate (`check`):** With the vault passphrase in env and a server already saved, run:
+
+```bash
+mcp-detective check --server "<name>" --json --fail-on-injection
+echo $?
+```
+
+Confirm JSON on stdout includes `ok`, `readiness`, and `injection`. Exit codes: `0` pass, `10` readiness below `--min-readiness` (default 70), `11` injection findings with `--fail-on-injection`, `12` replay failure with `--replay`. Connection or vault errors exit `1`; missing `--server` exits `2`.
+
 **Why this matters:** The daemon/lock-file and stop subcommand were added in v0.6.0. If either is broken, the CLI is the user's primary entry point and the release is a regression.
 
 ---
@@ -69,14 +78,14 @@ Run the full automated release suite:
 npx playwright test tests/release/
 ```
 
-All 146 tests across 30 spec files must pass. Any failure blocks the release.
+All 154 tests across 34 spec files must pass. Any failure blocks the release.
 
 Two specs additionally connect to an external MCP server on the LAN
 (`AWESOME_URL` in `tests/release/helpers.ts`): §3.6 (boolean-param tool) and §3.12
 (meta-tool discovery). If that host is unreachable those two specs fail — check it
 before assuming a regression.
 
-The suite covers §3.1–3.30 of the release spec: initial load, server add/error, tab bar,
+The suite covers §3.1–3.34 of the release spec: initial load, server add/error, tab bar,
 fixture connection, tool forms, result pane rendering, call history diff, bookmarks
 persistence, cross-server search, export dialog, meta-tool discovery, resources tab,
 prompts tab, Protocol Inspector, Replay Suites, Schema Lab, Agent Readiness, Client
@@ -84,7 +93,26 @@ Config Export, Handoff README, Scenario Runner, stdio transport (local bridge + 
 tool), Trust evaluators (Permission Surface, Prompt Injection scan, Observation
 Journal), error handling, the absence of the desktop update notice, Agent Chat, stored
 secrets never reaching an edit form, untrusted content from a connected server, the
-self-signed certificate option, and per-server refresh of tools (without disconnecting).
+self-signed certificate option, per-server refresh of tools (without disconnecting),
+client config import, contract drift snapshots, server-initiated MCP requests, and MCP OAuth (PKCE).
+
+**§3.34 — MCP OAuth (manual pass):** Add an HTTP server with **OAuth (PKCE sign-in)**, connect, and complete the provider sign-in in the browser. Confirm the server connects and tools load; edit the server and verify tokens are masked, not shown. Automated: `tests/release/34-mcp-oauth.spec.ts` (mocked proxy; no real OAuth provider).
+
+**§3.31 — Client config import (manual pass):** From the server sidebar, click **Import**, paste
+a Cursor/Claude/VS Code `mcp.json` snippet (or choose a file), confirm the preview counts, and
+click **Import into vault**. The new server row appears without reloading. Snippets that use
+`${env:…}` placeholders show an unresolved-env warning in the browser; the CLI resolves them from
+the environment via `mcp-detective server import`. Automated:
+`tests/release/31-client-config-import.spec.ts`.
+
+**§3.32 — Contract drift (manual pass):** Dev Tools → **Contract Drift** → capture a labeled
+snapshot; confirm **Saved snapshots** and an unchanged drift summary when the server is stable.
+Automated: `tests/release/32-contract-drift.spec.ts`.
+
+**§3.33 — Server requests (manual pass):** Dev Tools → **Server Requests** shows the empty state when
+nothing is pending; when a server uses elicitation or sampling, a card appears for approve/deny.
+Inbound logging/progress notifications appear in Protocol Inspector as inbound traces. Automated:
+`tests/release/33-mcp-reverse-requests.spec.ts`.
 
 **§3.30 — Per-server refresh (manual pass):** With the fixture server connected, click **Refresh**
 beside **Disconnect** in the server list. The row shows **Refreshing…** briefly, stays green

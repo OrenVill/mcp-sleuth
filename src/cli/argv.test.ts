@@ -28,11 +28,31 @@ describe('parseArgv', () => {
     expect(command).toBe('audit');
     expect(rest).toEqual(['permission']);
   });
+  it('parses check flags', () => {
+    const { command, flags } = parseArgv([
+      'check',
+      '--server',
+      'api',
+      '--min-readiness',
+      '80',
+      '--fail-on-injection',
+      '--replay',
+      'suite.json',
+      '--json',
+    ]);
+    expect(command).toBe('check');
+    expect(flags.server).toBe('api');
+    expect(flags.minReadiness).toBe(80);
+    expect(flags.failOnInjection).toBe(true);
+    expect(flags.replay).toBe('suite.json');
+    expect(flags.json).toBe(true);
+  });
 });
 
 describe('isKnownCommand', () => {
-  it('includes chat and readiness', () => {
+  it('includes chat, check, and readiness', () => {
     expect(isKnownCommand('chat')).toBe(true);
+    expect(isKnownCommand('check')).toBe(true);
     expect(isKnownCommand('readiness')).toBe(true);
     expect(isKnownCommand('nope')).toBe(false);
   });

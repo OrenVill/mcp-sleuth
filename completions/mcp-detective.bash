@@ -45,7 +45,7 @@ _mcp_detective() {
   case "$first" in
     audit)
       if ((COMP_CWORD == 2)); then
-        _mcp_detective_complete_words permission injection
+        _mcp_detective_complete_words permission injection contract
       else
         _mcp_detective_complete_flags
       fi
@@ -59,7 +59,7 @@ _mcp_detective() {
       ;;
     provider | server)
       if ((COMP_CWORD == 2)); then
-        _mcp_detective_complete_words list add remove
+        _mcp_detective_complete_words list add remove import
       else
         _mcp_detective_complete_flags
       fi

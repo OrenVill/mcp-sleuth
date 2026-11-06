@@ -8,6 +8,7 @@ describe('CLI smoke', () => {
     const result = spawnSync(process.execPath, [bin, 'help'], { encoding: 'utf8' });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('readiness');
+    expect(result.stdout).toContain('check');
   });
 
   it('readiness does not start the browser daemon', () => {

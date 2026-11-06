@@ -274,3 +274,13 @@ total test count if it changed.
 
 If `README.md` or `README.npm.md` describes the changed behavior (commands, features,
 workflows), update them in the same branch.
+
+---
+
+## Git conventions (maintainer)
+
+- **Branch names:** use normal repo prefixes (`feat/`, `fix/`, `chore/`, …). Do **not** use
+  `cursor/` branches or agent-run suffixes on branch names.
+- **Commits:** do **not** add Cursor or cloud-agent co-author trailers (no `Co-authored-by:` for
+  Cursor, cloud agents, or similar). Commits should read as normal human-authored work unless
+  the maintainer explicitly adds another co-author.

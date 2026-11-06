@@ -17,7 +17,7 @@ export function formatConnectionError(err: unknown): string {
   if (err instanceof UnauthorizedError) {
     return join(
       'Authentication failed',
-      'The server rejected your credentials. Check the token, API key, or Basic auth in Edit server. If the server uses OAuth only, this browser build cannot complete that flow yet — use an access token or another auth method the server accepts.',
+      'The server requires sign-in or rejected your credentials. For OAuth (PKCE), choose that method in Edit server and connect again to open the provider sign-in page. You can also paste an access token under OAuth access token.',
     );
   }
 
@@ -203,6 +203,20 @@ function formatGenericMessage(message: string): string {
     return join(
       'Network error',
       'Could not reach the MCP proxy or the connection was interrupted. Confirm the app URL and try again.',
+    );
+  }
+
+  if (lower.includes('does not support dynamic client registration')) {
+    return join(
+      'OAuth app registration required',
+      'This MCP server does not register OAuth clients automatically (GitHub Copilot MCP is one example). Edit the server, choose OAuth (PKCE sign-in), and enter the Client ID from your OAuth app. If the app is confidential, enter its Client secret too. Add the callback URL shown in that form as an authorized redirect URI on the OAuth app, then connect again.',
+    );
+  }
+
+  if (lower.includes('protected resource') && lower.includes('does not match expected')) {
+    return join(
+      'OAuth resource mismatch',
+      'The server’s OAuth metadata did not match this connection URL. If you use the local MCP proxy, pull the latest build and try again. You can also paste an access token under OAuth access token.',
     );
   }
 

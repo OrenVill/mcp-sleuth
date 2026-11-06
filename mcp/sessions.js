@@ -11,6 +11,7 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
 import { createInsecureFetch } from '../electron/mcp/insecureFetch.js';
 import { chainHandler, isConnectionDeadError, isSessionLostError, isSseDisconnectSuspect } from '../electron/mcp/sessionRecovery.js';
+import { attachReverseRequestHandlers, DETECTIVE_CLIENT_CAPABILITIES } from '../mcp/reverseHandlers.js';
 
 const SERVER_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
@@ -90,6 +91,8 @@ export function headersFromAuth(auth) {
 
   if (auth.method === 'bearer' && auth.bearerToken?.trim()) {
     headers.Authorization = `Bearer ${auth.bearerToken.trim()}`;
+  } else if (auth.method === 'oauth' && auth.oauth?.accessToken?.trim()) {
+    headers.Authorization = `Bearer ${auth.oauth.accessToken.trim()}`;
   } else if (auth.method === 'api_key' && auth.apiKeyHeader?.trim() && auth.apiKeyValue?.trim()) {
     headers[auth.apiKeyHeader.trim()] = auth.apiKeyValue.trim();
   } else if (auth.method === 'basic') {
@@ -101,7 +104,8 @@ export function headersFromAuth(auth) {
 
 export function createDefaultDeps() {
   return {
-    createClient: () => new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: {} }),
+    createClient: () =>
+      new Client({ name: 'mcp-detective', version: '0.1.0' }, { capabilities: DETECTIVE_CLIENT_CAPABILITIES }),
     createHttpTransport: (url, auth, options = {}) => {
       const parsed = new URL(url);
       const headers = headersFromAuth(auth);
@@ -197,6 +201,7 @@ export function createSessionManager(deps = createDefaultDeps()) {
 
   async function open(serverId, transport, connectionMeta) {
     const client = deps.createClient();
+    attachReverseRequestHandlers(client, serverId);
     await client.connect(transport);
     client.setNotificationHandler(ToolListChangedNotificationSchema, async () => {
       for (const listener of toolsChangedListeners) listener(serverId);

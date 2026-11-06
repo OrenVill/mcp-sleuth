@@ -39,6 +39,14 @@ describe('formatConnectionError', () => {
     expect(out).toContain('Could not start process');
     expect(out).toContain('not-a-real-command');
   });
+
+  it('maps missing dynamic client registration to OAuth app guidance', () => {
+    const out = formatConnectionError(
+      new Error('Incompatible auth server: does not support dynamic client registration'),
+    );
+    expect(out).toContain('OAuth app registration required');
+    expect(out).toContain('GitHub');
+  });
 });
 
 describe('electron IPC errors', () => {
