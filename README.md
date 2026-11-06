@@ -357,13 +357,16 @@ never dismisses an open card either.
   on the server's score, with recommendations aimed at the tool descriptions and schemas that
   caused them.
 
-### Transcripts are never saved
+### Saved chats (three workspaces)
 
-Only compact per-server counters persist (runs, wrong-tool picks, bad-argument denials, tool
-errors, unrecovered runs). The transcript itself — the messages, arguments, and raw tool output —
-lives in memory for the session and is gone when you close the overlay. A transcript contains raw
-output from the server you are investigating, which is exactly the material that should not sit on
-disk.
+Agent Chat has **three** tabbed workspaces (`Chat 1`–`Chat 3`). Each keeps its own model choice, MCP
+scope, draft text, and the **last portion** of the conversation in app data (alongside bookmarks and
+call history), so a reload can restore it. Very long histories are trimmed automatically so the
+store stays bounded.
+
+**Agent run summaries** (compact per-server counters: runs, wrong-tool picks, bad-argument denials,
+tool errors, unrecovered runs) still persist separately and feed Agent Readiness — that is unrelated
+to the saved chat text.
 
 ### How provider traffic leaves
 
@@ -492,7 +495,8 @@ MCP Detective makes outbound network requests only to:
 - MCP servers you add yourself.
 - The LLM provider you configure for Agent Chat, using your own API key.
   Prompts, tool schemas and tool results are sent to that provider and are
-  governed by its own privacy policy. Agent Chat transcripts are never persisted.
+  governed by its own privacy policy. Saved Agent Chat text (see above) is stored
+  locally with your app data; it is not sent except to the LLM you configured.
 - `api.github.com`, roughly every six hours, to check whether a newer release
   exists. This sends no data about you or your servers, and can be disabled in
   Settings.

@@ -125,8 +125,9 @@ What the chat does:
   Journal.
 - **Export** the conversation as Markdown or JSON (save to file or copy), with best-effort redaction
   of credentials before you paste it into a bug report.
-- **Transcripts are never written to disk.** Only per-server counters persist in `~/.mcp-detective/`;
-  the messages and raw tool output live in memory for the session.
+- **Three chat workspaces** persist the last portion of each conversation in app data under
+  `~/.mcp-detective/` (alongside bookmarks and history). Per-server **run counters** still persist
+  separately for Agent Readiness.
 - **It always shows you it is working** — dots while the agent has the turn, a caret while text
   streams. Type during a run and the message is queued rather than dropped; Enter sends,
   Shift+Enter adds a line.
