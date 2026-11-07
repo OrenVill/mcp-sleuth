@@ -69,6 +69,8 @@ export interface McpHost {
   onClosed?(handler: (serverId: string) => void): () => void;
   /** Session was transparently re-initialized after the server forgot it. */
   onReconnected?(handler: (serverId: string) => void): () => void;
+  /** Desktop only: sync persisted roots to the main-process MCP client. */
+  setMcpRoots?(roots: Array<{ uri: string; name?: string }>): Promise<void>;
 }
 
 /** The encrypted vault envelope, opaque at this layer. */

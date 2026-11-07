@@ -72,6 +72,7 @@ import { OAUTH_CALLBACK_PATH } from './lib/mcpOAuth/constants';
 import { clearPendingOAuthFlow, readPendingOAuthFlow } from './lib/mcpOAuth/provider';
 import { finishOAuthAuthorization } from './lib/mcpOAuth/connectOAuth';
 import { registerOAuthSessionWriter } from './lib/mcpOAuth/sessionRegistry';
+import { syncMcpRootsToHost } from './lib/mcpRootsSync';
 import type {
   DiscoveryRun,
   MetaToolBinding,
@@ -131,6 +132,13 @@ export default function App() {
   }, []);
 
   const vault = useVault({ servers, setServers, onCleared: clearSelection });
+
+  const samplingLlm = useMemo(() => vault.llmConfigs[0] ?? null, [vault.llmConfigs]);
+
+  useEffect(() => {
+    if (vault.phase !== 'ready') return;
+    void syncMcpRootsToHost();
+  }, [vault.phase]);
   // Desktop only: the browser host reports no update channel, so both the pill
   // and the banner render nothing there.
   const update = useUpdateStatus();
@@ -1084,6 +1092,7 @@ export default function App() {
             group={win.group}
             initialTab={win.initialTab}
             servers={servers}
+            samplingLlm={samplingLlm}
             selectedServerId={selectedServer?.id ?? null}
             selectedToolName={selectedToolName}
             onReplayToolCall={(serverId, toolName, args) => mcpCallTool(serverId, toolName, args)}

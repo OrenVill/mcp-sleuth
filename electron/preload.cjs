@@ -31,6 +31,9 @@ const INVOKE = [
   'mcp:updateDismiss',
   'mcp:updateOpenRelease',
   'mcp:oauthFetch',
+  'mcp:setMcpRoots',
+  'mcp:reverseResolve',
+  'mcp:reverseReject',
 ];
 
 const api = {
@@ -68,6 +71,16 @@ const api = {
     const listener = (_event, serverId) => handler(serverId);
     ipcRenderer.on('mcp:reconnected', listener);
     return () => ipcRenderer.removeListener('mcp:reconnected', listener);
+  },
+  onReversePending(handler) {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on('mcp:reversePending', listener);
+    return () => ipcRenderer.removeListener('mcp:reversePending', listener);
+  },
+  onReverseInbound(handler) {
+    const listener = (_event, entry) => handler(entry);
+    ipcRenderer.on('mcp:reverseInbound', listener);
+    return () => ipcRenderer.removeListener('mcp:reverseInbound', listener);
   },
 
   // LLM traffic leaves main, so it cannot ride the generic `invoke` allowlist:

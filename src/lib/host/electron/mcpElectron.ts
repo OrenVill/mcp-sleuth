@@ -28,12 +28,28 @@ export type IpcEnvelope<T> = IpcSuccess<T> | IpcFailure;
  * `onUpdateAvailable` is: a preload from an older build does not expose them,
  * and a missing method must not crash the renderer at import time.
  */
+export type ReversePendingPayload = {
+  id: string;
+  serverId: string;
+  kind: 'sampling' | 'elicitation';
+  method: string;
+  params: unknown;
+};
+
+export type ReverseInboundEntry = {
+  serverId: string;
+  method: string;
+  params?: unknown;
+};
+
 export interface ElectronBridge extends Partial<LlmBridge> {
   readonly kind: 'electron';
   invoke(channel: string, ...args: unknown[]): Promise<IpcEnvelope<unknown>>;
   onToolsChanged(handler: (serverId: string) => void): () => void;
   onClosed(handler: (serverId: string) => void): () => void;
   onReconnected?(handler: (serverId: string) => void): () => void;
+  onReversePending?(handler: (payload: ReversePendingPayload) => void): () => void;
+  onReverseInbound?(handler: (entry: ReverseInboundEntry) => void): () => void;
   onUpdateAvailable?(handler: (status: unknown) => void): () => void;
 }
 
@@ -117,6 +133,10 @@ export function createElectronMcpHost(bridge: ElectronBridge): McpHost {
 
     getPrompt(serverId, name, args) {
       return call<PromptMessage[]>('mcp:getPrompt', serverId, name, args);
+    },
+
+    async setMcpRoots(roots) {
+      await call<void>('mcp:setMcpRoots', roots);
     },
 
     onToolsChanged(serverId, handler) {

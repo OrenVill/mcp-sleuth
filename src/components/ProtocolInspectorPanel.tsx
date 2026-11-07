@@ -113,7 +113,8 @@ export function ProtocolInspectorPanel({ servers }: Props) {
           </div>
           <p className="text-sm text-zinc-300">No protocol calls captured yet.</p>
           <p className="text-xs text-zinc-600 mt-1">
-            Connect a server, invoke a tool, read a resource, or fetch a prompt to populate the timeline.
+            Connect a server, invoke a tool, or handle inbound sampling, elicitation, logging, and progress
+            traffic to populate the timeline.
           </p>
         </div>
       </div>
@@ -173,9 +174,20 @@ export function ProtocolInspectorPanel({ servers }: Props) {
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-xs text-zinc-100 truncate">{trace.method}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded border ${STATUS_CLASS[trace.status]}`}>
-                    {trace.status}
-                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {trace.direction === 'inbound' ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-sky-800/80 bg-sky-950/40 text-sky-200">
+                        inbound
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500">
+                        out
+                      </span>
+                    )}
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${STATUS_CLASS[trace.status]}`}>
+                      {trace.status}
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-zinc-500">
                   <span className="truncate">{serverNames.get(trace.serverId) ?? trace.serverId}</span>
@@ -241,6 +253,7 @@ export function ProtocolInspectorPanel({ servers }: Props) {
                 </div>
                 <h3 className="text-xl font-semibold text-zinc-50 font-mono mt-1">{selected.method}</h3>
                 <div className="text-[11px] text-zinc-500 mt-1">
+                  {selected.direction === 'inbound' ? 'Inbound · ' : 'Outbound · '}
                   {new Date(selected.startedAt).toLocaleTimeString()} ·{' '}
                   {selected.durationMs !== undefined ? `${selected.durationMs}ms` : 'running'}
                 </div>

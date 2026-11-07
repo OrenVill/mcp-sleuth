@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { LlmConfig } from '../lib/agent/types';
 import type { ServerEntry, ToolResult } from '../types';
 import { TAB_GROUP_META, TAB_GROUPS, type DevToolsGroupId, type DevToolsTab } from '../lib/devToolsGroups';
 import { AgentReadinessPanel } from './AgentReadinessPanel';
@@ -20,6 +21,7 @@ interface Props {
   group: DevToolsGroupId;
   initialTab: DevToolsTab;
   servers: ServerEntry[];
+  samplingLlm?: LlmConfig | null;
   selectedServerId: string | null;
   selectedToolName: string | null;
   onReplayToolCall: (
@@ -38,6 +40,7 @@ interface ModalContentProps {
   groupDescription: string;
   items: Array<{ id: DevToolsTab; label: string }>;
   servers: ServerEntry[];
+  samplingLlm?: LlmConfig | null;
   selectedServerId: string | null;
   selectedToolName: string | null;
   onReplayToolCall: (
@@ -56,6 +59,7 @@ function DevToolsModalContent({
   groupDescription,
   items,
   servers,
+  samplingLlm = null,
   selectedServerId,
   selectedToolName,
   onReplayToolCall,
@@ -144,7 +148,7 @@ function DevToolsModalContent({
               <ProtocolInspectorPanel servers={servers} />
             </div>
             <div hidden={activeTab !== 'reverse'} className="h-full min-h-0 overflow-hidden">
-              <ReverseRequestsPanel servers={servers} />
+              <ReverseRequestsPanel servers={servers} samplingLlm={samplingLlm} />
             </div>
             <div hidden={activeTab !== 'replay'} className="h-full min-h-0 overflow-hidden">
               <ReplaySuitesPanel servers={servers} onReplayToolCall={onReplayToolCall} />
@@ -189,6 +193,7 @@ export function DevToolsModal({
   group,
   initialTab,
   servers,
+  samplingLlm = null,
   selectedServerId,
   selectedToolName,
   onReplayToolCall,
@@ -218,6 +223,7 @@ export function DevToolsModal({
       groupDescription={meta.description}
       items={items}
       servers={servers}
+      samplingLlm={samplingLlm}
       selectedServerId={selectedServerId}
       selectedToolName={selectedToolName}
       onReplayToolCall={onReplayToolCall}

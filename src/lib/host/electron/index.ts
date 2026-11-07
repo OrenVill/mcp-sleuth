@@ -5,8 +5,10 @@ import { createElectronSecretsHost } from './secretsElectron';
 import { createElectronUpdateHost } from './updatesElectron';
 import { createLlmElectron, type LlmBridge } from './llmElectron';
 import { createElectronOAuthHost } from './oauthElectron';
+import { bindElectronReverseBridge } from './reverseElectron';
 
 export function createElectronHost(bridge: ElectronBridge): Host {
+  bindElectronReverseBridge(bridge);
   return {
     kind: 'electron',
     mcp: createElectronMcpHost(bridge),

@@ -7,9 +7,12 @@ import {
   type PendingReverseRequest,
 } from '../lib/mcpReverseRequests';
 import { runApprovedSampling } from '../lib/mcpSampling';
+import { elicitationInitialValues, elicitationRequestedSchema } from '../lib/elicitationForm';
 import type { LlmConfig } from '../lib/agent/types';
 import type { ServerEntry } from '../types';
 import { CodeBlock } from './CodeBlock';
+import { McpRootsEditor } from './McpRootsEditor';
+import { SchemaForm } from './SchemaForm';
 
 interface Props {
   servers: ServerEntry[];
@@ -34,7 +37,10 @@ function RequestCard({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [elicitationJson, setElicitationJson] = useState('{\n  "confirm": true\n}');
+  const requestedSchema = item.kind === 'elicitation' ? elicitationRequestedSchema(item.params) : null;
+  const [formValues, setFormValues] = useState<Record<string, unknown>>(() =>
+    requestedSchema ? elicitationInitialValues(requestedSchema) : { confirm: true },
+  );
 
   async function approveSampling() {
     setBusy(true);
@@ -64,12 +70,7 @@ function RequestCard({
   }
 
   function acceptElicitation() {
-    try {
-      const content = JSON.parse(elicitationJson) as Record<string, unknown>;
-      resolvePendingReverseRequest(item.id, { action: 'accept', content });
-    } catch {
-      setError('Elicitation response must be valid JSON object');
-    }
+    resolvePendingReverseRequest(item.id, { action: 'accept', content: formValues });
   }
 
   const message =
@@ -93,18 +94,23 @@ function RequestCard({
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
       {item.kind === 'elicitation' ? (
         <>
-          <label className="block text-xs text-zinc-500">Accept payload (JSON)</label>
-          <textarea
-            className="w-full min-h-[80px] rounded-md bg-zinc-950 border border-zinc-800 px-2 py-1 text-xs font-mono text-zinc-200"
-            value={elicitationJson}
-            onChange={(e) => setElicitationJson(e.target.value)}
-          />
+          {requestedSchema ? (
+            <SchemaForm
+              schema={requestedSchema}
+              values={formValues}
+              onChange={(key, value) => setFormValues((v) => ({ ...v, [key]: value }))}
+            />
+          ) : (
+            <p className="text-sm text-amber-200">
+              No form schema in this request; decline or inspect params above.
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !requestedSchema}
               onClick={acceptElicitation}
-              className="px-3 py-1.5 text-xs rounded-md bg-emerald-700 hover:bg-emerald-600 text-white"
+              className="px-3 py-1.5 text-xs rounded-md bg-emerald-700 hover:bg-emerald-600 text-white disabled:opacity-40"
             >
               Accept
             </button>
@@ -146,25 +152,26 @@ export function ReverseRequestsPanel({ servers, samplingLlm = null }: Props) {
   const pending = usePending();
   const names = useMemo(() => new Map(servers.map((s) => [s.id, s.name])), [servers]);
 
-  if (pending.length === 0) {
-    return (
-      <div className="h-full overflow-auto p-5 text-sm text-zinc-400">
-        No pending server requests. When a connected MCP server calls sampling, elicitation, or sends
-        logging/progress notifications, they appear here or in the Protocol Inspector (inbound).
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full overflow-auto p-5 space-y-4">
-      {pending.map((item) => (
-        <RequestCard
-          key={item.id}
-          item={item}
-          serverName={names.get(item.serverId) ?? item.serverId}
-          samplingLlm={samplingLlm}
-        />
-      ))}
+    <div className="h-full overflow-auto p-5 space-y-6">
+      {pending.length === 0 ? (
+        <p className="text-sm text-zinc-400">
+          No pending server requests. When a connected MCP server calls sampling, elicitation, or sends
+          logging/progress notifications, they appear here or in the Protocol Inspector (inbound).
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {pending.map((item) => (
+            <RequestCard
+              key={item.id}
+              item={item}
+              serverName={names.get(item.serverId) ?? item.serverId}
+              samplingLlm={samplingLlm}
+            />
+          ))}
+        </div>
+      )}
+      <McpRootsEditor />
     </div>
   );
 }

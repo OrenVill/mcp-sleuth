@@ -28,6 +28,36 @@ export function subscribePendingReverseRequests(listener: () => void): () => voi
   return () => listeners.delete(listener);
 }
 
+export function registerBridgedReverseRequest(input: {
+  id: string;
+  serverId: string;
+  kind: ReverseRequestKind;
+  method: string;
+  params: unknown;
+  complete: (result: unknown, errorMessage?: string) => void | Promise<void>;
+}): void {
+  if (pending.has(input.id)) return;
+  pending.set(input.id, {
+    id: input.id,
+    serverId: input.serverId,
+    kind: input.kind,
+    method: input.method,
+    params: input.params,
+    createdAt: Date.now(),
+    resolve: (result) => {
+      pending.delete(input.id);
+      notify();
+      void input.complete(result);
+    },
+    reject: (error) => {
+      pending.delete(input.id);
+      notify();
+      void input.complete(null, error.message);
+    },
+  });
+  notify();
+}
+
 export function enqueueReverseRequest(input: {
   serverId: string;
   kind: ReverseRequestKind;

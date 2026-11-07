@@ -5,6 +5,7 @@ import {
   LoggingMessageNotificationSchema,
   ProgressNotificationSchema,
 } from '@modelcontextprotocol/sdk/types.js';
+import { getMcpRoots, notifyInbound, waitForReverseApproval } from './reverseBridge.js';
 
 export const DETECTIVE_CLIENT_CAPABILITIES = {
   sampling: {},
@@ -12,40 +13,49 @@ export const DETECTIVE_CLIENT_CAPABILITIES = {
   roots: { listChanged: true },
 };
 
-const DEFAULT_ROOTS = [{ uri: 'file:///', name: 'Filesystem root' }];
-
 /**
  * @param {import('@modelcontextprotocol/sdk/client/index.js').Client} client
  * @param {string} serverId
- * @param {{ onInbound?: (entry: { serverId: string; method: string; params?: unknown }) => void }} [options]
+ * @param {{
+ *   waitForApproval?: typeof waitForReverseApproval;
+ *   onInbound?: (entry: { serverId: string; method: string; params?: unknown }) => void;
+ *   getRoots?: () => Array<{ uri: string; name?: string }>;
+ * }} [options]
  */
 export function attachReverseRequestHandlers(client, serverId, options = {}) {
-  const onInbound = options.onInbound;
+  const waitForApproval = options.waitForApproval ?? waitForReverseApproval;
+  const getRoots = options.getRoots ?? getMcpRoots;
+  const onInbound = options.onInbound ?? notifyInbound;
 
-  client.setRequestHandler(ListRootsRequestSchema, async () => ({ roots: DEFAULT_ROOTS }));
+  client.setRequestHandler(ListRootsRequestSchema, async () => ({ roots: getRoots() }));
 
   client.setRequestHandler(CreateMessageRequestSchema, async (request) => {
-    onInbound?.({ serverId, method: 'sampling/createMessage', params: request.params });
-    return {
-      model: 'mcp-detective-stub',
-      role: 'assistant',
-      content: { type: 'text', text: 'Sampling approved (desktop stub).' },
-    };
+    return waitForApproval({
+      serverId,
+      kind: 'sampling',
+      method: 'sampling/createMessage',
+      params: request.params,
+    });
   });
 
   client.setRequestHandler(ElicitRequestSchema, async (request) => {
-    onInbound?.({ serverId, method: 'elicitation/create', params: request.params });
     if (request.params.mode && request.params.mode !== 'form') {
       return { action: 'decline' };
     }
-    return { action: 'decline' };
+    const result = await waitForApproval({
+      serverId,
+      kind: 'elicitation',
+      method: 'elicitation/create',
+      params: request.params,
+    });
+    return result;
   });
 
   client.setNotificationHandler(LoggingMessageNotificationSchema, (notification) => {
-    onInbound?.({ serverId, method: 'notifications/message', params: notification.params });
+    onInbound({ serverId, method: 'notifications/message', params: notification.params });
   });
 
   client.setNotificationHandler(ProgressNotificationSchema, (notification) => {
-    onInbound?.({ serverId, method: 'notifications/progress', params: notification.params });
+    onInbound({ serverId, method: 'notifications/progress', params: notification.params });
   });
 }

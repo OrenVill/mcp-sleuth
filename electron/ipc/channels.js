@@ -45,6 +45,9 @@ export const CHANNELS = {
   saveFile: 'mcp:saveFile',
   readAppData: 'mcp:readAppData',
   writeAppData: 'mcp:writeAppData',
+  setMcpRoots: 'mcp:setMcpRoots',
+  reverseResolve: 'mcp:reverseResolve',
+  reverseReject: 'mcp:reverseReject',
   // main → renderer pushes
   toolsChanged: 'mcp:toolsChanged',
   closed: 'mcp:closed',
@@ -53,6 +56,8 @@ export const CHANNELS = {
   llmChunk: 'mcp:llmChunk',
   llmDone: 'mcp:llmDone',
   llmError: 'mcp:llmError',
+  reversePending: 'mcp:reversePending',
+  reverseInbound: 'mcp:reverseInbound',
 };
 
 /**
