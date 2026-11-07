@@ -8,6 +8,7 @@ import { runProvider } from './provider';
 import { runCheck } from './check';
 import { runReadiness } from './readiness';
 import { runServer } from './server';
+import { runScenarioCommand } from './scenario';
 import { paint, sgr, terminalColorsEnabled } from '../chat/terminalTheme';
 
 export const commandRegistry: Record<string, CommandHandler> = {
@@ -19,6 +20,7 @@ export const commandRegistry: Record<string, CommandHandler> = {
   call: runCall,
   provider: runProvider,
   server: runServer,
+  scenario: runScenarioCommand,
   'add-completions': runAddCompletions,
 };
 
@@ -37,6 +39,7 @@ ${dim('Subcommands:')}
   ${cmd('call')} <tool> [--args JSON]
   ${cmd('provider')} list|add|remove
   ${cmd('server')} list|add|remove|import
+  ${cmd('scenario')} run <file.json>  Run saved scenario (CI / Test Lab)
   ${cmd('chat')}                   Agent Chat (alias: tui)
   ${cmd('add-completions')}        Install bash tab completion (~/.bashrc)
   ${cmd('help')}

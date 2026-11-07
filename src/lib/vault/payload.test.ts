@@ -22,6 +22,23 @@ describe('parseVaultPayload', () => {
     expect(parseVaultPayload(raw).llmConfigs).toHaveLength(1);
   });
 
+  it('normalizes LLM base URLs on read (trailing slashes)', () => {
+    const raw = JSON.stringify({
+      version: 2,
+      servers: [],
+      llmConfigs: [
+        {
+          id: 'l1',
+          label: 'Local',
+          provider: 'openai',
+          baseUrl: '  https://api.example.com/v1/  ',
+          model: 'x',
+        },
+      ],
+    });
+    expect(parseVaultPayload(raw).llmConfigs[0].baseUrl).toBe('https://api.example.com/v1');
+  });
+
   it('defaults missing fields on a malformed object', () => {
     expect(parseVaultPayload(JSON.stringify({ version: 2 }))).toEqual({
       version: 2,

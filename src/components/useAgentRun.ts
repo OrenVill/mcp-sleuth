@@ -51,14 +51,20 @@ export function useAgentRun(
   selectedServerIds: string[],
   maxTurns: number = DEFAULT_MAX_TURNS,
   onDiscovered?: (serverId: string, tools: DiscoveredTool[]) => void,
+  /** Restored from disk when the chat slot mounts (parent should key per slot). */
+  initialMessages?: AgentMessage[],
+  onMessagesChange?: (messages: AgentMessage[]) => void,
 ) {
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const [messages, setMessages] = useState<AgentMessage[]>(() => initialMessages ?? []);
   const [streamingText, setStreamingText] = useState('');
   const [pending, setPending] = useState<PendingCall | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const messagesRef = useRef<AgentMessage[]>([]);
+  const messagesRef = useRef<AgentMessage[]>(initialMessages ?? []);
+
+  const onMessagesChangeRef = useRef(onMessagesChange);
+  onMessagesChangeRef.current = onMessagesChange;
   const decideRef = useRef<((decision: GateDecision) => void) | null>(null);
   const allowedRef = useRef<ReadonlySet<string>>(new Set());
   const abortRef = useRef<AbortController | null>(null);
@@ -128,6 +134,7 @@ export function useAgentRun(
   const commit = useCallback((next: AgentMessage[]) => {
     messagesRef.current = next;
     setMessages(next);
+    onMessagesChangeRef.current?.(next);
   }, []);
 
   const decide = useCallback((decision: GateDecision) => {

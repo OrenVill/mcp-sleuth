@@ -1,6 +1,7 @@
 import { getHost } from '../host';
 import { clearLegacyServers, loadLegacyServers, type StoredServer } from '../storage';
 import type { LlmConfig } from '../agent/types';
+import { normalizeBaseUrl } from '../agent/normalizeBaseUrl';
 import {
   buildCipherBlob,
   buildKdfParams,
@@ -29,6 +30,13 @@ export interface VaultPayload {
  * v1 payloads were a bare StoredServer[]. They are still written by older
  * versions of the app, so an array is read as servers with no LLM configs.
  */
+function normalizeLlmConfigs(configs: LlmConfig[]): LlmConfig[] {
+  return configs.map((c) => ({
+    ...c,
+    baseUrl: normalizeBaseUrl(c.baseUrl),
+  }));
+}
+
 export function parseVaultPayload(jsonText: string): VaultPayload {
   let parsed: unknown;
   try {
@@ -46,7 +54,9 @@ export function parseVaultPayload(jsonText: string): VaultPayload {
   return {
     version: 2,
     servers: Array.isArray(obj.servers) ? (obj.servers as StoredServer[]) : [],
-    llmConfigs: Array.isArray(obj.llmConfigs) ? (obj.llmConfigs as LlmConfig[]) : [],
+    llmConfigs: Array.isArray(obj.llmConfigs)
+      ? normalizeLlmConfigs(obj.llmConfigs as LlmConfig[])
+      : [],
   };
 }
 

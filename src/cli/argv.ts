@@ -80,6 +80,7 @@ export function isKnownCommand(command: string | null): boolean {
     command === 'provider' ||
     command === 'server' ||
     command === 'check' ||
+    command === 'scenario' ||
     command === 'add-completions'
   );
 }

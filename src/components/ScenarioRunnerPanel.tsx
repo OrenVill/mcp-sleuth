@@ -1,10 +1,27 @@
-import { useState, useCallback, useEffect } from 'react';
-import type { ServerEntry } from '../types';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import type { JsonSchema, ServerEntry, ToolDef } from '../types';
 import { Select } from './Select';
+import { SchemaForm } from './SchemaForm';
+import { ConfirmDialog } from './ConfirmDialog';
+import { getHost } from '../lib/host';
+import {
+  assertScenarioSafeToExport,
+  buildScenarioFile,
+  parseScenarioFileJson,
+  serializeScenarioFile,
+} from '../lib/scenarioFile';
+import {
+  deleteScenario,
+  duplicateScenario,
+  getScenarios,
+  importScenarioFromFile,
+  setScenarios as persistScenarios,
+} from '../lib/scenarioStore';
 import {
   createScenario,
   addStep,
   runScenario,
+  cleanToolArgs,
   type Scenario,
   type ScenarioStep,
   type StepAssertion,
@@ -33,8 +50,28 @@ function allTools(servers: ServerEntry[]): { serverId: string; serverName: strin
   ]);
 }
 
+function findToolDef(server: ServerEntry, toolName: string): ToolDef | null {
+  const list = [...(server.tools ?? []), ...(server.discovered ?? [])];
+  return list.find((t) => t.name === toolName) ?? null;
+}
+
+function jsonSchemaHasProperties(schema: JsonSchema | undefined): boolean {
+  const props = schema?.properties;
+  return !!props && Object.keys(props).length > 0;
+}
+
 function makeStepId(): string {
   return `step-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function stepSummaryLine(servers: ServerEntry[], step: ScenarioStep): string {
+  if (!step.serverId || !step.toolName) {
+    return 'Select a tool…';
+  }
+  const server = servers.find((s) => s.id === step.serverId);
+  const serverName = server?.name?.trim() || step.serverId || '—';
+  const tool = step.toolName.trim();
+  return `${serverName} / ${tool}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,12 +134,31 @@ interface StepEditorProps {
   onChange: (step: ScenarioStep) => void;
   onRemove: () => void;
   index: number;
+  collapsed: boolean;
+  onExpand: () => void;
+  onCollapse: () => void;
 }
 
-function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProps) {
+function StepEditor({
+  servers,
+  step,
+  onChange,
+  onRemove,
+  index,
+  collapsed,
+  onExpand,
+  onCollapse,
+}: StepEditorProps) {
   const tools = allTools(servers);
+  const server = servers.find((s) => s.id === step.serverId) ?? null;
+  const toolDef = server && step.toolName ? findToolDef(server, step.toolName) : null;
+  const inputSchema: JsonSchema = toolDef?.inputSchema ?? { type: 'object' };
+  const hasSchemaFields = jsonSchemaHasProperties(inputSchema);
+  const [jsonMode, setJsonMode] = useState(false);
   const [argsText, setArgsText] = useState(() => JSON.stringify(step.args, null, 2));
   const [argsError, setArgsError] = useState<string | null>(null);
+
+  const showJsonEditor = !hasSchemaFields || jsonMode;
 
   function handleArgsChange(text: string) {
     setArgsText(text);
@@ -129,14 +185,67 @@ function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProp
     onChange({ ...step, assertions: step.assertions.filter((_, idx) => idx !== i) });
   }
 
-  return (
-    <div className="border border-zinc-800 rounded-lg p-3 space-y-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-medium text-zinc-400">Step {index + 1}</span>
+  if (collapsed) {
+    return (
+      <div
+        data-testid={`scenario-step-collapsed-${index}`}
+        className="border border-zinc-800 rounded-lg px-3 py-2 flex items-center gap-2 min-h-[40px]"
+      >
+        <button
+          type="button"
+          onClick={onExpand}
+          aria-expanded={false}
+          aria-label={`Expand step ${index + 1}`}
+          className="shrink-0 text-zinc-500 hover:text-zinc-200 rounded p-0.5 hover:bg-zinc-800 transition-colors"
+        >
+          <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
+            <path
+              fillRule="evenodd"
+              d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06L7.28 12.78a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+        <span className="text-[11px] font-medium text-zinc-500 shrink-0">Step {index + 1}</span>
+        <span className="text-xs text-zinc-300 truncate flex-1 min-w-0" title={stepSummaryLine(servers, step)}>
+          {stepSummaryLine(servers, step)}
+        </span>
         <button
           type="button"
           onClick={onRemove}
-          className="text-zinc-600 hover:text-red-400 transition-colors text-xs"
+          className="text-zinc-600 hover:text-red-400 transition-colors text-xs shrink-0"
+        >
+          Remove
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border border-zinc-800 rounded-lg p-3 space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            type="button"
+            onClick={onCollapse}
+            aria-expanded
+            aria-label={`Collapse step ${index + 1}`}
+            className="shrink-0 text-zinc-500 hover:text-zinc-200 rounded p-0.5 hover:bg-zinc-800 transition-colors"
+          >
+            <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
+              <path
+                fillRule="evenodd"
+                d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z"
+                clipRule="evenodd"
+              />
+            </svg>
+          </button>
+          <span className="text-[11px] font-medium text-zinc-400">Step {index + 1}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-zinc-600 hover:text-red-400 transition-colors text-xs shrink-0"
         >
           Remove
         </button>
@@ -149,7 +258,17 @@ function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProp
           value={`${step.serverId}::${step.toolName}`}
           onChange={(value) => {
             const [serverId, toolName] = value.split('::');
-            onChange({ ...step, serverId: serverId ?? '', toolName: toolName ?? '' });
+            const pick = tools.find((t) => t.serverId === serverId && t.toolName === toolName);
+            onChange({
+              ...step,
+              serverId: serverId ?? '',
+              toolName: toolName ?? '',
+              serverName: pick?.serverName ?? step.serverName,
+              args: {},
+            });
+            setJsonMode(false);
+            setArgsText('{}');
+            setArgsError(null);
           }}
           options={[
             { value: '::', label: '— select tool —' },
@@ -164,22 +283,71 @@ function StepEditor({ servers, step, onChange, onRemove, index }: StepEditorProp
         />
       </div>
 
-      {/* Args */}
+      {/* Args — same SchemaForm as Invoke when the tool lists properties */}
       <div className="space-y-1">
-        <label className="block text-[10px] text-zinc-500 uppercase tracking-wide">
-          Arguments (JSON)
-        </label>
-        <textarea
-          rows={3}
-          value={argsText}
-          onChange={(e) => handleArgsChange(e.target.value)}
-          className={[
-            'w-full bg-zinc-950 border rounded-md px-2 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none resize-y',
-            argsError ? 'border-red-600' : 'border-zinc-700 focus:border-violet-500',
-          ].join(' ')}
-          spellCheck={false}
-        />
-        {argsError && <p className="text-red-400 text-[10px]">{argsError}</p>}
+        <div className="flex items-center justify-between gap-2">
+          <label className="block text-[10px] text-zinc-500 uppercase tracking-wide">
+            {showJsonEditor ? 'Arguments (JSON)' : 'Arguments'}
+          </label>
+          {hasSchemaFields && !jsonMode && (
+            <button
+              type="button"
+              onClick={() => {
+                setJsonMode(true);
+                setArgsText(JSON.stringify(step.args, null, 2));
+                setArgsError(null);
+              }}
+              className="text-[10px] text-violet-400 hover:text-violet-300 transition-colors shrink-0"
+            >
+              Edit as JSON
+            </button>
+          )}
+          {hasSchemaFields && jsonMode && (
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  const parsed = JSON.parse(argsText) as Record<string, unknown>;
+                  onChange({ ...step, args: parsed });
+                  setJsonMode(false);
+                  setArgsError(null);
+                } catch {
+                  setArgsError('Invalid JSON');
+                }
+              }}
+              className="text-[10px] text-violet-400 hover:text-violet-300 transition-colors shrink-0"
+            >
+              Form fields
+            </button>
+          )}
+        </div>
+        {showJsonEditor ? (
+          <>
+            <textarea
+              data-testid={`scenario-step-args-json-${index}`}
+              rows={4}
+              value={argsText}
+              onChange={(e) => handleArgsChange(e.target.value)}
+              className={[
+                'w-full bg-zinc-950 border rounded-md px-2 py-1.5 text-xs font-mono text-zinc-200 focus:outline-none resize-y',
+                argsError ? 'border-red-600' : 'border-zinc-700 focus:border-violet-500',
+              ].join(' ')}
+              spellCheck={false}
+            />
+            {argsError && <p className="text-red-400 text-[10px]">{argsError}</p>}
+          </>
+        ) : (
+          <div
+            data-testid={`scenario-step-args-form-${index}`}
+            className="rounded-md border border-zinc-800/80 bg-zinc-950/40 p-3"
+          >
+            <SchemaForm
+              schema={inputSchema}
+              values={step.args}
+              onChange={(key, v) => onChange({ ...step, args: { ...step.args, [key]: v } })}
+            />
+          </div>
+        )}
       </div>
 
       {/* Assertions */}
@@ -321,19 +489,51 @@ function AssertionEditor({
 // ---------------------------------------------------------------------------
 
 export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+  const [scenarios, setScenarios] = useState<Scenario[]>(() => getScenarios());
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(() => {
+    const list = getScenarios();
+    return list.length > 0 ? list[0].id : null;
+  });
+  /** Step ids with expanded editors. Adding a step collapses all others (set becomes only the new id). */
+  const [expandedStepIds, setExpandedStepIds] = useState<Set<string>>(() => new Set());
   const [runResults, setRunResults] = useState<Map<string, ScenarioRun>>(new Map());
   const [running, setRunning] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const persistReady = useRef(false);
+
+  useEffect(() => {
+    persistReady.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!persistReady.current) return;
+    const timer = window.setTimeout(() => persistScenarios(scenarios), 400);
+    return () => window.clearTimeout(timer);
+  }, [scenarios]);
 
   const activeScenario = scenarios.find((s) => s.id === activeScenarioId) ?? null;
+
+  function expandLastStepOfScenario(scenario: Scenario) {
+    setExpandedStepIds(
+      scenario.steps.length > 0
+        ? new Set([scenario.steps[scenario.steps.length - 1].id])
+        : new Set(),
+    );
+  }
+
+  function handleSelectScenario(scenario: Scenario) {
+    setActiveScenarioId(scenario.id);
+    expandLastStepOfScenario(scenario);
+  }
 
   function handleCreate() {
     const name = newName.trim() || 'New Scenario';
     const scenario = createScenario(name);
     setScenarios((prev) => [...prev, scenario]);
-    setActiveScenarioId(scenario.id);
+    handleSelectScenario(scenario);
     setNewName('');
   }
 
@@ -343,15 +543,15 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
 
   function handleAddStep() {
     if (!activeScenario) return;
-    const firstTool = allTools(servers)[0];
     const step: ScenarioStep = {
       id: makeStepId(),
-      serverId: firstTool?.serverId ?? '',
-      toolName: firstTool?.toolName ?? '',
+      serverId: '',
+      toolName: '',
       args: {},
       assertions: [{ type: 'status', expected: 'success' }],
     };
     handleUpdateScenario(addStep(activeScenario, step));
+    setExpandedStepIds(new Set([step.id]));
   }
 
   function handleUpdateStep(stepId: string, updated: ScenarioStep) {
@@ -364,19 +564,100 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
 
   function handleRemoveStep(stepId: string) {
     if (!activeScenario) return;
+    const nextSteps = activeScenario.steps.filter((s) => s.id !== stepId);
     handleUpdateScenario({
       ...activeScenario,
-      steps: activeScenario.steps.filter((s) => s.id !== stepId),
+      steps: nextSteps,
+    });
+    setExpandedStepIds((prev) => {
+      const next = new Set(prev);
+      next.delete(stepId);
+      if (next.size === 0 && nextSteps.length > 0) {
+        next.add(nextSteps[nextSteps.length - 1].id);
+      }
+      return next;
     });
   }
 
+  const allStepsHaveTool =
+    !!activeScenario &&
+    activeScenario.steps.length > 0 &&
+    activeScenario.steps.every((s) => s.serverId && s.toolName);
+
+  const missingServerOnStep = (step: ScenarioStep) =>
+    !!step.serverId && !servers.some((s) => s.id === step.serverId);
+
+  const activeHasMissingServer =
+    !!activeScenario && activeScenario.steps.some((s) => missingServerOnStep(s));
+
+  async function handleExport() {
+    if (!activeScenario) return;
+    setActionError(null);
+    const blocked = assertScenarioSafeToExport(activeScenario);
+    if (blocked) {
+      setActionError(blocked.message);
+      return;
+    }
+    const file = buildScenarioFile(
+      activeScenario,
+      servers.map((s) => ({ id: s.id, name: s.name })),
+    );
+    const slug =
+      activeScenario.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'scenario';
+    await getHost().files.saveFileAsync(
+      `${slug}.scenario.json`,
+      serializeScenarioFile(file),
+      'application/json',
+    );
+  }
+
+  function handleImportText(text: string) {
+    setActionError(null);
+    const parsed = parseScenarioFileJson(text);
+    if (!parsed.ok) {
+      setActionError(parsed.error.message);
+      return;
+    }
+    const imported = importScenarioFromFile(parsed.file.scenario);
+    setScenarios(getScenarios());
+    handleSelectScenario(imported);
+  }
+
+  function handleDuplicateActive() {
+    if (!activeScenario) return;
+    setActionError(null);
+    const copy = duplicateScenario(activeScenario.id);
+    if (!copy) return;
+    setScenarios(getScenarios());
+    handleSelectScenario(copy);
+  }
+
+  function confirmDeleteScenario() {
+    if (!deleteTargetId) return;
+    const remaining = scenarios.filter((s) => s.id !== deleteTargetId);
+    deleteScenario(deleteTargetId);
+    setScenarios(getScenarios());
+    if (activeScenarioId === deleteTargetId) {
+      setActiveScenarioId(remaining[0]?.id ?? null);
+    }
+    setRunResults((prev) => {
+      const next = new Map(prev);
+      next.delete(deleteTargetId);
+      return next;
+    });
+    setDeleteTargetId(null);
+  }
+
   const handleRun = useCallback(async () => {
-    if (!activeScenario || running) return;
+    if (!activeScenario || running || !allStepsHaveTool) return;
     setRunning(activeScenario.id);
     try {
       const run = await runScenario(activeScenario, async (step) => {
         try {
-          const result = await onCallTool(step.serverId, step.toolName, step.args);
+          const result = await onCallTool(step.serverId, step.toolName, cleanToolArgs(step.args));
           return { status: 'success', result };
         } catch (err) {
           return {
@@ -389,7 +670,7 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
     } finally {
       setRunning(null);
     }
-  }, [activeScenario, running, onCallTool]);
+  }, [activeScenario, running, onCallTool, allStepsHaveTool]);
 
   const currentRun = activeScenario ? runResults.get(activeScenario.id) : null;
 
@@ -425,7 +706,8 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
               Scenario Runner
             </h2>
             <p className="text-xs text-zinc-500 mt-0.5 max-w-2xl">
-              Build ordered tool-call chains, run them, and inspect pass/fail per step.
+              Build and save tool-call test chains (Test Lab). Export JSON for{' '}
+              <span className="font-mono text-zinc-600">mcp-detective scenario run</span> in CI.
             </p>
           </div>
           <button
@@ -477,7 +759,7 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                 <button
                   key={scenario.id}
                   type="button"
-                  onClick={() => setActiveScenarioId(scenario.id)}
+                  onClick={() => handleSelectScenario(scenario)}
                   className={[
                     'w-full text-left px-3 py-2 text-xs transition-colors',
                     scenario.id === activeScenarioId
@@ -514,7 +796,53 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                   <h3 className="text-sm font-semibold text-zinc-100">{activeScenario.name}</h3>
                   <p className="text-[10px] text-zinc-500">{activeScenario.steps.length} steps</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <button
+                    type="button"
+                    data-testid="scenario-export-btn"
+                    onClick={() => void handleExport()}
+                    disabled={!allStepsHaveTool}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-40"
+                  >
+                    Export
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="scenario-import-btn"
+                    onClick={() => importInputRef.current?.click()}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    Import
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="sr-only"
+                    data-testid="scenario-import-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!file) return;
+                      void file.text().then(handleImportText);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    data-testid="scenario-duplicate-btn"
+                    onClick={handleDuplicateActive}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="scenario-delete-btn"
+                    onClick={() => setDeleteTargetId(activeScenario.id)}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-red-400/90 hover:text-red-300 hover:border-red-900/60"
+                  >
+                    Delete
+                  </button>
                   {currentRun && (
                     <span className={[
                       'text-xs font-medium px-2 py-1 rounded-md',
@@ -528,13 +856,36 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                   <button
                     type="button"
                     onClick={() => void handleRun()}
-                    disabled={running === activeScenario.id || activeScenario.steps.length === 0}
+                    disabled={
+                      running === activeScenario.id ||
+                      activeScenario.steps.length === 0 ||
+                      !allStepsHaveTool ||
+                      activeHasMissingServer
+                    }
+                    title={
+                      activeHasMissingServer
+                        ? 'Reconnect missing servers or re-select tools before running'
+                        : !allStepsHaveTool && activeScenario.steps.length > 0
+                          ? 'Choose a server and tool for every step before running'
+                          : undefined
+                    }
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs rounded-md transition-colors"
                   >
                     {running === activeScenario.id ? 'Running…' : '▶ Run'}
                   </button>
                 </div>
               </div>
+
+              {actionError && (
+                <p className="px-4 py-2 text-xs text-red-400 border-b border-red-900/30 bg-red-950/20">
+                  {actionError}
+                </p>
+              )}
+              {activeHasMissingServer && (
+                <p className="px-4 py-2 text-xs text-amber-400/90 border-b border-amber-900/30 bg-amber-950/20">
+                  One or more steps reference a server that is not connected. Re-select tools or add the server again.
+                </p>
+              )}
 
               {/* Steps + results */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -550,6 +901,17 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                       servers={servers}
                       step={step}
                       index={i}
+                      collapsed={!expandedStepIds.has(step.id)}
+                      onExpand={() =>
+                        setExpandedStepIds((prev) => new Set(prev).add(step.id))
+                      }
+                      onCollapse={() =>
+                        setExpandedStepIds((prev) => {
+                          const n = new Set(prev);
+                          n.delete(step.id);
+                          return n;
+                        })
+                      }
                       onChange={(updated) => handleUpdateStep(step.id, updated)}
                       onRemove={() => handleRemoveStep(step.id)}
                     />
@@ -580,6 +942,16 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
         </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="Delete scenario?"
+        message="This removes the scenario from your saved library. Export first if you need a copy."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDeleteScenario}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }
