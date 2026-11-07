@@ -677,8 +677,7 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      // Select portals its listbox to `document.body`; close that first — do not dismiss this panel.
-      if (document.querySelector('[role="listbox"]')) return;
+      if (document.querySelector('body > [role="listbox"], body > [role="dialog"]')) return;
       onClose();
     };
     document.addEventListener('keydown', onKey);
