@@ -11,6 +11,7 @@ export const UNREACHABLE_URL = 'http://localhost:9999/mcp';
  * server instead, run its `start:http` script and change this URL.
  */
 export const AWESOME_URL = 'http://localhost:3002/mcp';
+export const REVERSE_MCP_URL = 'http://127.0.0.1:3006/mcp';
 
 export const APP_ORIGIN = 'http://127.0.0.1:4173';
 

@@ -269,6 +269,7 @@ export default defineConfig({
       'src/**/*.test.ts',
       '*.test.js',
       'electron/**/*.test.js',
+      'mcp/**/*.test.js',
       'scripts/**/*.test.js',
       'tests/cli/**/*.test.ts',
     ],

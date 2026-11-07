@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   enqueueReverseRequest,
   getPendingReverseRequests,
+  registerBridgedReverseRequest,
   rejectPendingReverseRequest,
   resolvePendingReverseRequest,
 } from './mcpReverseRequests';
@@ -30,5 +31,24 @@ describe('mcpReverseRequests', () => {
     const id = getPendingReverseRequests()[0]!.id;
     rejectPendingReverseRequest(id, 'nope');
     await expect(pending).rejects.toThrow(/nope/);
+    expect(getPendingReverseRequests()).toHaveLength(0);
+  });
+
+  test('bridged requests notify UI and complete via callback', () => {
+    let settled: unknown;
+    registerBridgedReverseRequest({
+      id: 'rev-main-1',
+      serverId: 's1',
+      kind: 'elicitation',
+      method: 'elicitation/create',
+      params: {},
+      complete: (result) => {
+        settled = result;
+      },
+    });
+    expect(getPendingReverseRequests()[0]?.id).toBe('rev-main-1');
+    resolvePendingReverseRequest('rev-main-1', { action: 'accept', content: { ok: true } });
+    expect(settled).toEqual({ action: 'accept', content: { ok: true } });
+    expect(getPendingReverseRequests()).toHaveLength(0);
   });
 });

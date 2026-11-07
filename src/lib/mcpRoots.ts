@@ -1,8 +1,9 @@
-/** Default filesystem roots Detective advertises to MCP servers via `roots/list`. */
-export const DEFAULT_MCP_ROOTS: Array<{ uri: string; name?: string }> = [
-  { uri: 'file:///', name: 'Filesystem root' },
-];
+export { DEFAULT_MCP_ROOTS, type McpRootEntry } from './mcpRootsStore';
+export { getStoredMcpRoots, setStoredMcpRoots, subscribeMcpRoots } from './mcpRootsStore';
 
+import { getStoredMcpRoots } from './mcpRootsStore';
+
+/** Roots returned for MCP `roots/list` in the browser (main process uses IPC sync). */
 export function listMcpRoots(): Array<{ uri: string; name?: string }> {
-  return DEFAULT_MCP_ROOTS.map((root) => ({ ...root }));
+  return getStoredMcpRoots();
 }

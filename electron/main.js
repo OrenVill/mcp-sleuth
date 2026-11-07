@@ -7,6 +7,7 @@ import { APP_ORIGIN, APP_SCHEME, resolveAppPath } from './protocol.js';
 import { CONTENT_SECURITY_POLICY, CSP_HEADER_NAME } from '../content-security-policy.js';
 import { createSessionManager } from './mcp/sessions.js';
 import { registerMcpHandlers } from './ipc/mcpHandlers.js';
+import { registerReverseHandlers } from './ipc/reverseHandlers.js';
 import { registerNativeHandlers } from './ipc/nativeHandlers.js';
 import { forwardWindowState, registerWindowHandlers } from './ipc/windowHandlers.js';
 import { registerUpdateHandlers } from './ipc/updateHandlers.js';
@@ -91,6 +92,7 @@ if (!app.requestSingleInstanceLock()) {
     session.defaultSession.setPermissionCheckHandler(() => false);
 
     registerMcpHandlers(sessions, () => mainWindow);
+    registerReverseHandlers(() => mainWindow);
 
     // Provider HTTP also leaves the main process: no CORS, so no proxy, and the
     // response streams back to the renderer on a channel keyed by request id.

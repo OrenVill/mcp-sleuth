@@ -9,6 +9,7 @@ import type { CallRecord } from './history';
 import type { ContractSnapshotsStore } from './contractSnapshots';
 import type { ObservationJournalsStore } from './observationJournal';
 import type { Scenario } from './scenarioRunner';
+import type { McpRootEntry } from './mcpRootsStore';
 
 export interface AppData {
   version: number;
@@ -25,6 +26,8 @@ export interface AppData {
   agentChatSlots?: AgentChatSlotPersisted[];
   /** Saved Scenario Runner chains (Test Lab). */
   scenarios?: Scenario[];
+  /** Roots advertised to MCP servers via client `roots/list`. */
+  mcpRoots?: McpRootEntry[];
 }
 
 const DEFAULT: AppData = {
@@ -95,6 +98,11 @@ function parseAppData(raw: unknown): AppData {
           (s) => s && typeof s === 'object' && typeof (s as Scenario).id === 'string',
         )
       : [],
+    mcpRoots: Array.isArray(obj.mcpRoots)
+      ? (obj.mcpRoots as McpRootEntry[]).filter(
+          (r) => r && typeof r === 'object' && typeof r.uri === 'string',
+        )
+      : undefined,
   };
 }
 
