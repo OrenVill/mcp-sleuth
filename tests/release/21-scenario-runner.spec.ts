@@ -208,6 +208,20 @@ test.describe.serial('§3.21 — Scenario Runner', () => {
     }
   });
 
+  test('saved scenarios survive a page reload', async () => {
+    const unique = `Persist ${Date.now()}`;
+    const nameInput = page.locator('input[placeholder*="scenario"], input[placeholder*="name"]').first();
+    await nameInput.fill(unique);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(500);
+    await page.reload();
+    await page.waitForTimeout(800);
+    await page.getByTestId('header-automate-menu').click();
+    await page.getByTestId('open-scenarios').click();
+    await page.waitForTimeout(400);
+    await expect(page.getByText(unique, { exact: false })).toBeVisible({ timeout: 5_000 });
+  });
+
   test('closing the panel with × button closes cleanly — no crash', async () => {
     const jsErrors: string[] = [];
     page.once('pageerror', (err) => jsErrors.push(err.message));

@@ -45,6 +45,8 @@ export type StepAssertion =
 export interface ScenarioStep {
   id: string;
   serverId: string;
+  /** Vault server display name at authoring time; used when re-binding exports in CLI. */
+  serverName?: string;
   toolName: string;
   args: Record<string, unknown>;
   assertions: StepAssertion[];

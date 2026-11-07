@@ -1,7 +1,22 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { JsonSchema, ServerEntry, ToolDef } from '../types';
 import { Select } from './Select';
 import { SchemaForm } from './SchemaForm';
+import { ConfirmDialog } from './ConfirmDialog';
+import { getHost } from '../lib/host';
+import {
+  assertScenarioSafeToExport,
+  buildScenarioFile,
+  parseScenarioFileJson,
+  serializeScenarioFile,
+} from '../lib/scenarioFile';
+import {
+  deleteScenario,
+  duplicateScenario,
+  getScenarios,
+  importScenarioFromFile,
+  setScenarios as persistScenarios,
+} from '../lib/scenarioStore';
 import {
   createScenario,
   addStep,
@@ -243,7 +258,14 @@ function StepEditor({
           value={`${step.serverId}::${step.toolName}`}
           onChange={(value) => {
             const [serverId, toolName] = value.split('::');
-            onChange({ ...step, serverId: serverId ?? '', toolName: toolName ?? '', args: {} });
+            const pick = tools.find((t) => t.serverId === serverId && t.toolName === toolName);
+            onChange({
+              ...step,
+              serverId: serverId ?? '',
+              toolName: toolName ?? '',
+              serverName: pick?.serverName ?? step.serverName,
+              args: {},
+            });
             setJsonMode(false);
             setArgsText('{}');
             setArgsError(null);
@@ -467,13 +489,30 @@ function AssertionEditor({
 // ---------------------------------------------------------------------------
 
 export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null);
+  const [scenarios, setScenarios] = useState<Scenario[]>(() => getScenarios());
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(() => {
+    const list = getScenarios();
+    return list.length > 0 ? list[0].id : null;
+  });
   /** Step ids with expanded editors. Adding a step collapses all others (set becomes only the new id). */
   const [expandedStepIds, setExpandedStepIds] = useState<Set<string>>(() => new Set());
   const [runResults, setRunResults] = useState<Map<string, ScenarioRun>>(new Map());
   const [running, setRunning] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+  const persistReady = useRef(false);
+
+  useEffect(() => {
+    persistReady.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (!persistReady.current) return;
+    const timer = window.setTimeout(() => persistScenarios(scenarios), 400);
+    return () => window.clearTimeout(timer);
+  }, [scenarios]);
 
   const activeScenario = scenarios.find((s) => s.id === activeScenarioId) ?? null;
 
@@ -545,6 +584,73 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
     activeScenario.steps.length > 0 &&
     activeScenario.steps.every((s) => s.serverId && s.toolName);
 
+  const missingServerOnStep = (step: ScenarioStep) =>
+    !!step.serverId && !servers.some((s) => s.id === step.serverId);
+
+  const activeHasMissingServer =
+    !!activeScenario && activeScenario.steps.some((s) => missingServerOnStep(s));
+
+  async function handleExport() {
+    if (!activeScenario) return;
+    setActionError(null);
+    const blocked = assertScenarioSafeToExport(activeScenario);
+    if (blocked) {
+      setActionError(blocked.message);
+      return;
+    }
+    const file = buildScenarioFile(
+      activeScenario,
+      servers.map((s) => ({ id: s.id, name: s.name })),
+    );
+    const slug =
+      activeScenario.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '') || 'scenario';
+    await getHost().files.saveFileAsync(
+      `${slug}.scenario.json`,
+      serializeScenarioFile(file),
+      'application/json',
+    );
+  }
+
+  function handleImportText(text: string) {
+    setActionError(null);
+    const parsed = parseScenarioFileJson(text);
+    if (!parsed.ok) {
+      setActionError(parsed.error.message);
+      return;
+    }
+    const imported = importScenarioFromFile(parsed.file.scenario);
+    setScenarios(getScenarios());
+    handleSelectScenario(imported);
+  }
+
+  function handleDuplicateActive() {
+    if (!activeScenario) return;
+    setActionError(null);
+    const copy = duplicateScenario(activeScenario.id);
+    if (!copy) return;
+    setScenarios(getScenarios());
+    handleSelectScenario(copy);
+  }
+
+  function confirmDeleteScenario() {
+    if (!deleteTargetId) return;
+    const remaining = scenarios.filter((s) => s.id !== deleteTargetId);
+    deleteScenario(deleteTargetId);
+    setScenarios(getScenarios());
+    if (activeScenarioId === deleteTargetId) {
+      setActiveScenarioId(remaining[0]?.id ?? null);
+    }
+    setRunResults((prev) => {
+      const next = new Map(prev);
+      next.delete(deleteTargetId);
+      return next;
+    });
+    setDeleteTargetId(null);
+  }
+
   const handleRun = useCallback(async () => {
     if (!activeScenario || running || !allStepsHaveTool) return;
     setRunning(activeScenario.id);
@@ -601,7 +707,8 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
               Scenario Runner
             </h2>
             <p className="text-xs text-zinc-500 mt-0.5 max-w-2xl">
-              Build ordered tool-call chains, run them, and inspect pass/fail per step.
+              Build and save tool-call test chains (Test Lab). Export JSON for{' '}
+              <span className="font-mono text-zinc-600">mcp-detective scenario run</span> in CI.
             </p>
           </div>
           <button
@@ -690,7 +797,53 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                   <h3 className="text-sm font-semibold text-zinc-100">{activeScenario.name}</h3>
                   <p className="text-[10px] text-zinc-500">{activeScenario.steps.length} steps</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <button
+                    type="button"
+                    data-testid="scenario-export-btn"
+                    onClick={() => void handleExport()}
+                    disabled={!allStepsHaveTool}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 disabled:opacity-40"
+                  >
+                    Export
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="scenario-import-btn"
+                    onClick={() => importInputRef.current?.click()}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    Import
+                  </button>
+                  <input
+                    ref={importInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="sr-only"
+                    data-testid="scenario-import-input"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (!file) return;
+                      void file.text().then(handleImportText);
+                    }}
+                  />
+                  <button
+                    type="button"
+                    data-testid="scenario-duplicate-btn"
+                    onClick={handleDuplicateActive}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+                  >
+                    Duplicate
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="scenario-delete-btn"
+                    onClick={() => setDeleteTargetId(activeScenario.id)}
+                    className="px-2 py-1 text-[11px] rounded-md border border-zinc-700 text-red-400/90 hover:text-red-300 hover:border-red-900/60"
+                  >
+                    Delete
+                  </button>
                   {currentRun && (
                     <span className={[
                       'text-xs font-medium px-2 py-1 rounded-md',
@@ -707,12 +860,15 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                     disabled={
                       running === activeScenario.id ||
                       activeScenario.steps.length === 0 ||
-                      !allStepsHaveTool
+                      !allStepsHaveTool ||
+                      activeHasMissingServer
                     }
                     title={
-                      !allStepsHaveTool && activeScenario.steps.length > 0
-                        ? 'Choose a server and tool for every step before running'
-                        : undefined
+                      activeHasMissingServer
+                        ? 'Reconnect missing servers or re-select tools before running'
+                        : !allStepsHaveTool && activeScenario.steps.length > 0
+                          ? 'Choose a server and tool for every step before running'
+                          : undefined
                     }
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs rounded-md transition-colors"
                   >
@@ -720,6 +876,17 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
                   </button>
                 </div>
               </div>
+
+              {actionError && (
+                <p className="px-4 py-2 text-xs text-red-400 border-b border-red-900/30 bg-red-950/20">
+                  {actionError}
+                </p>
+              )}
+              {activeHasMissingServer && (
+                <p className="px-4 py-2 text-xs text-amber-400/90 border-b border-amber-900/30 bg-amber-950/20">
+                  One or more steps reference a server that is not connected. Re-select tools or add the server again.
+                </p>
+              )}
 
               {/* Steps + results */}
               <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -776,6 +943,16 @@ export function ScenarioRunnerPanel({ servers, onClose, onCallTool }: Props) {
         </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="Delete scenario?"
+        message="This removes the scenario from your saved library. Export first if you need a copy."
+        confirmLabel="Delete"
+        danger
+        onConfirm={confirmDeleteScenario}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }
